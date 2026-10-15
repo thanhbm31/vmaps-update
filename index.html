@@ -1067,7 +1067,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '576cb8b';
+    const BUILD_TAG = '50b4681';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -5495,9 +5495,13 @@
         if (!api || !el) return;
         let s = {};
         try { s = JSON.parse(api.status()) || {}; } catch (e) { }
-        el.textContent = s.source === 'update'
-            ? `Đang chạy bản đã cập nhật · ${Math.round((s.bytes || 0) / 1024)} KB · ${s.when}`
-            : 'Đang chạy bản gốc đóng kèm APK';
+        // Hiện SỐ HIỆU bản đang chạy, không chỉ "gốc hay đã cập nhật".
+        // Đây là cách duy nhất để tự xác nhận bản cập nhật online đã ăn:
+        // số này phải đổi sau khi bấm cập nhật.
+        el.textContent = (s.source === 'update'
+            ? `Đã cập nhật online · ${Math.round((s.bytes || 0) / 1024)} KB · ${s.when}`
+            : 'Bản gốc đóng kèm APK')
+            + ` · đang chạy ${BUILD_TAG}`;
     }
 
     function updateFromFile() {
