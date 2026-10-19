@@ -234,6 +234,21 @@
         #micBtn:active { background: rgba(148, 163, 184, 0.2); }
         .dark #micBtn { color: #94a3b8; }
 
+        /* Nút xoá nhanh cả dòng chữ, nằm NGAY TRONG ô nhập, bên trái nút mic.
+           Dấu X trước đây ở ngoài cùng là nút đóng bảng, nên gõ sai một chữ
+           là phải xoá tay từng ký tự — hoặc bấm nhầm và mất cả bảng. */
+        #searchClear {
+            position: absolute; right: 48px; top: 50%;
+            transform: translateY(-50%);
+            width: 32px; height: 32px;
+            display: none; align-items: center; justify-content: center;
+            border-radius: 999px; font-size: 13px;
+            color: #64748b; background: rgba(148, 163, 184, 0.18);
+        }
+        #searchClear.show { display: flex; }
+        #searchClear:active { background: rgba(148, 163, 184, 0.38); }
+        .dark #searchClear { color: #cbd5e1; background: rgba(148, 163, 184, 0.25); }
+
         /* Chip địa điểm đã lưu: nền rõ để phân biệt "đã đặt" và "chưa đặt" */
         .place-chip.is-set {
             background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;
@@ -1071,13 +1086,16 @@
             <div class="p-4 border-b border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
-                        <input id="searchInput" type="text" placeholder="Tìm địa điểm, địa chỉ..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl pl-4 pr-12 py-3 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" onkeyup="if(event.key==='Enter') doSearch()">
+                        <input id="searchInput" type="text" placeholder="Tìm địa điểm, địa chỉ..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl pl-4 pr-[84px] py-3 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" onkeyup="if(event.key==='Enter') doSearch()" oninput="renderSearchClear()">
+                        <button id="searchClear" type="button" onclick="clearSearchText()" aria-label="Xoá chữ đã gõ">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
                         <button id="micBtn" onclick="startVoiceSearch()" aria-label="Nói để tìm">
                             <i id="micIcon" class="fa-solid fa-microphone"></i>
                         </button>
                     </div>
                     <button onclick="doSearch()" data-needs-network class="bg-blue-500 text-white px-4 py-3 rounded-xl font-semibold">Tìm</button>
-                    <button onclick="closeModal('searchModal')" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <button onclick="closeModal('searchModal')" aria-label="Thu bảng tìm kiếm xuống" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-chevron-down text-xl"></i></button>
                 </div>
 
                 <!-- Địa điểm đã lưu: chạm là dẫn đường luôn, giữ lâu để xoá -->
@@ -1101,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'b924091';
+    const BUILD_TAG = '9b85447';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1406,15 +1424,82 @@
             return;
         }
         if (gpsWatchId != null) return;             // chặn việc tạo watcher thứ hai
-        gpsWatchId = navigator.geolocation.watchPosition(
-            onGpsPosition,
-            (err) => {
-                console.warn('GPS error:', err);
-                showToast('Không lấy được vị trí GPS. Đang dùng vị trí mặc định.', 'warn');
-            },
-            { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
+
+        /*
+         * Lấy NGAY một vị trí thô, chấp nhận bản cũ tới một phút.
+         *
+         * watchPosition với enableHighAccuracy có thể mất 15-30 giây mới ra
+         * điểm đầu tiên, nhất là trong nhà hay vừa mở máy. Suốt quãng đó app
+         * đứng ở vị trí mặc định và người dùng tưởng GPS hỏng. Một điểm thô
+         * lấy từ trạm phát sóng tuy sai vài trăm mét nhưng có ngay, đủ để
+         * bản đồ và ô tìm kiếm làm việc đúng vùng.
+         */
+        navigator.geolocation.getCurrentPosition(
+            (p) => { if (!hasRealFix()) onGpsPosition(p); },
+            () => { },
+            { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 }
         );
+
+        gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError,
+            { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
         showToast('Đang theo dõi vị trí GPS...');
+    }
+
+    /*
+     * Ba kiểu hỏng GPS cần ba cách xử lý khác hẳn nhau. Gộp làm một câu
+     * "Không lấy được vị trí GPS" là bỏ mặc người dùng: họ không biết nên
+     * chờ, nên ra chỗ thoáng, hay phải đi bật quyền trong cài đặt máy.
+     */
+    let gpsRelaxed = false;
+    let gpsWarnedAt = 0;
+
+    function onGpsError(err) {
+        console.warn('GPS error:', err);
+        const code = err && err.code;
+
+        if (code === 1) {         // PERMISSION_DENIED — chờ bao lâu cũng vô ích
+            stopGps();
+            showToast('App chưa được cấp quyền vị trí. Vào Cài đặt máy → Ứng dụng → '
+                + 'VMaps → Quyền → Vị trí để bật.', 'warn');
+            return;
+        }
+
+        /*
+         * Hết giờ hoặc không có tín hiệu: hạ yêu cầu độ chính xác và chờ lâu
+         * hơn. Trong nhà, trong hầm, dưới tán cây thì GPS vệ tinh không ra
+         * điểm, nhưng định vị theo sóng di động thì vẫn được — chỉ là app
+         * phải chịu nhận điểm thô đó.
+         */
+        if (!gpsRelaxed) {
+            gpsRelaxed = true;
+            stopGpsWatchOnly();
+            gpsWatchId = navigator.geolocation.watchPosition(onGpsPosition, onGpsError,
+                { enableHighAccuracy: false, maximumAge: 30000, timeout: 60000 });
+            console.warn('GPS: chuyển sang chế độ nhận điểm thô');
+            return;
+        }
+
+        if (Date.now() - gpsWarnedAt < 60000) return;   // đừng nhắc dồn dập
+        gpsWarnedAt = Date.now();
+        showToast(code === 2
+            ? 'Chưa bắt được vị trí — thử ra chỗ thoáng trời.'
+            : 'Vị trí về chậm — bản đồ vẫn chạy, cảnh báo camera tạm dừng.', 'warn');
+    }
+
+    /** Dừng riêng bộ theo dõi, giữ nguyên các cờ. Dùng khi dựng lại watcher. */
+    function stopGpsWatchOnly() {
+        if (gpsWatchId != null) {
+            navigator.geolocation.clearWatch(gpsWatchId);
+            gpsWatchId = null;
+        }
+    }
+
+    /** Bật lại GPS sau khi người dùng đã cấp quyền hoặc ra chỗ thoáng. */
+    function retryGps() {
+        gpsRelaxed = false;
+        gpsWarnedAt = 0;
+        stopGpsWatchOnly();
+        startGps();
     }
 
     function stopGps() {
@@ -1429,7 +1514,22 @@
         userLatLng = [c.latitude, c.longitude];
         lastGpsAccuracy = c.accuracy;
 
-        if (carMarker) carMarker.setLatLng(userLatLng);
+        /*
+         * Có vị trí thì PHẢI có hình xe.
+         *
+         * Dòng cũ là `if (carMarker) carMarker.setLatLng(...)` — ghim chưa
+         * được tạo thì lặng lẽ bỏ qua, và không ai tạo nó nữa. Hậu quả đúng
+         * như đã gặp: GPS về, bản đồ bay đúng chỗ xe, mà không có hình xe
+         * nào ở đó. Ghim có thể vắng mặt vì lúc dựng bản đồ chưa xong, hoặc
+         * vì một lỗi khác đã nuốt mất lần tạo đầu tiên.
+         *
+         * Nên: thiếu thì dựng lại, rơi khỏi bản đồ thì gắn lại.
+         */
+        if (!carMarker) updateCarIcon();
+        if (carMarker) {
+            carMarker.setLatLng(userLatLng);
+            if (map && !map.hasLayer(carMarker)) carMarker.addTo(map);
+        }
         // CHỈ bám theo xe khi đang ở chế độ bám. Trước đây chỗ này cứ thấy xe
         // ra ngoài khung là bay về, nên người dùng vừa kéo bản đồ đi xem đoạn
         // phía trước là nhịp GPS sau đã giật về chỗ xe — không xem được gì.
@@ -2744,7 +2844,71 @@
             // Nhóm online thì để đường tìm theo tên thử tiếp
         }
 
-        return searchByName(raw, userLatLng || getCurrentPos());
+        const here = userLatLng || getCurrentPos();
+
+        /*
+         * Tên trơ của một thương hiệu — "Vincom", "Lotte", "Circle K" — là
+         * câu hỏi về CHI NHÁNH GẦN NHẤT, không phải về thương hiệu đó ở đâu
+         * trên cả nước. Nên quét gần trước rồi nới dần, dừng ngay khi có.
+         *
+         * Khác hẳn với "Vincom Imperia" hay "Vincom Hà Nội": đã ghi rõ thì
+         * phải tìm đúng cái tên đó, dù nó ở tỉnh khác.
+         */
+        if (bareBrandQuery(raw)) {
+            const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
+            if (near.length) return near;
+            return searchByName(raw, here);     // quanh đây không có thì mở ra cả nước
+        }
+
+        const rows = await searchByName(raw, here);
+
+        /*
+         * Gõ sai tên thì máy tìm kiếm vẫn trả về thứ na ná, rải khắp nơi.
+         * Lúc đó danh sách theo tên là vô dụng — quay về lọc gần nhất, vì
+         * nơi người ta định tới nhiều khả năng vẫn ở quanh đây.
+         *
+         * Nhận ra "không khớp tên nào ra hồn" bằng điểm của dòng đầu: dưới
+         * mức "có đủ từ đó trong tên" nghĩa là chỉ dính một phần chữ.
+         */
+        if (looksLikeTypo(raw, rows)) {
+            const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
+            if (near.length) return near;
+        }
+        return rows;
+    }
+
+    const BRAND_NEAR_MAX_KM = 50;   // thang quét 5 → 10 → 20 → 50, dừng khi có kết quả
+
+    /**
+     * Có vẻ người dùng gõ sai tên không?
+     *
+     * Dấu hiệu: không ra gì, hoặc KHÔNG MỘT CHỮ NÀO trong câu gõ xuất hiện
+     * trong tên kết quả đầu — nghĩa là máy tìm kiếm đang đoán bừa.
+     *
+     * Cố ý KHÔNG dựa vào điểm khớp tên. "Lăng Bác" chấm điểm rất thấp so với
+     * "Lăng Chủ tịch Hồ Chí Minh" nhưng đó là tên gọi quen, kết quả đúng —
+     * coi là gõ sai rồi đi tìm lại quanh đây là vừa phí lượt hỏi vừa có nguy
+     * cơ đẩy kết quả đúng xuống.
+     */
+    function looksLikeTypo(query, rows) {
+        if (!rows.length) return true;
+        const top = noAccent(rows[0].display_name || '');
+        const words = noAccent(query).split(/\s+/).filter((w) => w.length >= 3);
+        if (!words.length) return false;
+        return !words.some((w) => top.includes(w));
+    }
+
+    /**
+     * Câu gõ có phải TÊN TRƠ của một thương hiệu/chuỗi không?
+     *
+     * Một từ, và không nhắc tới địa danh nào. "Vincom" thì có; "Vincom
+     * Imperia" và "Vincom Hà Nội" thì không — đã ghi rõ rồi.
+     */
+    function bareBrandQuery(raw) {
+        const q = noAccent(raw).replace(CATEGORY_FILLER, ' ').replace(/\s+/g, ' ').trim();
+        if (!q) return false;
+        if (mentionsPlace(q)) return false;
+        return q.split(' ').length === 1;
     }
 
     // ---------------------------------------------------------------------
@@ -2852,26 +3016,207 @@
      * lại. Nên một dòng sai hay thừa trong bảng cũng không làm mất kết quả.
      * Giữ cả tên cũ lẫn tên mới sau sáp nhập, vì người ta vẫn gõ tên cũ.
      */
-    const VN_PLACE_NAMES = [
-        'Hà Nội', 'Hải Phòng', 'Hồ Chí Minh', 'Sài Gòn', 'Đà Nẵng', 'Cần Thơ', 'Huế',
-        'Hải Dương', 'Quảng Ninh', 'Hạ Long', 'Thanh Hoá', 'Nghệ An', 'Vinh', 'Hà Tĩnh',
-        'Quảng Bình', 'Quảng Trị', 'Quảng Nam', 'Quảng Ngãi', 'Bình Định', 'Quy Nhơn',
-        'Phú Yên', 'Khánh Hoà', 'Nha Trang', 'Ninh Thuận', 'Bình Thuận', 'Lâm Đồng',
-        'Đà Lạt', 'Đắk Lắk', 'Đắk Nông', 'Gia Lai', 'Kon Tum', 'Bình Dương', 'Bình Phước',
-        'Đồng Nai', 'Tây Ninh', 'Bà Rịa', 'Vũng Tàu', 'Long An', 'Tiền Giang', 'Bến Tre',
-        'Vĩnh Long', 'Đồng Tháp', 'An Giang', 'Kiên Giang', 'Phú Quốc', 'Cà Mau',
-        'Bạc Liêu', 'Sóc Trăng', 'Trà Vinh', 'Hậu Giang', 'Lào Cai', 'Sa Pa', 'Yên Bái',
-        'Tuyên Quang', 'Hà Giang', 'Cao Bằng', 'Lạng Sơn', 'Bắc Giang', 'Bắc Ninh',
-        'Bắc Kạn', 'Thái Nguyên', 'Điện Biên', 'Lai Châu', 'Sơn La', 'Hoà Bình',
-        'Phú Thọ', 'Vĩnh Phúc', 'Hà Nam', 'Nam Định', 'Thái Bình', 'Ninh Bình', 'Hưng Yên'
+    /*
+     * Danh bạ tỉnh thành và vài địa danh lớn, KÈM TOẠ ĐỘ, nằm sẵn trong app.
+     *
+     * Vì sao cần: máy tìm kiếm trực tuyến đánh giá "Hà Nội" là một câu ngắn
+     * mơ hồ nên hay trả về đường Hà Hồi, một quán ở Đà Nẵng, hoặc bất cứ thứ
+     * gì na ná. Đứng ở Hải Phòng gõ "Hà Nội" mà không ra Hà Nội thì app hỏng
+     * ở việc cơ bản nhất. Những cái tên này là danh sách ĐÓNG, hiếm khi đổi,
+     * nên giữ sẵn trong máy vừa chắc chắn vừa không cần mạng.
+     *
+     * Toạ độ là TÂM thành phố, dùng để dẫn đường tới thành phố đó — không
+     * phải một địa chỉ cụ thể. Kết quả trực tuyến vẫn được hỏi song song và
+     * gộp vào, nên nơi cụ thể hơn vẫn ra bình thường.
+     *
+     * Bảng này CỐ Ý ngắn ở phần địa danh. Một toạ độ sai ở đây đưa người lái
+     * tới nhầm chỗ, tệ hơn hẳn việc không có dòng đó. Muốn dày thêm thì làm
+     * như trạm sạc: một bảng tính có người kiểm, CI dựng thành file dữ liệu.
+     */
+    /*
+     * Danh bạ trong máy: tỉnh thành và các điểm nổi bật của thành phố lớn.
+     *
+     * Vì sao cần: máy tìm kiếm trực tuyến coi "Hà Nội" là câu ngắn mơ hồ nên
+     * hay trả về đường Hà Hồi, một quán ở Đà Nẵng, hay bất cứ thứ gì na ná.
+     * Đứng ở Hải Phòng gõ "Hà Nội" mà không ra Hà Nội thì app hỏng ở việc cơ
+     * bản nhất. Những cái tên này là danh sách ĐÓNG nên giữ sẵn trong máy vừa
+     * chắc chắn vừa chạy được khi mất mạng.
+     *
+     * TOẠ ĐỘ LÀ ĐIỂM MỐC, KHÔNG PHẢI ĐỊA CHỈ CHÍNH XÁC. Với thành phố thì nó
+     * là tâm đô thị; với điểm nổi bật thì sai số vài trăm mét — chấp nhận
+     * được vì đó đều là chỗ tới nơi là nhìn thấy (hồ, sân vận động, nhà ga,
+     * sân bay). Cố ý KHÔNG đưa vào những nơi cần chính xác tới số nhà.
+     *
+     * Muốn dày thêm thì làm như trạm sạc: một bảng tính có người kiểm, CI
+     * dựng thành file dữ liệu. Chép tay nhiều toạ độ vào đây là cách chắc
+     * chắn sẽ có dòng sai, mà dòng sai thì đưa người lái tới nhầm chỗ.
+     */
+    const VN_CITIES = [
+        ['Hà Nội', 21.0285, 105.8542], ['Hải Phòng', 20.8449, 106.6881],
+        ['Hồ Chí Minh', 10.7769, 106.7009], ['Sài Gòn', 10.7769, 106.7009],
+        ['Đà Nẵng', 16.0544, 108.2022], ['Cần Thơ', 10.0452, 105.7469],
+        ['Huế', 16.4637, 107.5909], ['Hải Dương', 20.9373, 106.3146],
+        ['Quảng Ninh', 20.9517, 107.0803], ['Hạ Long', 20.9517, 107.0803],
+        ['Móng Cái', 21.5333, 107.9667], ['Thanh Hoá', 19.8067, 105.7852],
+        ['Sầm Sơn', 19.7333, 105.9000], ['Nghệ An', 18.6796, 105.6813],
+        ['Vinh', 18.6796, 105.6813], ['Hà Tĩnh', 18.3559, 105.8877],
+        ['Quảng Bình', 17.4689, 106.6223], ['Đồng Hới', 17.4689, 106.6223],
+        ['Quảng Trị', 16.8163, 107.1003], ['Đông Hà', 16.8163, 107.1003],
+        ['Quảng Nam', 15.5736, 108.4745], ['Tam Kỳ', 15.5736, 108.4745],
+        ['Hội An', 15.8801, 108.3380], ['Quảng Ngãi', 15.1214, 108.8044],
+        ['Bình Định', 13.7829, 109.2196], ['Quy Nhơn', 13.7829, 109.2196],
+        ['Phú Yên', 13.0882, 109.0929], ['Tuy Hoà', 13.0882, 109.0929],
+        ['Khánh Hoà', 12.2388, 109.1967], ['Nha Trang', 12.2388, 109.1967],
+        ['Ninh Thuận', 11.5646, 108.9886], ['Phan Rang', 11.5646, 108.9886],
+        ['Bình Thuận', 10.9280, 108.1020], ['Phan Thiết', 10.9280, 108.1020],
+        ['Lâm Đồng', 11.9404, 108.4583], ['Đà Lạt', 11.9404, 108.4583],
+        ['Đắk Lắk', 12.6667, 108.0500], ['Buôn Ma Thuột', 12.6667, 108.0500],
+        ['Đắk Nông', 11.9999, 107.6914], ['Gia Lai', 13.9833, 108.0000],
+        ['Pleiku', 13.9833, 108.0000], ['Kon Tum', 14.3500, 108.0000],
+        ['Bình Dương', 10.9804, 106.6519], ['Thủ Dầu Một', 10.9804, 106.6519],
+        ['Bình Phước', 11.5347, 106.8832], ['Đồng Nai', 10.9574, 106.8426],
+        ['Biên Hoà', 10.9574, 106.8426], ['Tây Ninh', 11.3100, 106.0989],
+        ['Bà Rịa', 10.4961, 107.1689], ['Vũng Tàu', 10.3460, 107.0843],
+        ['Long An', 10.5350, 106.4132], ['Tân An', 10.5350, 106.4132],
+        ['Tiền Giang', 10.3600, 106.3600], ['Mỹ Tho', 10.3600, 106.3600],
+        ['Bến Tre', 10.2415, 106.3759], ['Vĩnh Long', 10.2537, 105.9722],
+        ['Đồng Tháp', 10.4590, 105.6325], ['Cao Lãnh', 10.4590, 105.6325],
+        ['An Giang', 10.3860, 105.4380], ['Long Xuyên', 10.3860, 105.4380],
+        ['Kiên Giang', 10.0125, 105.0809], ['Rạch Giá', 10.0125, 105.0809],
+        ['Phú Quốc', 10.2270, 103.9670], ['Cà Mau', 9.1769, 105.1524],
+        ['Bạc Liêu', 9.2850, 105.7244], ['Sóc Trăng', 9.6037, 105.9739],
+        ['Trà Vinh', 9.9347, 106.3453], ['Hậu Giang', 9.7840, 105.4700],
+        ['Lào Cai', 22.4809, 103.9755], ['Sa Pa', 22.3364, 103.8438],
+        ['Yên Bái', 21.7229, 104.9113], ['Tuyên Quang', 21.8233, 105.2180],
+        ['Hà Giang', 22.8233, 104.9784], ['Cao Bằng', 22.6666, 106.2639],
+        ['Lạng Sơn', 21.8537, 106.7615], ['Bắc Giang', 21.2731, 106.1946],
+        ['Bắc Ninh', 21.1861, 106.0763], ['Bắc Kạn', 22.1472, 105.8348],
+        ['Thái Nguyên', 21.5942, 105.8482], ['Điện Biên', 21.3860, 103.0230],
+        ['Lai Châu', 22.3964, 103.4590], ['Sơn La', 21.3273, 103.9141],
+        ['Hoà Bình', 20.8133, 105.3383], ['Phú Thọ', 21.3227, 105.4024],
+        ['Việt Trì', 21.3227, 105.4024], ['Vĩnh Phúc', 21.3089, 105.6049],
+        ['Hà Nam', 20.5411, 105.9139], ['Phủ Lý', 20.5411, 105.9139],
+        ['Nam Định', 20.4388, 106.1621], ['Thái Bình', 20.4463, 106.3366],
+        ['Ninh Bình', 20.2506, 105.9745], ['Hưng Yên', 20.6464, 106.0511]
     ];
+
+    /** Tên khác của cùng một thành phố, để điểm nổi bật tra về một mối. */
+    const CITY_ALIAS = { 'Sài Gòn': 'Hồ Chí Minh', 'Quảng Ninh': 'Hạ Long' };
+    const cityKey = (n) => CITY_ALIAS[n] || n;
+
+    /*
+     * Điểm nổi bật, gắn với thành phố. Dùng khi người ta gõ TÊN THÀNH PHỐ:
+     * "đi Hà Nội" thì đích thật sự là một chỗ cụ thể trong Hà Nội, và chỗ
+     * hợp lý nhất phụ thuộc hướng tới — từ Phú Thọ về thì Mỹ Đình nằm ngay
+     * cửa ngõ, từ Hải Phòng lên thì Hoàn Kiếm gần hơn. Nên danh sách này
+     * được xếp theo khoảng cách tới vị trí người tìm.
+     */
+    const VN_LANDMARKS = [
+        // Hà Nội
+        ['Hồ Hoàn Kiếm', 21.0287, 105.8524, 'Hà Nội'],
+        ['Sân vận động Mỹ Đình', 21.0203, 105.7640, 'Hà Nội'],
+        ['Bến xe Mỹ Đình', 21.0283, 105.7760, 'Hà Nội'],
+        ['Lăng Chủ tịch Hồ Chí Minh', 21.0367, 105.8347, 'Hà Nội'],
+        ['Văn Miếu Quốc Tử Giám', 21.0293, 105.8355, 'Hà Nội'],
+        ['Bệnh viện Trung ương Quân đội 108', 21.0190, 105.8625, 'Hà Nội'],
+        ['Bệnh viện Bạch Mai', 20.9970, 105.8410, 'Hà Nội'],
+        ['Ga Hà Nội', 21.0245, 105.8412, 'Hà Nội'],
+        ['Sân bay Nội Bài', 21.2212, 105.8072, 'Hà Nội'],
+        ['Hồ Tây', 21.0580, 105.8200, 'Hà Nội'],
+        ['Bến xe Giáp Bát', 20.9830, 105.8420, 'Hà Nội'],
+        ['Bến xe Nước Ngầm', 20.9730, 105.8420, 'Hà Nội'],
+
+        // TP Hồ Chí Minh
+        ['Chợ Bến Thành', 10.7721, 106.6980, 'Hồ Chí Minh'],
+        ['Dinh Độc Lập', 10.7772, 106.6958, 'Hồ Chí Minh'],
+        ['Nhà thờ Đức Bà', 10.7798, 106.6990, 'Hồ Chí Minh'],
+        ['Phố đi bộ Nguyễn Huệ', 10.7740, 106.7040, 'Hồ Chí Minh'],
+        ['Sân bay Tân Sơn Nhất', 10.8188, 106.6520, 'Hồ Chí Minh'],
+        ['Bến xe Miền Đông', 10.8150, 106.7110, 'Hồ Chí Minh'],
+        ['Bến xe Miền Tây', 10.7400, 106.6190, 'Hồ Chí Minh'],
+        ['Bệnh viện Chợ Rẫy', 10.7560, 106.6590, 'Hồ Chí Minh'],
+        ['Thảo Cầm Viên', 10.7877, 106.7049, 'Hồ Chí Minh'],
+
+        // Đà Nẵng
+        ['Cầu Rồng', 16.0614, 108.2277, 'Đà Nẵng'],
+        ['Bãi biển Mỹ Khê', 16.0590, 108.2470, 'Đà Nẵng'],
+        ['Sân bay Đà Nẵng', 16.0439, 108.1994, 'Đà Nẵng'],
+        ['Cầu Sông Hàn', 16.0720, 108.2270, 'Đà Nẵng'],
+
+        // Hải Phòng
+        ['Nhà hát lớn Hải Phòng', 20.8600, 106.6830, 'Hải Phòng'],
+        ['Sân bay Cát Bi', 20.8190, 106.7250, 'Hải Phòng'],
+        ['Đồ Sơn', 20.7100, 106.7800, 'Hải Phòng'],
+        ['Đảo Cát Bà', 20.7280, 107.0480, 'Hải Phòng'],
+
+        // Khác
+        ['Đại Nội Huế', 16.4700, 107.5780, 'Huế'],
+        ['Chùa Thiên Mụ', 16.4530, 107.5450, 'Huế'],
+        ['Bến Ninh Kiều', 10.0330, 105.7880, 'Cần Thơ'],
+        ['Vịnh Hạ Long', 20.9101, 107.1839, 'Hạ Long'],
+        ['Hồ Xuân Hương', 11.9400, 108.4420, 'Đà Lạt'],
+        ['Tháp Bà Ponagar', 12.2650, 109.1950, 'Nha Trang']
+    ];
+
     const VN_ACCENT_MAP = (() => {
         const m = new Map();
-        for (const n of VN_PLACE_NAMES) m.set(noAccent(n), n);
+        for (const [n] of VN_CITIES) m.set(noAccent(n), n);
+        for (const [n] of VN_LANDMARKS) m.set(noAccent(n), n);
         return m;
     })();
     // Khớp cụm dài trước: "ha giang" phải thắng "ha" nếu sau này có mục một chữ
     const VN_ACCENT_KEYS = [...VN_ACCENT_MAP.keys()].sort((a, b) => b.length - a.length);
+
+    const LANDMARK_SHOW = 4;      // đủ để chọn, chưa lấn hết chỗ của kết quả trực tuyến
+
+    /** Câu gõ có chứa tên một địa danh không? Dùng để biết câu đã "ghi rõ" chưa. */
+    function mentionsPlace(query) {
+        const q = noAccent(query);
+        return VN_ACCENT_KEYS.some((k) =>
+            new RegExp('(^|[^\\p{L}])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                + '(?![\\p{L}])', 'u').test(q));
+    }
+
+    /**
+     * Tra danh bạ trong máy.
+     *
+     * Chỉ nhận khi câu gõ khớp TRỌN tên, hoặc là phần đầu đủ dài — "ha n"
+     * còn là Hà Nam lẫn Hà Nội nên chưa đoán được, "ha noi" thì đủ.
+     *
+     * Gõ đúng tên một THÀNH PHỐ LỚN thì kèm theo vài điểm nổi bật của nó,
+     * xếp theo khoảng cách tới người tìm — đi từ Phú Thọ về Hà Nội thì Mỹ
+     * Đình lên trước, từ Hải Phòng lên thì Hoàn Kiếm lên trước.
+     */
+    function localPlaces(query, here) {
+        const q = noAccent(query);
+        if (q.length < 3) return [];
+        const hit = (key) => key === q || (q.length >= 5 && key.startsWith(q));
+
+        const out = [];
+        let city = null;
+        for (const [n, lat, lon] of VN_CITIES) {
+            if (!hit(noAccent(n))) continue;
+            out.push({ lat, lon, display_name: n + ', Việt Nam', _local: true, _score: 100 });
+            if (!city) city = cityKey(n);
+        }
+        for (const [n, lat, lon, c] of VN_LANDMARKS) {
+            if (!hit(noAccent(n))) continue;
+            out.push({ lat, lon, display_name: n + ', ' + c, _local: true, _score: 100 });
+        }
+
+        if (city && here) {
+            const marks = VN_LANDMARKS
+                .filter(([, , , c]) => cityKey(c) === city)
+                .map(([n, lat, lon, c]) => ({
+                    lat, lon, display_name: n + ', ' + c, _local: true, _score: 90,
+                    _dist: haversine(here[0], here[1], lat, lon)
+                }))
+                .sort((a, b) => a._dist - b._dist)
+                .slice(0, LANDMARK_SHOW);
+            out.push(...marks);
+        }
+        return out;
+    }
 
     /** Có dấu rồi thì để nguyên; chưa có thì thử thêm dấu cho tên tỉnh thành. */
     function addVnAccents(q) {
@@ -2930,7 +3275,12 @@
      * thì thành phố Hà Nội vẫn lên đầu dù ở xa.
      */
     function rankByName(rows, query) {
-        rows.forEach((r) => { r._score = nameScore(query, r.display_name || ''); });
+        // Dòng từ danh bạ trong máy đã mang sẵn điểm: thành phố 100, điểm nổi
+        // bật của thành phố đó 90. Chấm lại theo tên sẽ dìm chúng xuống đáy,
+        // vì "Hồ Hoàn Kiếm" chẳng khớp chữ nào với câu gõ "Hà Nội".
+        rows.forEach((r) => {
+            if (r._score == null) r._score = nameScore(query, r.display_name || '');
+        });
         rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         return rows;
     }
@@ -3055,30 +3405,47 @@
         // chắc chắn có mặt, một lượt cả nước để nơi xa vẫn ra. Gộp cả hai rồi
         // mới xếp hạng — không lượt nào được quyền kết thúc việc tìm kiếm.
         // ------------------------------------------------------------------
-        let rows = [];
+        /*
+         * Câu nào hỏi ở lượt nào.
+         *
+         * Biến thể "Đường <tên>" CHỈ hỏi ở lượt quanh xe. Nó giúp gõ "Tô
+         * Hiệu" ra con phố chứ không ra cửa hàng cùng tên — nhưng hỏi nó
+         * trên phạm vi cả nước thì vô nghĩa, và còn có hại: "Đường Hà Nội"
+         * làm máy tìm kiếm lục trong danh mục TÊN PHỐ, không tìm ra phố nào
+         * đúng tên nên nó trả về thứ na ná — đường Hà Hồi chẳng hạn.
+         *
+         * Và KHÔNG được dừng ở biến thể đầu tiên có kết quả. Đây chính là
+         * lỗi làm gõ "Hà Nội" chỉ ra đường Hà Hồi: biến thể "Đường Hà Nội"
+         * trả về rác, mà có rác nghĩa là "có kết quả", nên câu hỏi thật
+         * không bao giờ được gửi đi. Hỏi hết, gộp lại, rồi để phần chấm
+         * điểm tên dọn dẹp — rác được 0 điểm nên tự rơi xuống đáy.
+         */
+        const base = accented || expanded || raw;
+        const nearQueries = looksLikeStreet ? ['Đường ' + base, base] : [base];
+
+        const local = localPlaces(base, here);   // danh bạ trong máy: luôn có, không cần mạng
+        let rows = local.slice();
+
         if (useMapbox()) {
-            for (const km of [NEAR_PASS_KM, null]) {
-                try {
-                    for (const q of variants) {
-                        const mb = await searchMapbox(q, here, km);
-                        rows = rows.concat(mb);
-                        if (mb.length) break;      // biến thể đầu có kết quả là đủ cho lượt này
-                    }
-                } catch (e) {
-                    console.warn('Mapbox geocoding:', e);
-                    break;                          // lỗi khoá/hạn mức thì lượt sau cũng vậy
+            try {
+                for (const q of nearQueries) {
+                    rows = rows.concat(await searchMapbox(q, here, NEAR_PASS_KM));
                 }
+                rows = rows.concat(await searchMapbox(base, here, null));
+            } catch (e) {
+                console.warn('Mapbox geocoding:', e);   // lỗi khoá/hạn mức: rơi xuống Nominatim
             }
         }
-        if (!rows.length) {
+        if (rows.length <= local.length) {      // Mapbox không ra gì (hoặc không dùng được)
             try {
-                for (const km of [NEAR_PASS_KM, null]) {
-                    rows = rows.concat(await nominatimPass(variants, here, km));
-                }
+                rows = rows.concat(await nominatimPass(nearQueries, here, NEAR_PASS_KM));
+                rows = rows.concat(await nominatimPass([base], here, null));
             } catch (e) {
                 console.warn('Nominatim:', e);
-                showToast('Lỗi tìm kiếm địa điểm', 'warn');
-                return [];
+                if (!rows.length) {
+                    showToast('Lỗi tìm kiếm địa điểm', 'warn');
+                    return [];
+                }
             }
         }
 
@@ -3086,7 +3453,7 @@
         rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
         if (hint) rankCategoryRows(rows, hint);
         else rankByName(rows, accented || expanded || raw);
-        return rows.slice(0, 8);
+        return rows.slice(0, 10);
     }
 
     /**
@@ -3106,6 +3473,7 @@
         toggleModal('searchModal');
         renderSavedPlaces();
         renderCategoryChips();
+        renderSearchClear();
         setTimeout(() => $('searchInput')?.focus(), 100);
     }
 
@@ -3133,6 +3501,7 @@
             const c = PLACE_CATEGORIES.find((x) => x.label === b.dataset.cat);
             if (!c) return;
             $('searchInput').value = c.label;
+            renderSearchClear();
             renderSearchResults(await searchCategory(c));
         }));
     }
@@ -3248,6 +3617,7 @@
         micBusy(false);
         if (!text) return;
         $('searchInput').value = text;
+        renderSearchClear();
         doSearch();
     }
     function onVoiceError(msg) {
@@ -3278,6 +3648,30 @@
         } catch (e) {
             onVoiceError('Không mở được micro');
         }
+    }
+
+    /*
+     * Dấu X xoá chữ, mũi tên xuống đóng bảng.
+     *
+     * Trước đây chỉ có một nút X ở ngoài cùng và nó ĐÓNG BẢNG. Gõ sai một
+     * chữ thì phải giữ phím xoá từng ký tự, mà bấm X theo phản xạ là mất cả
+     * bảng lẫn kết quả. Dấu X ở trong ô nhập là quy ước chung của mọi ô tìm
+     * kiếm, nên để nó làm việc người ta vẫn trông đợi.
+     */
+    function renderSearchClear() {
+        const el = $('searchClear');
+        const input = $('searchInput');
+        if (el && input) el.classList.toggle('show', !!input.value);
+    }
+
+    function clearSearchText() {
+        const input = $('searchInput');
+        if (!input) return;
+        input.value = '';
+        renderSearchClear();
+        const res = $('searchResults');
+        if (res) res.innerHTML = '<p class="p-4 text-slate-400 text-center">Nhập địa điểm cần tìm</p>';
+        input.focus();
     }
 
     async function doSearch() {
@@ -4559,6 +4953,13 @@
 
     function recenterMap() {
         if (!map) return;
+        /*
+         * Bấm "về vị trí xe" khi CHƯA có vị trí là lúc người dùng đang nói
+         * "tìm tôi đi". Nếu bộ theo dõi đã chết — hết giờ, hoặc quyền vừa
+         * được cấp sau khi app khởi động — thì phải bật lại, chứ bay về điểm
+         * mặc định rồi thôi là bỏ mặc họ.
+         */
+        if (!hasRealFix()) retryGps();
         setFollowCar(true);
         pauseRotation(false);      // quay lại theo hướng xe nếu đang bật
         // Đo lại khung trước khi bay, nếu không xe sẽ không rơi vào đúng giữa
