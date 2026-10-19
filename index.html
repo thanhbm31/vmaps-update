@@ -172,6 +172,11 @@
 
         /* Toast nằm dưới hàng trên cùng, định vị tuyệt đối nên không làm xô lệch lưới */
         #toast-host { position: relative; pointer-events: none; z-index: 30; }
+        /* Lớp chứa không nhận chạm (để không cướp thao tác trên bản đồ), nhưng
+           huy hiệu mạng CÓ nút "Tải lại" nên phải nhận lại. Thiếu dòng này thì
+           nút vẫn hiện, vẫn đổi màu khi chạm, mà bấm không ra gì — ngón tay đi
+           xuyên qua xuống bản đồ. Giống hệt lỗi đã sửa ở #osm-credit. */
+        #offlineBadge { pointer-events: auto; }
         #toastNotification {
             position: absolute; top: 0; left: 50%; transform: translateX(-50%);
             width: max-content; max-width: min(420px, calc(100vw - 32px));
@@ -1096,7 +1101,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'f9de89a';
+    const BUILD_TAG = 'b924091';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -4285,7 +4290,20 @@
         // Nếu không tải được tile thì phải nói ra, chứ để màn hình trống thì
         // người dùng không biết là mất mạng hay app hỏng.
         layer.on('tileerror', onTileError);
-        layer.on('tileload', () => { tileErrors = 0; tilesLoaded++; });
+        /*
+         * Bản đồ về được là tự tắt lời cảnh báo.
+         *
+         * Sự kiện 'online' của trình duyệt KHÔNG nổ khi sóng chỉ yếu đi rồi
+         * tốt lại — navigator.onLine vẫn true suốt. Nên nếu chỉ trông vào nó
+         * thì huy hiệu "mạng yếu" treo tới hết phiên dù bản đồ đã liền lại.
+         * Đếm vài ô về liên tiếp là bằng chứng chắc chắn hơn mọi cờ hệ thống.
+         */
+        layer.on('tileload', () => {
+            tileErrors = 0;
+            tilesLoaded++;
+            tileOkRun++;
+            if (netPoor && tileOkRun >= TILE_OK_CLEAR) setNetBadge(false);
+        });
 
         /*
          * Canh chừng trường hợp KHÔNG MỘT Ô NÀO về.
@@ -4325,6 +4343,8 @@
 
     let tileErrors = 0;
     let tilesLoaded = 0;
+    let tileOkRun = 0;                  // số ô về liên tiếp, không xen ô hỏng
+    const TILE_OK_CLEAR = 4;            // một màn hình ~12 ô, 4 ô liền là đã thật sự ổn
     let tileWatchdog = null;
     const TILE_WATCHDOG_MS = 12000;     // đủ cho 3G chậm, chưa đủ để người lái sốt ruột
     let tileWarnedAt = 0;
@@ -4333,6 +4353,7 @@
 
     function onTileError() {
         tileErrors++;
+        tileOkRun = 0;      // một ô hỏng là chuỗi "đã ổn" phải đếm lại từ đầu
         if (tileErrors < TILE_WARN_AFTER) return;
         if (Date.now() - tileWarnedAt < TILE_WARN_GAP_MS) return;
         tileWarnedAt = Date.now();
@@ -4352,11 +4373,27 @@
         setNetBadge(false);
     }
 
+    /*
+     * Huy hiệu mạng có HAI nguồn bật: mất mạng hẳn (navigator.onLine) và
+     * bản đồ tải không kịp (đếm tile hỏng). Trước đây mỗi nguồn tự bật tắt
+     * lớp 'hidden' của cùng một thẻ, nên chúng giẫm chân nhau và không ai
+     * chịu trách nhiệm tắt. Kết quả: mạng yếu một lúc rồi tốt lại, huy hiệu
+     * vẫn treo đó tới hết phiên.
+     *
+     * Nay chỉ còn một chỗ vẽ, hai nguồn chỉ đặt cờ.
+     */
+    let netPoor = false;
+
     function setNetBadge(poor) {
+        netPoor = !!poor;
+        renderNetBadge();
+    }
+
+    function renderNetBadge() {
         const b = $('offlineBadge');
         if (!b) return;
         const off = isOffline();
-        const show = off || poor;
+        const show = off || netPoor;
         b.classList.toggle('hidden', !show);
         b.classList.toggle('flex', show);
         $('netBadgeText').textContent = off
@@ -5865,11 +5902,9 @@
     function isOffline() { return navigator.onLine === false; }
 
     function renderNetworkStatus() {
-        const badge = $('offlineBadge');
-        if (!badge) return;
+        // Chỉ một chỗ vẽ huy hiệu, xem chú thích ở renderNetBadge
+        renderNetBadge();
         const off = isOffline();
-        badge.classList.toggle('hidden', !off);
-        badge.classList.toggle('flex', off);
         // Vô hiệu hoá nút cần mạng thay vì để bấm vào không ra gì
         document.querySelectorAll('[data-needs-network]').forEach((el) => {
             el.disabled = off;
