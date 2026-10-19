@@ -1119,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'baccac2';
+    const BUILD_TAG = '3d87985';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1136,7 +1136,10 @@
     const CHILD_STOP_MS = DEMO_MODE ? 20 * 1000 : 3 * 60 * 1000; // Tránh báo nhầm khi dừng đèn đỏ
     const STOP_SPEED_KMH = 3;                       // Dưới mức này coi là đứng yên (nhiễu GPS)
     const OVERSPEED_CONFIRM_MS = 2000;              // Vượt liên tục 2s mới báo (lọc nhiễu)
-    const OVERSPEED_HYSTERESIS = 2;                 // Phải xuống dưới ngưỡng 2 km/h mới hết báo
+    // Về dưới giới hạn liên tục bấy nhiêu mới tắt báo. Chống nhấp nháy bằng
+    // THỜI GIAN chứ không bằng lề tốc độ — lề tốc độ làm app báo đỏ trong
+    // khi đồng hồ đã chỉ dưới mức cho phép.
+    const OVERSPEED_CLEAR_MS = 1500;
     const SPEED_ALERT_REPEAT_MS = 15000;            // Nhắc lại tối đa mỗi 15s
     const CALIB_LIMIT = 15;
 
@@ -2496,7 +2499,10 @@
     }
 
     // Những chữ thêm vào không làm đổi ý: "siêu thị gần nhất" vẫn là nhóm
-    const CATEGORY_FILLER = /\b(gan nhat|gan day|gan toi|quanh day|quanh toi|o dau|nao|gan|nhat)\b/g;
+    // \b của JS không nhận ra chữ 'đ' nên dùng ranh giới \p{L}
+    const CATEGORY_FILLER = new RegExp('(^|[^\\p{L}])(gan nhat|gan day|gan toi|gan ban|'
+        + 'xung quanh toi|xung quanh day|xung quanh|quanh day|quanh toi|quanh ban|'
+        + 'o dau|nao|gan|nhat)(?![\\p{L}])', 'gu');
 
     function matchCategory(query) {
         let q = noAccent(query).replace(CATEGORY_FILLER, ' ').replace(/\s+/g, ' ').trim();
@@ -2874,15 +2880,31 @@
             // Hỏi bộ gợi ý xem câu này đáng lẽ là gì
             const fixed = await suggestCorrection(raw, here);
             if (fixed) {
-                const better = await searchByName(fixed, here);
+                /*
+                 * Giữ lại phạm vi tỉnh thành khi tìm lại. Bộ gợi ý chỉ trả về
+                 * tên riêng, bỏ mất phần "ở TP HCM" người dùng đã ghi — tìm
+                 * lại bằng tên trơ là lại đi ra khỏi vùng họ chỉ định.
+                 */
+                const scope = cityScope(raw);
+                const q = scope ? fixed + ', ' + scope.name : fixed;
+                const better = await searchByName(q, here);
                 if (better.length) {
                     // Nói rõ app đang tìm chữ khác, đừng lặng lẽ đổi câu hỏi
                     showToast('Đang hiện kết quả cho "' + fixed + '"');
                     return better;
                 }
             }
-            const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
-            if (near.length) return near;
+            /*
+             * KHÔNG quay về lọc gần nhất khi câu đã ghi rõ tỉnh thành.
+             *
+             * Đứng ở Hải Phòng hỏi "... ở thành phố Hồ Chí Minh" mà app trả
+             * về một chỗ ở Hải Phòng thì tệ hơn là không trả gì: người ta dễ
+             * bấm nhầm rồi được dẫn đi nhầm hẳn một đầu đất nước.
+             */
+            if (!cityScope(raw)) {
+                const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
+                if (near.length) return near;
+            }
         }
         return rows;
     }
@@ -3194,6 +3216,40 @@
     const cityKey = (n) => CITY_ALIAS[n] || n;
 
     /*
+     * Tên gọi tắt. Người ta gõ "HCM", "TPHCM" nhiều hơn gõ đủ "Hồ Chí Minh".
+     *
+     * Cố ý KHÔNG nhận tắt hai chữ (SG, HN, HP): quá ngắn nên dễ trùng với
+     * chữ viết tắt khác hoặc với chính câu người ta định gõ.
+     */
+    const CITY_SHORT = (() => {
+        const m = {};
+        const add = (city, names) => names.forEach((n) => { m[noAccent(n)] = city; });
+        add('Hồ Chí Minh', ['HCM', 'TPHCM', 'TP HCM', 'HCMC', 'Sài Gòn', 'SAIGON',
+            'Sai Gon', 'TP Hồ Chí Minh', 'Thành phố HCM', 'Ho Chi Minh', 'HoChiMinh',
+            'TP Sài Gòn', 'Tp HCM']);
+        add('Hà Nội', ['HN', 'TPHN', 'TP HN', 'TP Hà Nội', 'Thủ đô HN', 'Thủ đô Hà Nội',
+            'HANOI', 'Ha Noi', 'Thành phố HN']);
+        add('Hải Phòng', ['HP', 'TP HP', 'HAIPHONG', 'Hai Phong']);
+        add('Đà Nẵng', ['DANANG', 'Da Nang', 'TP Đà Nẵng']);
+        add('Cần Thơ', ['CANTHO', 'Can Tho', 'TP Cần Thơ']);
+        add('Buôn Ma Thuột', ['Buôn Mê Thuột', 'BMT', 'Ban Me Thuot']);
+        add('Đà Lạt', ['DALAT', 'Da Lat']);
+        add('Nha Trang', ['NHATRANG']);
+        add('Vũng Tàu', ['VUNGTAU', 'Vung Tau']);
+        add('Quy Nhơn', ['QUYNHON']);
+        add('Sa Pa', ['SAPA']);
+        add('Huế', ['TP Huế', 'Thành phố Huế', 'HUE']);
+        return m;
+    })();
+
+    /*
+     * Chữ viết tắt hai ký tự (HN, HP) CHỈ được nhận khi câu gõ chỉ có bấy
+     * nhiêu, hoặc đi kèm "TP". Để nó khớp giữa câu thì "đường HP" hay một mã
+     * sản phẩm cũng hoá thành tên thành phố.
+     */
+    const CITY_SHORT_RISKY = new Set(['hn', 'hp', 'hcm', 'bmt']);
+
+    /*
      * Điểm nổi bật, gắn với thành phố. Dùng khi người ta gõ TÊN THÀNH PHỐ:
      * "đi Hà Nội" thì đích thật sự là một chỗ cụ thể trong Hà Nội, và chỗ
      * hợp lý nhất phụ thuộc hướng tới — từ Phú Thọ về thì Mỹ Đình nằm ngay
@@ -3209,6 +3265,8 @@
         ['Văn Miếu Quốc Tử Giám', 21.0293, 105.8355, 'Hà Nội'],
         ['Bệnh viện Trung ương Quân đội 108', 21.0190, 105.8625, 'Hà Nội'],
         ['Bệnh viện Bạch Mai', 20.9970, 105.8410, 'Hà Nội'],
+        ['Bệnh viện Việt Đức', 21.0280, 105.8470, 'Hà Nội'],
+        ['UBND thành phố Hà Nội', 21.0245, 105.8500, 'Hà Nội'],
         ['Ga Hà Nội', 21.0245, 105.8412, 'Hà Nội'],
         ['Sân bay Nội Bài', 21.2212, 105.8072, 'Hà Nội'],
         ['Hồ Tây', 21.0580, 105.8200, 'Hà Nội'],
@@ -3251,12 +3309,73 @@
         const m = new Map();
         for (const [n] of VN_CITIES) m.set(noAccent(n), n);
         for (const [n] of VN_LANDMARKS) m.set(noAccent(n), n);
+        for (const k of Object.keys(CITY_SHORT)) m.set(k, CITY_SHORT[k]);
         return m;
     })();
     // Khớp cụm dài trước: "ha giang" phải thắng "ha" nếu sau này có mục một chữ
     const VN_ACCENT_KEYS = [...VN_ACCENT_MAP.keys()].sort((a, b) => b.length - a.length);
 
-    const LANDMARK_SHOW = 4;      // đủ để chọn, chưa lấn hết chỗ của kết quả trực tuyến
+    const LANDMARK_SHOW = 5;      // tài liệu yêu cầu nhiều hơn 3; 5 vẫn chừa chỗ cho kết quả trực tuyến
+
+    const SCOPE_KM = 60;          // một vùng đô thị; Tân Thuận cách tâm TP HCM ~7 km
+    const RE_ESC = /[.*+?^${}()|[\]\\]/g;
+
+    /**
+     * Câu gõ có ghi rõ tỉnh/thành không, và phần còn lại là gì?
+     *
+     * "Khu chế xuất Tân Thuận, thành phố Hồ Chí Minh" đã nói rõ nơi cần tìm.
+     * Trả về kết quả ở Bình Dương hay Hải Phòng là phớt lờ điều người ta vừa
+     * ghi. Nên khi nhận ra tên tỉnh thành trong câu, mọi thứ ngoài vùng đó
+     * đều bị loại — kể cả khi không tìm thấy gì, vì "không có" vẫn đúng hơn
+     * "có, nhưng ở tỉnh khác".
+     *
+     * Câu CHỈ có mỗi tên thành phố thì không tính: lúc đó thành phố chính là
+     * đích đến, không phải phạm vi.
+     */
+    function cityScope(query) {
+        const q = noAccent(query).replace(ADMIN_PREFIX, '').trim();
+        if (!q) return null;
+        for (const key of VN_ACCENT_KEYS) {
+            const re = new RegExp('(^|[^\\p{L}])' + key.replace(RE_ESC, '\\$&')
+                + '(?![\\p{L}])', 'u');
+            if (!re.test(q)) continue;
+            if (CITY_SHORT_RISKY.has(key) && q !== key && !/\btp\b/.test(q)) continue;
+            const name = VN_ACCENT_MAP.get(key);
+            const row = VN_CITIES.find(([n]) => n === name) || VN_CITIES.find(([n]) => n === cityKey(name));
+            if (!row) continue;                 // là điểm nổi bật, không phải tỉnh thành
+            const rest = q.replace(re, ' ').replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
+            if (rest.length < 3) return null;   // câu chỉ có mỗi tên thành phố
+            return { name: row[0], g: [row[1], row[2]], rest };
+        }
+        return null;
+    }
+
+    /**
+     * Tra thẳng dữ liệu OSM theo TÊN, trong một khung cho trước.
+     *
+     * Vì sao cần: "Khu chế xuất Tân Thuận" HIỆN RÕ trên bản đồ mà gõ vào lại
+     * không tìm được. Bản đồ vẽ từ dữ liệu OSM, còn ô tìm kiếm hỏi dịch vụ
+     * geocoding — hai nguồn khác nhau, và geocoding thường chỉ đánh chỉ mục
+     * địa chỉ với doanh nghiệp, bỏ qua tên vùng như khu công nghiệp, khu chế
+     * xuất, khu đô thị. Hỏi thẳng OSM thì tìm được đúng cái đang hiện ra.
+     */
+    async function searchOsmByName(query, centre, km) {
+        const name = String(query || '').replace(/["\\]/g, '').trim();
+        if (name.length < 3 || !centre) return [];
+        const { dLat, dLon } = degSpan(centre[0], km);
+        const bbox = [centre[0] - dLat, centre[1] - dLon, centre[0] + dLat, centre[1] + dLon]
+            .map((v) => v.toFixed(4)).join(',');
+        const q = `[out:json][timeout:25];(nwr["name"~"${name}",i](${bbox}););out center 20;`;
+        const data = await overpass(q);
+        return (data && Array.isArray(data.elements) ? data.elements : []).map((el) => {
+            const lat = el.lat != null ? el.lat : el.center && el.center.lat;
+            const lon = el.lon != null ? el.lon : el.center && el.center.lon;
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+            const t = el.tags || {};
+            const where = [t['addr:city'], t['addr:district']].filter(Boolean).join(', ');
+            return { lat, lon, display_name: t.name + (where ? ', ' + where : ''), _osm: true };
+        }).filter(Boolean);
+    }
 
     /** Câu gõ có chứa tên một địa danh không? Dùng để biết câu đã "ghi rõ" chưa. */
     function mentionsPlace(query) {
@@ -3277,7 +3396,11 @@
      * Đình lên trước, từ Hải Phòng lên thì Hoàn Kiếm lên trước.
      */
     function localPlaces(query, here) {
-        const q = noAccent(query);
+        // "Thành phố Hồ Chí Minh" và "Hồ Chí Minh" phải là một
+        let q = noAccent(query).replace(ADMIN_PREFIX, '').trim();
+        // Đổi tên gọi tắt TRƯỚC khi xét độ dài: "HN" chỉ có hai chữ nhưng là
+        // một cái tên đầy đủ nghĩa, chặn theo độ dài là chặn nhầm.
+        if (CITY_SHORT[q]) q = noAccent(CITY_SHORT[q]);     // "hn" → "ha noi"
         if (q.length < 3) return [];
         const hit = (key) => key === q || (q.length >= 5 && key.startsWith(q));
 
@@ -3370,6 +3493,25 @@
         rows.forEach((r) => {
             if (r._score == null) r._score = nameScore(query, r.display_name || '');
         });
+
+        /*
+         * Nhiều nơi TRÙNG TÊN NHAU thì chỉ giữ cái gần nhất ở trên.
+         *
+         * Gõ "Hà Nội" trả về bốn dòng cùng tên "Hà Nội": thành phố cách 72 km,
+         * một con phố ở Huế cách 504 km, một con phố ở TP HCM cách 1114 km.
+         * Chúng cùng điểm khớp tên nên xen vào giữa danh sách, đẩy những chỗ
+         * thật sự hữu ích xuống dưới. Chỉ có MỘT Hà Nội người ta định tới;
+         * các bản trùng tên ở xa vẫn giữ lại, nhưng xuống cuối.
+         */
+        const seenName = new Set();
+        rows.slice()
+            .sort((a, b) => (b._score - a._score) || (a._dist - b._dist))
+            .forEach((r) => {
+                const key = noAccent((r.display_name || '').split(',')[0]);
+                if (seenName.has(key)) r._score -= 50;
+                else seenName.add(key);
+            });
+
         rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         return rows;
     }
@@ -3512,30 +3654,56 @@
         const base = accented || expanded || raw;
         const nearQueries = looksLikeStreet ? ['Đường ' + base, base] : [base];
 
+        /*
+         * Câu đã ghi rõ tỉnh thành thì MỌI lượt hỏi lấy nơi đó làm tâm, và
+         * kết quả ngoài vùng bị loại hẳn. Người ta đã nói "ở thành phố Hồ Chí
+         * Minh" thì trả về một chỗ ở Bình Dương là phớt lờ câu hỏi.
+         */
+        const scope = cityScope(raw);
+        const anchor = scope ? scope.g : here;
+
         const local = localPlaces(base, here);   // danh bạ trong máy: luôn có, không cần mạng
-        let rows = local.slice();
+        let rows = scope ? [] : local.slice();
 
         if (useMapbox()) {
             try {
                 for (const q of nearQueries) {
-                    rows = rows.concat(await searchMapbox(q, here, NEAR_PASS_KM));
+                    rows = rows.concat(await searchMapbox(q, anchor, scope ? SCOPE_KM : NEAR_PASS_KM));
                 }
-                rows = rows.concat(await searchMapbox(base, here, null));
+                if (!scope) rows = rows.concat(await searchMapbox(base, here, null));
             } catch (e) {
                 console.warn('Mapbox geocoding:', e);   // lỗi khoá/hạn mức: rơi xuống Nominatim
             }
         }
-        if (rows.length <= local.length) {      // Mapbox không ra gì (hoặc không dùng được)
+        if (rows.length <= (scope ? 0 : local.length)) {   // chưa ra gì
             try {
-                rows = rows.concat(await nominatimPass(nearQueries, here, NEAR_PASS_KM));
-                rows = rows.concat(await nominatimPass([base], here, null));
+                rows = rows.concat(await nominatimPass(nearQueries, anchor,
+                    scope ? SCOPE_KM : NEAR_PASS_KM));
+                if (!scope) rows = rows.concat(await nominatimPass([base], here, null));
             } catch (e) {
                 console.warn('Nominatim:', e);
-                if (!rows.length) {
-                    showToast('Lỗi tìm kiếm địa điểm', 'warn');
-                    return [];
-                }
             }
+        }
+
+        /*
+         * Vẫn chưa ra gì thì hỏi thẳng OSM theo tên. Đây là đường cứu những
+         * cái tên HIỆN TRÊN BẢN ĐỒ mà geocoding không đánh chỉ mục: khu chế
+         * xuất, khu công nghiệp, khu đô thị, cụm dân cư.
+         */
+        if (!rows.length) {
+            try {
+                const name = scope ? scope.rest : base;
+                rows = await searchOsmByName(name, anchor, scope ? SCOPE_KM : NEAR_PASS_KM);
+                if (!rows.length && !scope) rows = await searchOsmByName(base, here, 150);
+            } catch (e) {
+                console.warn('Overpass tra tên:', e);
+            }
+        }
+
+        // Ngoài vùng đã ghi rõ thì loại, kể cả khi vì thế mà không còn gì
+        if (scope) {
+            rows = rows.filter((r) => haversine(anchor[0], anchor[1],
+                Number(r.lat), Number(r.lon)) <= SCOPE_KM * 1000);
         }
 
         rows = dedupeByCoord(rows);
@@ -4442,7 +4610,9 @@
     // 18 m chứ không phải 30: ngõ nhỏ phần lớn KHÔNG có trong dữ liệu maxspeed,
     // nên để rộng thì xe đang trong ngõ lại bắt sang đường lớn chạy song song
     // cách đó hai chục mét, rồi báo nhầm tên đường và nhầm cả giới hạn tốc độ.
-    const MS_MATCH_M = 18;
+    const MS_MATCH_M = 60;              // bán kính cơ bản
+    const MS_MATCH_M_MAX = 200;         // trần khi GPS sai số lớn
+    const ROAD_PREFER_BIG_M = 120;      // trong cự ly này thì đường cấp cao hơn thắng
     const ROAD_BEARING_TOL_DEG = 45;    // đoạn lệch hướng xe quá mức này là đường khác
     const UNKNOWN_ROAD = 'Không rõ tên đường';
     const MS_EDGE_M = 1200;         // tới gần mép ô thì nạp sẵn ô bên cạnh
@@ -4533,19 +4703,58 @@
         return d > 90 ? 180 - d : d;
     }
 
+    /*
+     * Thứ bậc đường, to trước nhỏ sau.
+     *
+     * Trong bán kính bắt đường thường có vài đường cùng lúc: quốc lộ chạy
+     * ngang, con ngõ nhà dân, lối vào sân. Chọn theo "gần nhất" thì đứng
+     * cạnh quốc lộ mà app lại báo tên con ngõ sau lưng — hoặc báo "không rõ
+     * tên đường" vì ngõ không có tên. Đường lớn hơn gần như luôn là đường
+     * người ta đang đi.
+     */
+    const HW_RANK = {
+        mw: 9, mwl: 8, tk: 8, tkl: 7, pr: 7, prl: 6,
+        sc: 5, scl: 4, te: 4, tel: 3, uc: 2, rs: 2, ls: 1, sv: 1
+    };
+    const hwRank = (h) => HW_RANK[String(h || '').toLowerCase()] || 0;
+
     function findRoadAt(lat, lon) {
-        // Sai số GPS kém thì nới nhẹ, nhưng có trần: nới rộng chính là nguyên
-        // nhân app bắt nhầm sang đường lớn khi xe đang ở trong ngõ.
-        const tol = clamp(MS_MATCH_M + ((lastGpsAccuracy || 10) - 10) * 0.5,
-            MS_MATCH_M, MS_MATCH_M + 12);
-        let best = null, bestDist = tol, bestBearing = null;
+        /*
+         * Bán kính bắt đường.
+         *
+         * 18 m trước đây quá hẹp: đứng cách Quốc lộ 17B hai chục mét mà app
+         * đã báo "không rõ tên đường". GPS trong phố sai 10-30 m là thường,
+         * cộng thêm việc toạ độ OSM là TIM đường chứ không phải mép, nên xe
+         * đỗ bên lề một đường lớn có thể cách tim đường 15-20 m.
+         *
+         * Nới rộng không còn nguy hiểm như trước, vì giờ chọn theo CẤP ĐƯỜNG
+         * chứ không phải theo khoảng cách thuần: con ngõ cách 5 m không còn
+         * thắng được quốc lộ cách 60 m.
+         */
+        const tol = clamp(MS_MATCH_M + ((lastGpsAccuracy || 10) - 10) * 2,
+            MS_MATCH_M, MS_MATCH_M_MAX);
+
+        /*
+         * Chọn theo (cấp đường, rồi mới tới gần xa).
+         *
+         * Vẫn phải chặn: một đường lớn ở rìa bán kính không được thắng một
+         * đường nhỏ ngay dưới bánh xe. Nên chỉ ưu tiên cấp cao hơn khi nó
+         * nằm trong NEAR_ENOUGH_M; xa hơn thế thì so khoảng cách như cũ.
+         */
+        let best = null, bestDist = tol, bestBearing = null, bestRank = -1;
 
         for (const key of ensureMaxspeedTiles(lat, lon)) {
             const segs = msTiles.get(key);
             if (!segs || !segs.length) continue;
             for (const seg of segs) {
                 const r = nearestOnPolyline(lat, lon, seg.g);
-                if (r.dist < bestDist) { bestDist = r.dist; best = seg; bestBearing = r.bearing; }
+                if (r.dist >= tol) continue;
+                const rank = hwRank(seg.h);
+                const better = best === null
+                    || (rank > bestRank && r.dist <= ROAD_PREFER_BIG_M)
+                    || (rank === bestRank && r.dist < bestDist)
+                    || (rank < bestRank && bestDist > ROAD_PREFER_BIG_M && r.dist < bestDist);
+                if (better) { bestDist = r.dist; best = seg; bestBearing = r.bearing; bestRank = rank; }
             }
         }
         if (!best) return null;
@@ -5825,7 +6034,7 @@
         // đầu tiên, khi chưa có GPS, app đã tưởng xe chạy 58 km/h và bật cờ
         // "đã di chuyển" — thành ra nhắc kiểm tra ghế sau dù xe chưa đi đâu.
         rawGps: 0, limit: 60,
-        overSince: null, overspeed: false, lastAlert: 0,
+        overSince: null, underSince: null, overspeed: false, lastAlert: 0,
         stoppedSince: null, childShown: false,
         hasMoved: false          // đã thực sự chạy trong phiên này chưa
     };
@@ -5882,10 +6091,25 @@
         const limit = speedState.limit;
         const thr = getWarnThreshold();
 
+        /*
+         * Tắt báo NGAY KHI đã về dưới giới hạn, không đòi phải xuống thấp hơn nữa.
+         *
+         * Cách cũ chỉ tắt khi xuống dưới (giới hạn + ngưỡng − 2). Nên chạm 41
+         * ở đoạn giới hạn 40 rồi hạ về 39 thì ô tốc độ VẪN đỏ — người lái
+         * nhìn thấy 39 trên biển 40 mà app vẫn báo vượt, tưởng app hỏng. Lề
+         * 2 km/h đó đặt ra để chống nhấp nháy, nhưng chống nhấp nháy bằng
+         * cách báo sai thì không đáng.
+         *
+         * Chống nhấp nháy bằng THỜI GIAN: phải ở dưới giới hạn liên tục một
+         * lúc mới tắt. Đi sát mép thì đèn không chớp, mà cũng không có lúc
+         * nào báo đỏ trong khi đồng hồ chỉ dưới mức cho phép.
+         */
         if (sp > limit + thr) {
             if (speedState.overSince === null) speedState.overSince = now;
-        } else if (sp <= limit + thr - OVERSPEED_HYSTERESIS) {
-            speedState.overSince = null;
+            speedState.underSince = null;
+        } else {
+            if (speedState.underSince === null) speedState.underSince = now;
+            if (now - speedState.underSince >= OVERSPEED_CLEAR_MS) speedState.overSince = null;
         }
         const isOver = speedState.overSince !== null && now - speedState.overSince >= OVERSPEED_CONFIRM_MS;
 
