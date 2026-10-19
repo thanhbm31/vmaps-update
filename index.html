@@ -84,9 +84,12 @@
         .leaflet-container { background: #e5e7eb; }
         .dark .leaflet-container { background: #1e293b; }
 
-        /* Chế độ xoay theo hướng xe: phóng to lớp bản đồ để quay vẫn kín màn hình
-           (cạnh huyền của hình vuông là 1,414 lần cạnh — lấy dư thành 1,52) */
-        body.map-rotating #map-rotator { top: -26%; left: -26%; width: 152%; height: 152%; inset: auto; }
+        /* Cỡ lớp xoay do sizeRotator() trong JS đặt bằng pixel.
+           KHÔNG dùng phần trăm cố định được: con số 152% cũ suy ra từ hình
+           vuông (cạnh huyền = 1,414 cạnh), mà màn hình điện thoại cao gấp
+           ~2,2 lần chiều ngang. Xoay 45° thì bề ngang cần phủ là
+           W·cos + H·sin ≈ 2,3 lần chiều ngang màn hình — thiếu gần một nửa,
+           đó chính là mảng trắng ở nửa trên bản đồ. */
 
         /* Marker và popup phải quay ngược lại, nếu không chữ sẽ lộn ngược */
         .vm-icon, .leaflet-popup-content-wrapper, .leaflet-popup-tip, .leaflet-tooltip {
@@ -246,6 +249,23 @@
             background: rgba(148, 163, 184, 0.16);
         }
         .bar-btn:active { transform: scale(0.94); }
+
+        /* CHƯA DẪN ĐƯỜNG: ô tìm kiếm trải rộng thành một thanh có chữ, vì lúc
+           đó thanh dưới chẳng có gì để nói ngoài "Chưa dẫn đường". Đang dẫn
+           đường thì thu lại thành nút tròn để nhường chỗ cho tên đích và giờ
+           tới. */
+        #barSearchLabel { display: none; }
+        #bottom-bar.idle #barSearch {
+            flex: 1; width: auto; justify-content: flex-start;
+            gap: 10px; padding: 0 14px; font-size: 16px;
+        }
+        #bottom-bar.idle #barSearchLabel {
+            display: block; font-weight: 600; font-size: 15px;
+            color: rgb(100, 116, 139); white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis;
+        }
+        .dark #bottom-bar.idle #barSearchLabel { color: rgb(148, 163, 184); }
+        #bottom-bar.idle #bar-center { display: none; }
         #bar-center {
             flex: 1; min-width: 0; text-align: center;
             display: flex; flex-direction: column; align-items: center;
@@ -511,9 +531,10 @@
                 <span id="curStreet">–</span>
             </div>
             <div id="bottom-bar" class="glass-panel shadow-2xl">
-                <button onclick="openSearchModal()" data-needs-network aria-label="Tìm kiếm địa điểm"
+                <button id="barSearch" onclick="openSearchModal()" data-needs-network aria-label="Tìm kiếm địa điểm"
                         class="bar-btn text-emerald-500">
                     <i class="fa-solid fa-magnifying-glass"></i>
+                    <span id="barSearchLabel">Tìm địa điểm, địa chỉ…</span>
                 </button>
 
                 <div id="bar-center" onclick="openNavActions()">
@@ -1075,7 +1096,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '6371399';
+    const BUILD_TAG = '17b8088';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -4274,7 +4295,7 @@
         if (!map) return;
         // dragstart: chạm kéo. zoomstart có thể do chính flyTo gây ra nên
         // không dùng; thay vào đó bắt wheel và hai nút phóng tay.
-        map.on('dragstart', () => setFollowCar(false));
+        map.on('dragstart', () => { setFollowCar(false); pauseRotation(true); });
         const el = map.getContainer();
         el.addEventListener('wheel', () => setFollowCar(false), { passive: true });
 
@@ -4308,6 +4329,7 @@
     function recenterMap() {
         if (!map) return;
         setFollowCar(true);
+        pauseRotation(false);      // quay lại theo hướng xe nếu đang bật
         // Đo lại khung trước khi bay, nếu không xe sẽ không rơi vào đúng giữa
         map.invalidateSize({ animate: false });
         map.flyTo(getCurrentPos(), 16, { duration: 1.5 });
@@ -4343,21 +4365,82 @@
         applyRotation();
     }
 
+    /**
+     * Có đang thật sự xoay bản đồ không.
+     *
+     * Khác với cài đặt rotateMap: lúc người dùng chạm kéo bản đồ thì tạm
+     * dừng xoay, vì Leaflet xử lý thao tác kéo theo toạ độ màn hình CHƯA
+     * xoay. Bản đồ xoay 180° mà kéo sang phải thì hình chạy sang trái —
+     * đúng lỗi đã gặp. Trả về hướng Bắc trong lúc kéo là cách duy nhất cho
+     * thao tác đúng chiều mà không phải viết lại bộ xử lý kéo của Leaflet.
+     * Bấm "về giữa" thì xoay lại như cũ.
+     */
+    let rotationPaused = false;
+    const rotationActive = () => rotateMap && !rotationPaused;
+
+    function pauseRotation(on) {
+        if (rotationPaused === on) return;
+        rotationPaused = on;
+        document.body.classList.toggle('map-rotating', rotationActive());
+        sizeRotator();
+        applyRotation();
+        if (map) setTimeout(() => map.invalidateSize({ animate: false }), 60);
+    }
+
     function applyRotation() {
         const root = document.body.style;
-        const mapRot = rotateMap ? -heading : 0;
+        const mapRot = rotationActive() ? -heading : 0;
         root.setProperty('--map-rot', mapRot.toFixed(1) + 'deg');
         // Marker quay ngược lại đúng bằng góc bản đồ đã quay
         root.setProperty('--icon-rot', (-mapRot).toFixed(1) + 'deg');
         // Mũi xe: xoay bản đồ rồi thì xe luôn hướng lên trên màn hình
-        root.setProperty('--car-rot', (rotateMap ? 0 : heading).toFixed(1) + 'deg');
+        root.setProperty('--car-rot', (rotationActive() ? 0 : heading).toFixed(1) + 'deg');
         // Kim la bàn lệch sẵn 45° vì icon location-arrow vẽ chếch
-        root.setProperty('--needle-rot', ((rotateMap ? 0 : heading) - 45).toFixed(1) + 'deg');
+        root.setProperty('--needle-rot', ((rotationActive() ? 0 : heading) - 45).toFixed(1) + 'deg');
+    }
+
+    /**
+     * Đặt cỡ lớp xoay bản đồ.
+     *
+     * Phải là HÌNH VUÔNG có cạnh bằng ĐƯỜNG CHÉO màn hình, đặt chính giữa.
+     * Chỉ hình vuông cạnh-bằng-đường-chéo mới phủ kín màn ở MỌI góc xoay;
+     * mọi cỡ nhỏ hơn đều hở ở một góc nào đó — và trên màn hình cao như điện
+     * thoại thì hở rất rộng.
+     *
+     * Đặt chính giữa còn sửa luôn lỗi "bấm về giữa thì xe lệch sang phải":
+     * trước đây lớp xoay bị đẩy -26%/-26% nên tâm bản đồ không trùng tâm màn
+     * hình, Leaflet căn xe vào giữa LỚP chứ không phải giữa MÀN.
+     *
+     * Đổi lại lớp bản đồ rộng gấp ~2,7 lần diện tích màn hình nên tốn tile
+     * hơn khi bật chế độ xoay. Đó là cái giá của việc xoay bằng CSS; bản đồ
+     * vector xoay bằng camera thì không mất khoản này.
+     */
+    function sizeRotator() {
+        const el = $('map-rotator');
+        const clip = $('map-clip');
+        if (!el || !clip) return;
+        if (!rotationActive()) {
+            for (const k of ['width', 'height', 'left', 'top', 'right', 'bottom']) {
+                el.style.removeProperty(k);
+            }
+            return;
+        }
+        const w = clip.clientWidth, h = clip.clientHeight;
+        if (!w || !h) return;
+        const side = Math.ceil(Math.sqrt(w * w + h * h));
+        el.style.width = side + 'px';
+        el.style.height = side + 'px';
+        el.style.left = Math.round((w - side) / 2) + 'px';
+        el.style.top = Math.round((h - side) / 2) + 'px';
+        el.style.right = 'auto';
+        el.style.bottom = 'auto';
     }
 
     function toggleMapRotation() {
         rotateMap = !rotateMap;
-        document.body.classList.toggle('map-rotating', rotateMap);
+        rotationPaused = false;
+        document.body.classList.toggle('map-rotating', rotationActive());
+        sizeRotator();
         state.settings.rotateMap = rotateMap;
         saveSettings();
         applyRotation();
@@ -5361,12 +5444,13 @@
             const t = TURN_TEXT[n.turn.dir] || TURN_TEXT.straight;
             $('turnIcon').className = `fa-solid ${t.icon} text-blue-600 dark:text-blue-400 text-xl`;
             $('turnLabel').textContent = t.label;
-            $('turnDist').textContent = n.turn.dist + 'm';
+            $('turnDist').textContent = fmtDist(n.turn.dist);
             $('turnStreet').textContent = n.turn.street ? 'vào ' + n.turn.street : '';
             $('turnStreet').title = n.turn.streetFull ? 'vào ' + n.turn.streetFull : '';
         }
         const dn = $('destName');
         dn.classList.toggle('idle', !routing);
+        $('bottom-bar').classList.toggle('idle', !routing);
         dn.textContent = routing
             ? (nav.destName || 'Đang dẫn đường').split(',')[0]
             : 'Chưa dẫn đường';
@@ -6000,6 +6084,7 @@
         safe('mapStyleIcon', applyMapStyleIcon);
         safe('followCar', bindFollowRelease);
         safe('chargingViewport', bindChargingViewport);
+        safe('rotatorSize', () => { sizeRotator(); window.addEventListener('resize', sizeRotator); });
         safe('buildTag', () => {
             $('build-tag').textContent =
                 BUILD_TAG + (DEMO_MODE ? ' · DEMO' : '') + ' · ';
