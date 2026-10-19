@@ -192,6 +192,14 @@
         /* Font Awesome 6 bản free KHÔNG có fa-arrow-turn-left (chỉ có bản phải),
            nên mọi hướng rẽ trái đều ra ô trống. Lật ngang icon rẽ phải. */
         .icon-flip-x { transform: scaleX(-1); }
+        /* Nhãn thời gian của tuyến thay thế. Không xoay theo bản đồ nhờ
+           --icon-rot, giống các marker khác. */
+        .alt-route-tag {
+            background: #475569; color: #fff; font-size: 11px; font-weight: 800;
+            padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(0,0,0,.35); border: 1.5px solid #fff;
+            text-align: center;
+        }
 
         /* Vòng sáng quanh xe. animate-ping của Tailwind nhấp 1 lần/giây, nhìn
            lâu rất mỏi mắt khi đang lái — giãn ra 2,6 giây và dịu biên độ. */
@@ -1067,7 +1075,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '50b4681';
+    const BUILD_TAG = '6371399';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1171,6 +1179,7 @@
     let localCameraIsSample = false;
     let chargingStations = [];
     let routeLayer = null;
+    let altLayer = null;          // các tuyến thay thế, vẽ mờ bên dưới
     let cameraLayer = null;
     let chargingLayer = null;
     let destMarker = null;
@@ -1832,15 +1841,25 @@
         return 60;                  // nhìn rộng: chỉ giữ những trạm đáng kể
     }
 
+    // Bán kính hiển thị trạm sạc tính từ GPS. Ngoài vùng này thì không vẽ,
+    // kể cả khi dữ liệu đã nạp — vẽ cả nước thì bản đồ thành một đống điểm.
+    // Vuốt bản đồ đi xa hoặc xe chạy tới thì vùng này đi theo, nên chỗ mới
+    // vẫn hiện.
+    const CHG_SHOW_RADIUS_M = 25000;
+
     function chargingToDraw() {
-        const list = visibleCharging();
+        const here = userLatLng || getCurrentPos();
+        const c = (map && map.getCenter && map.getCenter()) || null;
+        // Lấy mốc là tâm khung nhìn khi người dùng đã kéo bản đồ đi xem chỗ
+        // khác, còn lại thì lấy vị trí xe.
+        const anchor = (c && !followCar) ? [c.lat, c.lng] : here;
+        const list = visibleCharging()
+            .filter((st) => haversine(anchor[0], anchor[1], st.lat, st.lon) <= CHG_SHOW_RADIUS_M);
         const z = (map && map.getZoom && map.getZoom()) || 15;
         if (z < CHG_MIN_ZOOM) return [];
         const CHG_MAX_MARKERS = chgMarkerCap(z);
         if (list.length <= CHG_MAX_MARKERS) return list;
-        const c = (map && map.getCenter && map.getCenter()) || null;
-        const clat = c ? c.lat : (userLatLng || getCurrentPos())[0];
-        const clon = c ? c.lng : (userLatLng || getCurrentPos())[1];
+        const clat = anchor[0], clon = anchor[1];
         return list
             .map((st) => ({ st, d: haversine(clat, clon, st.lat, st.lon) }))
             // Trạm sạc nhanh được "giảm giá" khoảng cách: khi buộc phải cắt
@@ -2388,7 +2407,15 @@
      * Tìm trạm sạc trong dữ liệu VFIX đóng kèm. Không cần mạng.
      * Nới dần bán kính rồi nạp đủ số ô lưới phủ hết bán kính đó.
      */
-    const CHG_LIST_SIZE = 8;
+    // Số kết quả trả về khi tìm theo NHÓM.
+    //
+    // Trước để 8 và sinh ra cảm giác "chỉ tìm trong 7km": bán kính quét đã là
+    // 30km, nhưng trong thành phố thì 8 chỗ gần nhất gom hết trong vài km đầu,
+    // nên mọi thứ xa hơn bị cắt trước khi kịp hiện ra. Danh sách có thanh cuộn
+    // nên để dài hơn không chật chội gì, mà người lái mới thấy được lựa chọn ở
+    // 10-20km — đúng cỡ một thành phố.
+    const CAT_LIST_SIZE = 25;
+    const CHG_LIST_SIZE = CAT_LIST_SIZE;
 
     async function searchChargingLocal(here) {
         await chargingIndexReady();
@@ -2564,7 +2591,7 @@
                 if (mb.length) {
                     const kept = strictFilter(mb, cat);
                     rankCategoryRows(kept, cat);
-                    return kept.slice(0, 8);
+                    return kept.slice(0, CAT_LIST_SIZE);
                 }
             } catch (e) {
                 console.warn('Mapbox tìm nhóm:', e);
@@ -2615,7 +2642,7 @@
                     showToast(`Không thấy ${cat.label.toLowerCase()} nào trong `
                         + `${CATEGORY_MAX_KM} km quanh bạn`, 'warn');
                 }
-                return alt.slice(0, 8);
+                return alt.slice(0, CAT_LIST_SIZE);
             }
             rows = (data?.elements || []).map((el) => {
                 const lat = el.lat ?? el.center?.lat;
@@ -2637,7 +2664,7 @@
         rows = strictFilter(rows, cat);
         rankCategoryRows(rows, cat);
         if (!rows.length) showToast(`Không thấy ${cat.label.toLowerCase()} nào gần đây`, 'warn');
-        return rows.slice(0, 8);
+        return rows.slice(0, CAT_LIST_SIZE);
     }
 
     async function searchPlace(query) {
@@ -2836,10 +2863,10 @@
                 rows = [];
                 for (const q of queries) {
                     const got = await nominatim(
-                        `format=json&q=${encodeURIComponent(q)}&limit=10&addressdetails=1`
+                        `format=json&q=${encodeURIComponent(q)}&limit=20&addressdetails=1`
                         + `&countrycodes=vn${vb}`);
                     rows = rows.concat(got);
-                    if (rows.length >= 10) break;
+                    if (rows.length >= 20) break;
                 }
                 // Cùng luật với nhánh Mapbox ở trên: có từ chỉ loại thì phải
                 // thấy đúng loại mới được dừng nới bán kính.
@@ -2882,8 +2909,18 @@
         return rows.slice(0, 8);
     }
 
-    const fmtDist = (m) => !Number.isFinite(m) ? ''
-        : (m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km');
+    /**
+     * Dưới 1000 m thì tính bằng mét; từ 1000 m trở lên đổi sang km, tối đa 2
+     * chữ số thập phân và bỏ số 0 vô nghĩa ở cuối:
+     *   850 → "850 m", 1200 → "1.2 km", 1220 → "1.22 km", 2000 → "2 km"
+     * Cách cũ làm tròn 1 chữ số dưới 10 km và 0 chữ số trên 10 km, nên 1220 m
+     * hiện thành "1.2 km" và 10500 m thành "11 km" — mất chính xác vô cớ.
+     */
+    const fmtDist = (m) => {
+        if (!Number.isFinite(m)) return '';
+        if (m < 1000) return Math.round(m) + ' m';
+        return (m / 1000).toFixed(2).replace(/\.?0+$/, '') + ' km';
+    };
 
     function openSearchModal() {
         toggleModal('searchModal');
@@ -3081,8 +3118,25 @@
             resultsEl.innerHTML = '<p class="p-4 text-slate-400 text-center">Không tìm thấy kết quả</p>';
             return;
         }
+        // Mốc khoảng cách. Danh sách đã xếp gần trước, nhưng không có mốc thì
+        // người dùng tưởng app chỉ tìm được trong vài km đầu rồi thôi — đúng
+        // cảm giác đã gặp thật. Có mốc thì thấy rõ nó đi tới đâu.
+        const BANDS = [
+            [5000, 'Trong 5 km'],
+            [15000, '5 – 15 km'],
+            [Infinity, 'Xa hơn 15 km']
+        ];
+        let band = -1;
+        const bandHeader = (r) => {
+            if (!Number.isFinite(r._dist)) return '';
+            const i = BANDS.findIndex(([max]) => r._dist <= max);
+            if (i === band) return '';
+            band = i;
+            return `<div class="px-3 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">${BANDS[i][1]}</div>`;
+        };
+
         // Dùng data-* + listener thay cho onclick nội tuyến (tên địa điểm có dấu nháy sẽ làm hỏng onclick)
-        resultsEl.innerHTML = results.map((r) => `
+        resultsEl.innerHTML = results.map((r) => bandHeader(r) + `
             <button type="button" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${escapeHtml(r.display_name)}"
                     data-kind="${escapeHtml(r.addresstype || r.type || '')}"
                     class="search-hit w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
@@ -3283,6 +3337,37 @@
             nav.routeCount = data.routes.length;
             nav.altIndex = idx;
             if (routeLayer) map.removeLayer(routeLayer);
+            if (altLayer) { map.removeLayer(altLayer); altLayer = null; }
+
+            // Vẽ TUYẾN THAY THẾ TRƯỚC, mờ và xám, để tuyến đang dẫn nằm trên.
+            // Thấy được cả hai thì mới quyết được có đổi hay không — trước đây
+            // phải bấm "Tìm tuyến khác" rồi tự đoán nó dẫn đi đâu.
+            const alts = data.routes
+                .map((r, i) => ({ r, i }))
+                .filter((x) => x.i !== idx);
+            if (alts.length) {
+                altLayer = L.layerGroup();
+                for (const { r, i } of alts) {
+                    L.geoJSON(r.geometry, {
+                        style: { color: '#64748b', weight: 5, opacity: 0.55, dashArray: '8 6' }
+                    }).addTo(altLayer);
+                    // Nhãn thời gian đặt ở giữa tuyến, bấm vào thì đổi sang tuyến đó
+                    const c = r.geometry?.coordinates || [];
+                    const mid = c[Math.floor(c.length / 2)];
+                    if (mid) {
+                        const min = Math.round(r.duration / 60);
+                        const km = (r.distance / 1000).toFixed(1).replace('.', ',');
+                        L.marker([mid[1], mid[0]], {
+                            icon: L.divIcon({
+                                html: `<div class="alt-route-tag">${min} phút · ${km} km</div>`,
+                                className: '', iconSize: [96, 24], iconAnchor: [48, 12]
+                            })
+                        }).addTo(altLayer).on('click', () => switchToRoute(i));
+                    }
+                }
+                altLayer.addTo(map);
+            }
+
             routeLayer = L.geoJSON(route.geometry, {
                 style: { color: '#3b82f6', weight: 6, opacity: 0.85 }
             }).addTo(map);
@@ -3322,6 +3407,12 @@
         showToast('Đã kết thúc dẫn đường');
     }
 
+    /** Đổi sang một tuyến thay thế cụ thể (bấm vào nhãn thời gian của nó). */
+    function switchToRoute(i) {
+        if (!nav.dest) return;
+        calculateRoute(nav.dest[0], nav.dest[1], { name: nav.destName, altIndex: i });
+    }
+
     function restartNavigation() {
         if (!nav.dest) return;
         closeModal('navActionsModal');
@@ -3332,6 +3423,7 @@
 
     function clearRoute() {
         if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+        if (altLayer) { map.removeLayer(altLayer); altLayer = null; }
         if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
         nav.active = false;
         nav.dest = null;
@@ -4269,8 +4361,24 @@
         state.settings.rotateMap = rotateMap;
         saveSettings();
         applyRotation();
-        // Lớp bản đồ vừa đổi kích thước, Leaflet phải đo lại nếu không tile sẽ hở
-        if (map) setTimeout(() => map.invalidateSize({ animate: false }), 60);
+        // Lớp bản đồ vừa đổi kích thước (#map-rotator phình ra 152% để xoay
+        // không hở góc), Leaflet phải đo lại nếu không tile sẽ hở.
+        //
+        // MỘT lần invalidateSize là KHÔNG đủ — đó là chỗ sinh ra mảng trắng
+        // khi bật chế độ theo hướng xe. Hai lý do: layout chưa xong ở nhịp
+        // 60ms, và trên cảm ứng tile chỉ nạp khi bản đồ "đứng yên" nên lần đo
+        // đầu chưa kéo tile mới về. Gọi lại ở 400ms, kèm nới vòng đệm tile vì
+        // khung xoay 45° cần phủ rộng hơn ~41% so với khung thẳng.
+        if (map) {
+            if (currentTileLayer) {
+                currentTileLayer.options.keepBuffer = rotateMap ? 4 : 2;
+            }
+            setTimeout(() => map.invalidateSize({ animate: false }), 60);
+            setTimeout(() => {
+                map.invalidateSize({ animate: false });
+                if (currentTileLayer) currentTileLayer.redraw();
+            }, 400);
+        }
         showToast(rotateMap ? 'Bản đồ xoay theo hướng xe' : 'Bản đồ hướng Bắc');
         if (rotateMap) startCompass();
     }
@@ -4669,7 +4777,7 @@
     };
 
     // 3 = an toàn, 2 = cảnh báo, 1 = chỉ đường, 0 = thông tin
-    const VOICE_PRIORITY = { child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
+    const VOICE_PRIORITY = { arrive: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
 
     const VOICE_TEXTS = {
         // Ngắn gọn có chủ đích: câu dài thì người ta nghe nửa đầu rồi tắt.
@@ -4701,12 +4809,18 @@
             'vi-VN': (d) => `${d.dist} mét nữa, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi} vào ${spokenStreet(d.street)}.`,
             'en-US': (d) => `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.streetEn || d.street}.`
         },
+        // Ngắn có chủ đích. Câu dài đọc hết mất 5-6 giây, trong khi thứ cần
+        // là biết NGAY mình đang vượt và ngưỡng là bao nhiêu.
         speed: {
-            'vi-VN': (d) => `Cảnh báo. Bạn đang chạy ${d.speed} ki lô mét trên giờ, vượt giới hạn ${d.limit}.`,
-            'en-US': (d) => `Warning. You are driving ${d.speed}, above the ${d.limit} limit.`
+            'vi-VN': (d) => `Vượt quá tốc độ. Giới hạn ${d.limit}.`,
+            'en-US': (d) => `Over the speed limit. Limit ${d.limit}.`
+        },
+        arrive: {
+            'vi-VN': () => 'Bạn đã đến.',
+            'en-US': () => 'You have arrived.'
         },
         next_speed: {
-            'vi-VN': (d) => `Sắp ${d.dir === 'down' ? 'giảm' : 'tăng'} giới hạn tốc độ ${d.dir === 'down' ? 'xuống' : 'lên'} ${d.speed} ki lô mét trên giờ, sau ${d.dist} mét nữa.`,
+            'vi-VN': (d) => d.dist ? `Sau ${d.dist} mét, giới hạn ${d.speed}.` : `Giới hạn ${d.speed}.`,
             'en-US': (d) => `Speed limit changes to ${d.speed} in ${d.dist} meters.`
         },
         test_voice: {
@@ -4760,11 +4874,25 @@
         const canSpeak = !!nativeTts() || ('speechSynthesis' in window);
         const willSpeak = canSpeak && mode !== 2 && !(mode === 1 && prio < 2);
 
-        // Toast LUÔN hiện, kể cả khi tắt tiếng
+        // KHÔNG hiện lại câu vừa đọc thành chữ.
+        //
+        // Trước đây toast luôn hiện nguyên câu, nên mỗi lần đọc là một dải
+        // chữ che bản đồ nhắc lại đúng thứ vừa nghe — vô ích và còn làm mất
+        // tập trung khi đang lái. HUD đã hiện mũi tên rẽ, khoảng cách, biển
+        // tốc độ rồi.
+        //
+        // NHƯNG không được để cảnh báo vừa im vừa vô hình. Chỉ hiện chữ khi
+        // câu đó KHÔNG đọc được: tắt tiếng, máy không có bộ đọc, hoặc trình
+        // duyệt còn chờ một lần chạm để cho phép phát tiếng.
         if (opts.toast !== false) {
             const needTap = willSpeak && !voice.unlocked && !nativeTts();
-            const hint = needTap ? ' (Chạm màn hình một lần để bật giọng đọc)' : '';
-            showToast(text + hint, prio >= 2 ? 'warn' : 'info');
+            if (needTap) {
+                showToast(text + ' (Chạm màn hình một lần để bật giọng đọc)',
+                    prio >= 2 ? 'warn' : 'info');
+            } else if (!willSpeak && prio >= 2) {
+                // Cảnh báo quan trọng mà không đọc được thì phải thấy bằng mắt
+                showToast(text, 'warn');
+            }
         }
         if (!willSpeak) return;
         enqueueVoice({ type, text, lang, prio });
@@ -4950,6 +5078,13 @@
         if (isOver !== speedState.overspeed) {
             speedState.overspeed = isOver;
             $('gps-speed-box').classList.toggle('overspeed', isOver);
+            // Chế độ "chỉ hiện GPS" ẩn hẳn ô biển tốc độ, nhưng cảnh báo vẫn
+            // chạy — thành ra người lái bị nhắc theo một con số KHÔNG nhìn
+            // thấy, không biết phải giảm xuống bao nhiêu. Lúc đang vượt thì
+            // hiện ô đó lên, hết vượt lại ẩn theo cài đặt.
+            if (field('speedDisplayMode') === 'gps') {
+                $('limit-speed-box').style.display = isOver ? 'flex' : 'none';
+            }
             if (!isOver) speedState.lastAlert = 0;
         }
         if (isOver && now - speedState.lastAlert >= SPEED_ALERT_REPEAT_MS) {
@@ -5133,8 +5268,19 @@
         speak('child', { howLong, place });
     }
 
+    // Khoảng lặng giữa "Bạn đã đến" và nhắc kiểm tra trẻ em.
+    //
+    // Hai câu nối đuôi nhau thì nghe như một tràng, và người lái đang đỗ xe
+    // không kịp nghe hết. Nói "đã đến" trước, để họ đỗ xong, rồi mới nhắc.
+    const ARRIVE_TO_CHILD_MS = 10000;
+
     // Gọi từ module dẫn đường khi tới đích
     function onArrived() {
+        // Luôn báo đã đến, kể cả khi nhắc trẻ em đang tắt
+        speak('arrive', {});
+        const place = stoppedAtSavedPlace();
+        showToast(place ? `Đã đến ${place}` : 'Bạn đã đến');
+
         if (!field('childWarnToggle')) return;
         // PHẢI kiểm tra hasMoved ở đây nữa. Trước đây hàm này gọi thẳng
         // showChildWarning() nên nó đi vòng qua cửa kiểm tra: đặt điểm đến
@@ -5142,10 +5288,21 @@
         // chưa lăn bánh lần nào. Cùng một lỗi với checkChildReminder, chỉ
         // khác đường vào.
         if (!speedState.hasMoved) return;
-        // Tới đích rồi thì khỏi chờ: coi như đã dừng đủ lâu
-        const stoppedMs = speedState.stoppedSince ? Date.now() - speedState.stoppedSince : 0;
-        showChildWarning(stoppedMs, stoppedAtSavedPlace() || (nav.destName || '').split(',')[0]);
+
+        // Chờ 10 giây rồi mới nhắc trẻ em, để hai câu không chồng lên nhau.
+        const where = place || (nav.destName || '').split(',')[0];
+        clearTimeout(arriveChildTimer);
+        arriveChildTimer = setTimeout(() => {
+            // Kiểm lại lúc hết hẹn: trong 10 giây đó người dùng có thể đã tắt
+            // nhắc trẻ em, hoặc đã lái đi tiếp (đỗ nhầm chỗ, đi vòng lại).
+            if (!field('childWarnToggle') || !speedState.hasMoved) return;
+            if (speedState.rawGps >= TRIP_START_KMH) return;
+            const stoppedMs = speedState.stoppedSince
+                ? Date.now() - speedState.stoppedSince : ARRIVE_TO_CHILD_MS;
+            showChildWarning(stoppedMs, where);
+        }, ARRIVE_TO_CHILD_MS);
     }
+    let arriveChildTimer = null;
 
     function alertTunnel(dist) {
         if (!field('tunnelWarnToggle')) {
