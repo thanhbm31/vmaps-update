@@ -1119,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '5dd12ea';
+    const BUILD_TAG = 'e7ddbe6';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -5149,6 +5149,9 @@
         // cư / tổ / xóm thay thế, không ra thì mới chịu "không rõ".
         if (!road) {
             currentRoad = null;
+            // Mất dấu đoạn đường thì giới hạn cũ KHÔNG còn giá trị. Giữ lại
+            // là tiếp tục khẳng định một điều app không còn biết.
+            if (speedState.limit != null) setSpeedLimit(null);
             if (!nav.active) {
                 lookupAreaName(userLatLng[0], userLatLng[1]);
             }
@@ -5178,6 +5181,16 @@
                 });
             }
         }
+
+        /*
+         * Quét biển phía trước SAU khi đã đặt giới hạn của đoạn đang chạy.
+         *
+         * Đặt trước thì hàm quét lấy speedState.limit làm mốc so sánh trong
+         * khi mốc đó còn là của đoạn cũ — hoặc còn là null, và nó thoát ngay
+         * ở dòng đầu. Thứ tự hai dòng này quyết định tính năng có chạy hay
+         * không.
+         */
+        checkLimitsAhead();
     }
 
     // ---------------------------------------------------------------------
@@ -6078,7 +6091,7 @@
     };
 
     // 3 = an toàn, 2 = cảnh báo, 1 = chỉ đường, 0 = thông tin
-    const VOICE_PRIORITY = { arrive: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
+    const VOICE_PRIORITY = { arrive: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, next_speed_pair: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
 
     const VOICE_TEXTS = {
         // Ngắn gọn có chủ đích: câu dài thì người ta nghe nửa đầu rồi tắt.
@@ -6113,16 +6126,27 @@
         // Ngắn có chủ đích. Câu dài đọc hết mất 5-6 giây, trong khi thứ cần
         // là biết NGAY mình đang vượt và ngưỡng là bao nhiêu.
         speed: {
-            'vi-VN': (d) => `Vượt quá tốc độ. Giới hạn ${d.limit}.`,
-            'en-US': (d) => `Over the speed limit. Limit ${d.limit}.`
+            'vi-VN': (d) => `Quá tốc độ. Giới hạn ${d.limit}.`,
+            'en-US': (d) => `Over the limit. Limit ${d.limit}.`
         },
         arrive: {
             'vi-VN': () => 'Bạn đã đến.',
             'en-US': () => 'You have arrived.'
         },
         next_speed: {
-            'vi-VN': (d) => d.dist ? `Sau ${d.dist} mét, giới hạn ${d.speed}.` : `Giới hạn ${d.speed}.`,
-            'en-US': (d) => `Speed limit changes to ${d.speed} in ${d.dist} meters.`
+            'vi-VN': (d) => d.dist ? `Phía trước giới hạn ${d.speed}.` : `Giới hạn ${d.speed}.`,
+            'en-US': (d) => d.dist ? `Speed limit ${d.speed} ahead.` : `Limit ${d.speed}.`
+        },
+        /*
+         * Hai biển quá gần nhau thì nói gộp một lần.
+         *
+         * Nói rời ra thì câu thứ hai đuổi theo câu thứ nhất, người lái vừa
+         * nghe "giới hạn 70" đã nghe tiếp "giới hạn 50" và không kịp hiểu cái
+         * nào áp vào đoạn nào.
+         */
+        next_speed_pair: {
+            'vi-VN': (d) => `Phía trước giới hạn ${d.a}, ngay sau đó là ${d.b}. Chú ý.`,
+            'en-US': (d) => `Limit ${d.a} ahead, then ${d.b}. Take care.`
         },
         test_voice: {
             'vi-VN': () => 'Giọng nói đang hoạt động. Rẽ phải sau hai trăm mét.',
@@ -6311,7 +6335,19 @@
         // rawGps PHẢI là 0: trước đây để 58 (giá trị demo sót lại) nên ngay nhịp
         // đầu tiên, khi chưa có GPS, app đã tưởng xe chạy 58 km/h và bật cờ
         // "đã di chuyển" — thành ra nhắc kiểm tra ghế sau dù xe chưa đi đâu.
-        rawGps: 0, limit: 60,
+        rawGps: 0,
+        /*
+         * CHƯA BIẾT, không phải 60.
+         *
+         * Giá trị khởi tạo cũ là 60, và khi không tra được đoạn đường nào thì
+         * app GIỮ NGUYÊN số cũ. Hậu quả: đỗ xe trong ngõ nhà mình, biển vẫn
+         * chễm chệ "60", và cảnh báo vượt tốc độ chạy theo con số đó. Người
+         * dùng thấy số sai khắp nơi và kết luận là dữ liệu hỏng — thật ra app
+         * đang bịa ra một con số nó không hề biết.
+         *
+         * null = chưa biết. Biển hiện dấu gạch, không cảnh báo gì.
+         */
+        limit: null,
         overSince: null, underSince: null, overspeed: false, lastAlert: 0,
         stoppedSince: null, childShown: false,
         hasMoved: false          // đã thực sự chạy trong phiên này chưa
@@ -6332,7 +6368,8 @@
 
     function renderSpeed() {
         $('gpsSpeedValue').textContent = displayedSpeed();
-        $('limitValue').textContent = speedState.limit;
+        // Chưa biết giới hạn thì hiện dấu gạch, đừng hiện một con số bịa
+        $('limitValue').textContent = speedState.limit == null ? '–' : speedState.limit;
     }
 
     function setSpeedLimit(v) {
@@ -6368,6 +6405,18 @@
         const sp = displayedSpeed();
         const limit = speedState.limit;
         const thr = getWarnThreshold();
+
+        // Không biết giới hạn thì không có gì để vượt. Cảnh báo theo một con
+        // số đoán được là cách nhanh nhất để người lái mất tin vào app.
+        if (limit == null) {
+            speedState.overSince = null;
+            speedState.underSince = null;
+            if (speedState.overspeed) {
+                speedState.overspeed = false;
+                $('gps-speed-box').classList.remove('overspeed');
+            }
+            return;
+        }
 
         /*
          * Tắt báo NGAY KHI đã về dưới giới hạn, không đòi phải xuống thấp hơn nữa.
@@ -6437,6 +6486,100 @@
     }
 
     // ---- Biển tốc độ tiếp theo ----
+    /* =====================================================================
+     * BIỂN GIỚI HẠN PHÍA TRƯỚC — khi lái thật
+     *
+     * Trước đây toàn bộ phần này CHỈ chạy ở chế độ demo: announceNextLimit()
+     * có đúng một chỗ gọi, nằm trong hàm demo. Ra đường thật thì ô "giới hạn
+     * tiếp theo" không bao giờ hiện và câu nhắc không bao giờ đọc — một tính
+     * năng có đủ giao diện, có đủ câu thoại, mà không ai gọi tới.
+     *
+     * Nay quét thật: lấy các điểm phía trước xe, tra giới hạn ở từng điểm,
+     * thấy đổi thì nhắc. Đang dẫn đường thì đi theo HÌNH TUYẾN (chính xác);
+     * không dẫn đường thì chiếu thẳng theo hướng xe (gần đúng, đường cong
+     * nhiều thì có thể trượt — khi trượt nó im lặng chứ không báo bừa).
+     * ===================================================================== */
+    const AHEAD_STEP_M = 50;        // bước lấy mẫu
+    const AHEAD_MAX_M = 1000;       // nhìn xa nhất
+    const AHEAD_PAIR_M = 500;       // hai biển cách nhau trong mức này thì gộp lời
+    let aheadSpokenKey = '';
+
+    /** Điểm cách xe `d` mét về phía trước. */
+    function pointAhead(d) {
+        if (nav.active && nav.points.length > 1 && nav.cum.length === nav.points.length) {
+            const target = (nav.cum[nav.lastIdx] || 0) + d;
+            for (let i = nav.lastIdx; i < nav.cum.length; i++) {
+                if (nav.cum[i] >= target) return nav.points[i];
+            }
+            return null;                     // đã quá đích
+        }
+        if (!hasRealFix() || !Number.isFinite(heading)) return null;
+        const rad = heading * Math.PI / 180;
+        return [
+            userLatLng[0] + (d * Math.cos(rad)) / 110540,
+            userLatLng[1] + (d * Math.sin(rad))
+                / (111320 * Math.cos(userLatLng[0] * Math.PI / 180))
+        ];
+    }
+
+    /** Các mốc đổi giới hạn phía trước, gần trước xa sau. Tối đa hai mốc. */
+    function scanLimitsAhead() {
+        const out = [];
+        let cur = speedState.limit;
+        for (let d = AHEAD_STEP_M; d <= AHEAD_MAX_M; d += AHEAD_STEP_M) {
+            const pt = pointAhead(d);
+            if (!pt) break;
+            const r = findRoadAt(pt[0], pt[1]);
+            // Không tra được thì BỎ QUA, không coi là đổi giới hạn: thà im
+            // lặng còn hơn báo một con số bịa ra từ chỗ trống dữ liệu.
+            if (!r || !r.speed) continue;
+            if (r.speed !== cur) {
+                out.push({ speed: r.speed, dist: d });
+                cur = r.speed;
+                if (out.length >= 2) break;
+            }
+        }
+        return out;
+    }
+
+    function checkLimitsAhead() {
+        if (!speedState.limit) return;
+        const warnAt = parseInt(field('nextSpeedDistance'), 10) || 200;
+        const list = scanLimitsAhead();
+        if (!list.length) { aheadSpokenKey = ''; return; }
+
+        const first = list[0];
+        if (first.dist > warnAt) return;          // còn xa, chưa tới lúc nhắc
+
+        // Khoá chống lặp: cùng bộ biển thì chỉ nhắc một lần
+        const key = list.map((x) => x.speed).join('>');
+        if (key === aheadSpokenKey) return;
+        aheadSpokenKey = key;
+
+        const second = list[1];
+        showNextLimitBox(first.speed, first.dist);
+        if (second && second.dist - first.dist <= AHEAD_PAIR_M) {
+            speak('next_speed_pair', { a: first.speed, b: second.speed });
+        } else {
+            speak('next_speed', {
+                speed: first.speed, dist: first.dist,
+                dir: first.speed < speedState.limit ? 'down' : 'up'
+            });
+        }
+    }
+
+    /** Hiện ô "giới hạn tiếp theo". Dùng chung cho lúc lái thật và demo. */
+    function showNextLimitBox(nextSpeed, dist) {
+        $('nextLimitValue').textContent = nextSpeed;
+        $('nextLimitDistance').textContent = dist + ' m';
+        if (field('speedDisplayMode') !== 'gps') {
+            $('next-limit-box').classList.remove('hidden');
+            $('next-limit-box').classList.add('flex');
+        }
+        clearTimeout(nextLimitTimer);
+        nextLimitTimer = setTimeout(hideNextLimitBox, 15000);
+    }
+
     let nextLimitTimer = null;
     function hideNextLimitBox() {
         $('next-limit-box').classList.add('hidden');
@@ -6446,12 +6589,7 @@
         if (nextSpeed === speedState.limit) return;
         const dir = nextSpeed < speedState.limit ? 'down' : 'up';
 
-        $('nextLimitValue').textContent = nextSpeed;
-        $('nextLimitDistance').textContent = dist + ' m';
-        if (field('speedDisplayMode') !== 'gps') {
-            $('next-limit-box').classList.remove('hidden');
-            $('next-limit-box').classList.add('flex');
-        }
+        showNextLimitBox(nextSpeed, dist);
         speak('next_speed', { speed: nextSpeed, dist, dir });
 
         if (map) {
