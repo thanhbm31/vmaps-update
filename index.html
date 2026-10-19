@@ -1119,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '3d87985';
+    const BUILD_TAG = '5dd12ea';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1402,6 +1402,36 @@
     }
 
     // KHÔNG đặt header User-Agent: trình duyệt chặn header này, lại dễ làm hỏng CORS preflight
+    /**
+     * Overpass CÓ HẠN GIỜ. Dùng cho đường tra tên — nơi người dùng đang ngồi
+     * nhìn chữ "Đang tìm..." và chờ.
+     *
+     * overpass() thường thử lần lượt 4 máy chủ, mỗi máy chủ có thể treo tới
+     * 25 giây: cộng lại là một phút rưỡi màn hình đứng im. Ở đây chỉ thử 2
+     * máy chủ và cắt ngang khi quá hạn.
+     */
+    async function overpassFast(query, ms = 8000) {
+        let lastErr = null;
+        for (const url of OVERPASS_MIRRORS.slice(0, 2)) {
+            const ctl = new AbortController();
+            const timer = setTimeout(() => ctl.abort(), ms);
+            try {
+                const res = await fetch(url, {
+                    method: 'POST', signal: ctl.signal,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'data=' + encodeURIComponent(query)
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.json();
+            } catch (e) {
+                lastErr = e;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+        throw lastErr || new Error('Overpass không phản hồi');
+    }
+
     async function overpass(query) {
         let lastErr = null;
         for (const url of OVERPASS_MIRRORS) {
@@ -2351,6 +2381,106 @@
         const { dLat, dLon } = degSpan(here[0], km);
         return [here[1] - dLon, here[0] + dLat, here[1] + dLon, here[0] - dLat]
             .map((v) => v.toFixed(4)).join(',');
+    }
+
+    /**
+     * Tìm trong kho ĐỊA ĐIỂM của Mapbox (Search Box), khác kho địa chỉ.
+     *
+     * Vì sao cần thêm một kho nữa: geocoding v6 mạnh về ĐỊA CHỈ — số nhà,
+     * tên đường, phường xã — nhưng thưa về TÊN CƠ SỞ. "Khu chế xuất Tân
+     * Thuận" hay "Công ty cổ phần sản xuất và kinh doanh VinFast" là tên cơ
+     * sở, nên hỏi đúng kho địa chỉ thì không ra, dù chỗ đó hiện rõ trên bản
+     * đồ. Search Box là kho địa điểm, và nó cũng chịu được lỗi gõ.
+     *
+     * Trả về luôn kèm toạ độ nên không phải gọi thêm lượt /retrieve.
+     */
+    async function searchMapboxPoi(query, here, km) {
+        if (!useMapbox() || !here) return [];
+        let box = '';
+        if (km) {
+            const { dLat, dLon } = degSpan(here[0], km);
+            box = '&bbox=' + [here[1] - dLon, here[0] - dLat, here[1] + dLon, here[0] + dLat]
+                .map((v) => v.toFixed(4)).join(',');
+        }
+        const url = 'https://api.mapbox.com/search/searchbox/v1/forward'
+            + `?q=${encodeURIComponent(query)}`
+            + `&proximity=${here[1].toFixed(5)},${here[0].toFixed(5)}`
+            + box + '&country=vn&language=vi&limit=10'
+            + `&access_token=${encodeURIComponent(mapboxToken())}`;
+        const data = await mapboxFetch(url);
+        const feats = Array.isArray(data && data.features) ? data.features : [];
+        return feats.map((f) => {
+            const c = (f && f.geometry && f.geometry.coordinates) || [];
+            const p = (f && f.properties) || {};
+            const lat = Number(c[1]), lon = Number(c[0]);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+            const where = p.place_formatted || p.full_address || '';
+            const nm = p.name_preferred || p.name || '';
+            return {
+                lat, lon,
+                display_name: nm ? (where ? nm + ', ' + where : nm) : (where || query),
+                _dist: haversine(here[0], here[1], lat, lon)
+            };
+        }).filter(Boolean);
+    }
+
+    /*
+     * PHOTON — dữ liệu OSM, nhân Elasticsearch.
+     *
+     * Bù đúng chỗ hổng của hai nguồn kia: nó tìm MỜ và chịu được gõ không
+     * dấu, trong khi tra tên qua Overpass đòi khớp chữ có dấu chính xác, còn
+     * geocoding thì thưa về tên cơ sở. Miễn phí, không cần khoá.
+     *
+     * Toạ độ GeoJSON là [kinh độ, vĩ độ] — ngược thứ tự quen dùng. Đảo sai
+     * chỗ này là ghim rơi sang bên kia bán cầu.
+     *
+     * Máy chủ công cộng không cam kết phục vụ, nên đặt hạn giờ và coi mọi
+     * lỗi là "không có kết quả", không được làm hỏng cả lần tìm.
+     */
+    const PHOTON_URL = 'https://photon.komoot.io/api/';
+    const PHOTON_TIMEOUT_MS = 6000;
+
+    async function searchPhoton(query, here, km) {
+        const q = String(query || '').trim();
+        if (q.length < 3 || !here) return [];
+        let box = '';
+        if (km) {
+            const { dLat, dLon } = degSpan(here[0], km);
+            box = '&bbox=' + [here[1] - dLon, here[0] - dLat, here[1] + dLon, here[0] + dLat]
+                .map((v) => v.toFixed(4)).join(',');
+        }
+        const url = PHOTON_URL + '?q=' + encodeURIComponent(q)
+            + `&lat=${here[0].toFixed(5)}&lon=${here[1].toFixed(5)}`
+            + box + '&limit=10&lang=default';
+
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), PHOTON_TIMEOUT_MS);
+        try {
+            const res = await fetch(url, { signal: ctl.signal });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const feats = Array.isArray(data && data.features) ? data.features : [];
+            return feats.map((f) => {
+                const c = (f && f.geometry && f.geometry.coordinates) || [];
+                const lon = Number(c[0]), lat = Number(c[1]);   // [lon, lat] — ĐÚNG thứ tự GeoJSON
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+                const p = (f && f.properties) || {};
+                if (p.countrycode && p.countrycode !== 'VN') return null;
+                const where = [p.district, p.city, p.state].filter(Boolean).join(', ');
+                const nm = p.name || p.street || '';
+                if (!nm) return null;
+                return {
+                    lat, lon,
+                    display_name: where ? nm + ', ' + where : nm,
+                    _dist: haversine(here[0], here[1], lat, lon)
+                };
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('Photon:', e && e.message);
+            return [];
+        } finally {
+            clearTimeout(timer);
+        }
     }
 
     async function searchMapbox(query, here, km) {
@@ -3343,9 +3473,37 @@
             const name = VN_ACCENT_MAP.get(key);
             const row = VN_CITIES.find(([n]) => n === name) || VN_CITIES.find(([n]) => n === cityKey(name));
             if (!row) continue;                 // là điểm nổi bật, không phải tỉnh thành
-            const rest = q.replace(re, ' ').replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
+            const rest = q.replace(re, ' ').replace(/[,.]/g, ' ')
+                .replace(/\b(thanh pho|tp|tinh)\b/g, ' ')   // "…, thành phố X" bỏ cả chữ đệm
+                .replace(/\s+/g, ' ').trim();
             if (rest.length < 3) return null;   // câu chỉ có mỗi tên thành phố
-            return { name: row[0], g: [row[1], row[2]], rest };
+
+            /*
+             * restRaw: phần cần tìm, GIỮ NGUYÊN DẤU.
+             *
+             * `rest` ở trên đã bỏ dấu (vì phải bỏ dấu mới so khớp được tên
+             * thành phố). Đưa chuỗi bỏ dấu đó đi tra tên trong OSM thì không
+             * bao giờ khớp, vì tên trong OSM có dấu đầy đủ — "khu che xuat
+             * tan thuan" không khớp "Khu chế xuất Tân Thuận". Đó chính là lý
+             * do đường tra OSM theo tên không cứu được gì.
+             */
+            const full = String(query || '');
+            let restRaw = full.split(/[,;]/)
+                .filter((part) => {
+                    const pn = noAccent(part).replace(ADMIN_PREFIX, '').trim();
+                    return pn && pn !== key;
+                })
+                .join(', ').trim();
+            // Tên thành phố viết liền trong câu (không có dấu phẩy ngăn)
+            if (noAccent(restRaw).replace(ADMIN_PREFIX, '').trim() === q) {
+                const acc = VN_ACCENT_MAP.get(key) || '';
+                if (acc) {
+                    restRaw = restRaw.replace(new RegExp(acc.replace(RE_ESC, '\\$&'), 'gi'), ' ')
+                        .replace(/\s+/g, ' ').replace(/[,;]\s*$/, '').trim();
+                }
+            }
+            if (restRaw.length < 3) restRaw = rest;
+            return { name: row[0], g: [row[1], row[2]], rest, restRaw };
         }
         return null;
     }
@@ -3365,8 +3523,23 @@
         const { dLat, dLon } = degSpan(centre[0], km);
         const bbox = [centre[0] - dLat, centre[1] - dLon, centre[0] + dLat, centre[1] + dLon]
             .map((v) => v.toFixed(4)).join(',');
-        const q = `[out:json][timeout:25];(nwr["name"~"${name}",i](${bbox}););out center 20;`;
-        const data = await overpass(q);
+        /*
+         * PHẢI lọc theo thẻ trước, rồi mới so tên.
+         *
+         * `nwr["name"~"..."](khung)` trơ bắt Overpass quét MỌI đối tượng
+         * trong khung — một khung cỡ thành phố là hàng triệu đối tượng, và
+         * máy chủ hoặc trả rất chậm hoặc bỏ cuộc. Thêm thẻ vào thì nó dùng
+         * được chỉ mục, chỉ xét những thứ có thể là đích đến.
+         *
+         * Bỏ qua "building": nhà cửa nhiều tới mức lọc theo nó cũng như không.
+         */
+        const tags = ['landuse', 'industrial', 'office', 'amenity', 'shop',
+            'tourism', 'place', 'leisure', 'healthcare'];
+        const body = tags
+            .map((t) => `nwr["name"~"${name}",i]["${t}"](${bbox});`)
+            .join('');
+        const q = `[out:json][timeout:10];(${body});out center 20;`;
+        const data = await overpassFast(q);
         return (data && Array.isArray(data.elements) ? data.elements : []).map((el) => {
             const lat = el.lat != null ? el.lat : el.center && el.center.lat;
             const lon = el.lon != null ? el.lon : el.center && el.center.lon;
@@ -3463,6 +3636,10 @@
      *
      * So khớp sau khi bỏ dấu, nên "ha noi" và "Hà Nội" là một.
      */
+    // Từ mức này trở lên mới coi là KHỚP TÊN (có đủ từ đó trong tên riêng).
+    // Dưới mức này chỉ là dính một phần chữ.
+    const NAME_MATCH_MIN = 60;
+
     function nameScore(query, displayName) {
         const q = noAccent(query);
         if (!q) return 0;
@@ -3475,6 +3652,26 @@
         if (new RegExp('(^|[^\\p{L}])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
             + '(?![\\p{L}])', 'u').test(first)) return 60; // đủ từ, nằm giữa
         if (first.includes(q)) return 40;                  // dính một phần chữ
+
+        /*
+         * So theo TỪNG CHỮ khi cả cụm không khớp.
+         *
+         * "bệnh viện Việt Tiệp" không phải là một đoạn con của "Bệnh viện Hữu
+         * nghị Việt Tiệp" — có chữ "Hữu nghị" xen vào giữa. Chấm theo cả cụm
+         * thì cái đúng được 0 điểm, ngang với một nơi chẳng liên quan, và
+         * khoảng cách quyết định thay. Đó đúng là lúc app trả về Tiên Cường,
+         * Tiên Tiến thay cho bệnh viện Việt Tiệp.
+         */
+        const qt = q.split(/\s+/).filter((w) => w.length >= 2);
+        if (qt.length) {
+            const hit = qt.filter((w) => new RegExp('(^|[^\\p{L}])'
+                + w.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(first)).length;
+            const frac = hit / qt.length;
+            if (frac === 1) return 75;                     // đủ mọi chữ, chỉ xen chữ khác
+            if (frac >= 0.6) return 50;
+            if (frac > 0) return 25;
+        }
+
         if (full.includes(q)) return 20;                   // chỉ khớp ở phần địa chỉ
         return 0;
     }
@@ -3665,20 +3862,61 @@
         const local = localPlaces(base, here);   // danh bạ trong máy: luôn có, không cần mạng
         let rows = scope ? [] : local.slice();
 
+        // Tên cần tìm, đã bỏ phần tỉnh thành và GIỮ NGUYÊN DẤU
+        const target = scope ? scope.restRaw : base;
+        const nearKm = scope ? SCOPE_KM : NEAR_PASS_KM;
+        /*
+         * "Đã tìm thấy" chỉ tính kết quả TRỰC TUYẾN.
+         *
+         * Danh bạ trong máy là lưới an toàn, không phải câu trả lời đầy đủ:
+         * gõ "Hồ Hoàn Kiếm" mà dừng luôn ở dòng danh bạ thì mất hết những
+         * nơi khác cùng tên ở gần. Nó chỉ bảo đảm KHÔNG BAO GIỜ trắng tay.
+         */
+        const goodHit = () => rows.some((r) => {
+            if (r._local) return false;
+            if (nameScore(target, r.display_name || '') < NAME_MATCH_MIN) return false;
+            /*
+             * Câu có từ chỉ loại thì phải thấy ĐÚNG LOẠI mới được dừng.
+             * "nhà máy VinFast" khớp tên với showroom và trạm sạc VinFast,
+             * dừng ở đó là nhà máy không bao giờ được hỏi tới.
+             */
+            if (hint && hint.prefer) return hint.prefer.test(noAccent(r.display_name || ''));
+            return true;
+        });
+
+        /*
+         * KHO ĐỊA ĐIỂM TRƯỚC, kho địa chỉ sau.
+         *
+         * "Khu chế xuất Tân Thuận", "Công ty cổ phần sản xuất và kinh doanh
+         * VinFast" là TÊN CƠ SỞ. Hỏi kho địa chỉ (geocoding) thì không ra, dù
+         * chỗ đó hiện rõ trên bản đồ — đó đúng là lỗi đã gặp. Hỏi kho địa
+         * điểm trước, thấy khớp tên là dừng, nên trường hợp thường gặp còn
+         * tốn ÍT lượt hỏi hơn trước.
+         */
         if (useMapbox()) {
             try {
+                rows = rows.concat(await searchMapboxPoi(target, anchor, nearKm));
+                if (!goodHit() && !scope) {
+                    rows = rows.concat(await searchMapboxPoi(target, here, null));
+                }
+            } catch (e) {
+                console.warn('Mapbox địa điểm:', e);
+            }
+        }
+
+        if (useMapbox() && !goodHit()) {
+            try {
                 for (const q of nearQueries) {
-                    rows = rows.concat(await searchMapbox(q, anchor, scope ? SCOPE_KM : NEAR_PASS_KM));
+                    rows = rows.concat(await searchMapbox(q, anchor, nearKm));
                 }
                 if (!scope) rows = rows.concat(await searchMapbox(base, here, null));
             } catch (e) {
                 console.warn('Mapbox geocoding:', e);   // lỗi khoá/hạn mức: rơi xuống Nominatim
             }
         }
-        if (rows.length <= (scope ? 0 : local.length)) {   // chưa ra gì
+        if (!goodHit() && rows.length <= (scope ? 0 : local.length)) {   // chưa ra gì
             try {
-                rows = rows.concat(await nominatimPass(nearQueries, anchor,
-                    scope ? SCOPE_KM : NEAR_PASS_KM));
+                rows = rows.concat(await nominatimPass(nearQueries, anchor, nearKm));
                 if (!scope) rows = rows.concat(await nominatimPass([base], here, null));
             } catch (e) {
                 console.warn('Nominatim:', e);
@@ -3686,15 +3924,40 @@
         }
 
         /*
-         * Vẫn chưa ra gì thì hỏi thẳng OSM theo tên. Đây là đường cứu những
-         * cái tên HIỆN TRÊN BẢN ĐỒ mà geocoding không đánh chỉ mục: khu chế
-         * xuất, khu công nghiệp, khu đô thị, cụm dân cư.
+         * Vẫn chưa ra gì thì hỏi thẳng OSM theo tên. Đây là đường cứu cuối
+         * cùng cho những cái tên HIỆN TRÊN BẢN ĐỒ mà không kho nào đánh chỉ
+         * mục. Dùng `target` — bản CÒN DẤU — vì tên trong OSM có dấu đầy đủ.
          */
-        if (!rows.length) {
+        /*
+         * "Có kết quả" KHÔNG có nghĩa là "tìm thấy".
+         *
+         * Máy tìm kiếm luôn trả về một thứ gì đó. Gõ "Khu công nghiệp Đình
+         * Vũ" mà nó đưa ra Chợ Sắt thì danh sách không rỗng, nhưng cũng
+         * chẳng giúp được gì — mà lại chặn mất đường hỏi OSM. Nên điều kiện
+         * là KHÔNG CÓ DÒNG NÀO KHỚP TÊN, chứ không phải không có dòng nào.
+         */
+        /*
+         * Chưa khớp tên thì hỏi Photon — cùng dữ liệu OSM như bản đồ đang
+         * vẽ, nhưng tìm mờ và chịu được gõ không dấu. Đặt trước Overpass vì
+         * nhanh hơn hẳn và không kén cách gõ.
+         */
+        if (!goodHit()) {
             try {
-                const name = scope ? scope.rest : base;
-                rows = await searchOsmByName(name, anchor, scope ? SCOPE_KM : NEAR_PASS_KM);
-                if (!rows.length && !scope) rows = await searchOsmByName(base, here, 150);
+                const ph = await searchPhoton(target, anchor, scope ? SCOPE_KM : null);
+                if (ph.length) rows = rows.concat(ph);
+            } catch (e) {
+                console.warn('Photon:', e);
+            }
+        }
+
+        if (!goodHit()) {
+            try {
+                const osm = await searchOsmByName(target, anchor, nearKm);
+                if (osm.length) rows = osm;
+                else if (!scope) {
+                    const wide = await searchOsmByName(target, here, 150);
+                    if (wide.length) rows = wide;
+                }
             } catch (e) {
                 console.warn('Overpass tra tên:', e);
             }
@@ -3708,8 +3971,23 @@
 
         rows = dedupeByCoord(rows);
         rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
-        if (hint) rankCategoryRows(rows, hint);
-        else rankByName(rows, accented || expanded || raw);
+        /*
+         * Luôn chấm điểm TÊN, kể cả khi câu có từ chỉ loại.
+         *
+         * Trước đây "bệnh viện Việt Tiệp" rơi vào nhánh xếp-theo-loại và bỏ
+         * qua hẳn phần tên, nên những nơi chẳng liên quan — Tiên Cường, Tiên
+         * Tiến — vẫn nằm nguyên trong danh sách. Từ chỉ loại là gia vị thêm
+         * vào, không thay thế được việc so tên.
+         */
+        rankByName(rows, target);
+        if (hint) {
+            rows.forEach((r) => {
+                const n = noAccent(r.display_name || '');
+                if (hint.prefer && hint.prefer.test(n)) r._score += 15;
+                if (hint.demote && hint.demote.test(n)) r._score -= 30;
+            });
+            rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
+        }
         return rows.slice(0, 10);
     }
 
