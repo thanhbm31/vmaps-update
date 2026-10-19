@@ -1119,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '9b85447';
+    const BUILD_TAG = 'baccac2';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2871,6 +2871,16 @@
          * mức "có đủ từ đó trong tên" nghĩa là chỉ dính một phần chữ.
          */
         if (looksLikeTypo(raw, rows)) {
+            // Hỏi bộ gợi ý xem câu này đáng lẽ là gì
+            const fixed = await suggestCorrection(raw, here);
+            if (fixed) {
+                const better = await searchByName(fixed, here);
+                if (better.length) {
+                    // Nói rõ app đang tìm chữ khác, đừng lặng lẽ đổi câu hỏi
+                    showToast('Đang hiện kết quả cho "' + fixed + '"');
+                    return better;
+                }
+            }
             const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
             if (near.length) return near;
         }
@@ -2890,6 +2900,85 @@
      * coi là gõ sai rồi đi tìm lại quanh đây là vừa phí lượt hỏi vừa có nguy
      * cơ đẩy kết quả đúng xuống.
      */
+    // =====================================================================
+    // SỬA CHÍNH TẢ TÊN ĐỊA ĐIỂM (Mapbox Search Box)
+    //
+    // Gõ "Vincoin impeza" thì phải ra "Vincom Imperia". Không có bảng từ nào
+    // trong máy làm được việc này: tên chi nhánh, tên quán là danh sách MỞ,
+    // không bao giờ chép đủ. Phải hỏi một dịch vụ gợi ý chịu được lỗi gõ.
+    //
+    // Dùng Search Box của Mapbox vì khoá đã có sẵn, không phải mở thêm tài
+    // khoản nào. Nó trả về TÊN, không kèm toạ độ — nên ở đây chỉ dùng nó làm
+    // bộ sửa chính tả: lấy tên đã sửa rồi chạy lại đúng đường tìm kiếm cũ.
+    // Nhờ vậy toàn bộ phần xếp hạng, khoảng cách, danh bạ trong máy giữ
+    // nguyên, và cũng không phải gọi thêm lượt /retrieve khi người dùng chọn.
+    //
+    // CHỈ gọi khi câu gõ trông như sai — mỗi lượt là một phiên có tính tiền.
+    // =====================================================================
+    let suggestSession = '';
+
+    function searchSessionToken() {
+        if (!suggestSession) {
+            suggestSession = (crypto.randomUUID && crypto.randomUUID())
+                || ('s-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+        }
+        return suggestSession;
+    }
+
+    /** Khoảng cách sửa chữ (Levenshtein). Chuỗi ở đây rất ngắn nên không cần tối ưu. */
+    function editDistance(a, b) {
+        if (a === b) return 0;
+        if (!a.length || !b.length) return Math.max(a.length, b.length);
+        let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+        for (let i = 1; i <= a.length; i++) {
+            const cur = [i];
+            for (let j = 1; j <= b.length; j++) {
+                cur[j] = Math.min(
+                    prev[j] + 1,                                   // xoá
+                    cur[j - 1] + 1,                                // thêm
+                    prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)  // thay
+                );
+            }
+            prev = cur;
+        }
+        return prev[b.length];
+    }
+
+    /**
+     * Gợi ý này có đáng tin là "câu gõ sai của cùng một cái tên" không?
+     *
+     * Không có phép kiểm này thì khi người dùng tìm một nơi Mapbox không
+     * biết, nó trả về một chỗ chẳng liên quan và app lặng lẽ hiển thị kết
+     * quả của một địa điểm khác hẳn — sai còn tệ hơn không tìm thấy.
+     */
+    function plausibleCorrection(query, name) {
+        const a = noAccent(query), b = noAccent(name);
+        if (!b || a === b) return false;
+        const limit = Math.max(3, Math.round(Math.max(a.length, b.length) * 0.35));
+        return editDistance(a, b) <= limit;
+    }
+
+    async function suggestCorrection(query, here) {
+        if (!useMapbox() || !here) return '';
+        const url = 'https://api.mapbox.com/search/searchbox/v1/suggest'
+            + `?q=${encodeURIComponent(query)}`
+            + `&session_token=${encodeURIComponent(searchSessionToken())}`
+            + `&proximity=${here[1].toFixed(5)},${here[0].toFixed(5)}`
+            + '&country=vn&language=vi&limit=5'
+            + `&access_token=${encodeURIComponent(mapboxToken())}`;
+        try {
+            const data = await mapboxFetch(url);
+            const list = Array.isArray(data?.suggestions) ? data.suggestions : [];
+            for (const s of list) {
+                const n = String(s.name_preferred || s.name || '').trim();
+                if (plausibleCorrection(query, n)) return n;
+            }
+        } catch (e) {
+            console.warn('Mapbox suggest:', e);
+        }
+        return '';
+    }
+
     function looksLikeTypo(query, rows) {
         if (!rows.length) return true;
         const top = noAccent(rows[0].display_name || '');
