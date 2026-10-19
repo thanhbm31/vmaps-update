@@ -1047,6 +1047,13 @@
             <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-2 uppercase">Chú ý phía sau!</h3>
             <p id="childWarnText" class="text-slate-600 dark:text-slate-400 mb-6 font-medium">Kiểm tra trẻ em trong xe.</p>
             <button onclick="closeModal('childWarningModal')" class="w-full py-4 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-lg transition-colors shadow-lg">Đã kiểm tra</button>
+            <!-- Xe đã dừng: đây đúng lúc để mời tắt app. Chỉ hiện khi app THẬT SỰ
+                 thoát được (có vỏ Android), chứ không hiện một nút bấm vào không
+                 làm gì — xem showExitSuggest(). -->
+            <button id="childExitBtn" onclick="exitAppNow()" class="hidden w-full mt-3 py-3.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold transition-colors">
+                <i class="fa-solid fa-power-off mr-2"></i>Đã kiểm tra & thoát app
+            </button>
+            <p id="childExitHint" class="hidden text-xs text-slate-400 mt-2 font-medium">Xe đã dừng — tắt app để khỏi tốn pin.</p>
         </div>
     </div>
 
@@ -1188,7 +1195,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '4f6e68b';
+    const BUILD_TAG = 'd3dcb2b';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -4334,6 +4341,44 @@
                 btn.addEventListener(ev, () => clearTimeout(timer)));
         });
         $('addPlaceChip')?.addEventListener('click', () => openSavePlace(null));
+        renderPlaceMarkers();
+    }
+
+    /* =====================================================================
+     * GHIM ĐỊA ĐIỂM ĐÃ LƯU TRÊN BẢN ĐỒ
+     *
+     * Lưu "Nhà riêng" xong mà bản đồ không có gì thay đổi thì người dùng
+     * không có cách nào biết mình đã lưu vào đúng chỗ hay lưu lệch một con
+     * ngõ — nhất là khi vừa chọn điểm bằng tâm ngắm. Ghim nhà hiện ra là bằng
+     * chứng nhìn thấy được.
+     *
+     * Gọi từ trong renderSavedPlaces() chứ không gọi rải rác: mọi đường lưu,
+     * thay, xoá đều đã đi qua đó, nên không có đường nào lọt.
+     * ===================================================================== */
+    let placeLayer = null;
+
+    function placeIcon(id) {
+        const f = FIXED_PLACES.find((x) => x.id === id);
+        return f ? f.icon : 'fa-star';
+    }
+
+    function renderPlaceMarkers() {
+        if (!map) return;                       // chưa dựng bản đồ thì thôi, lát nữa gọi lại
+        if (!placeLayer) placeLayer = L.layerGroup().addTo(map);
+        placeLayer.clearLayers();
+
+        for (const p of Object.values(loadPlaces())) {
+            if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
+            const icon = L.divIcon({
+                html: `<div class="vm-icon bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow border-2 border-white">
+                         <i class="fa-solid ${placeIcon(p.id)} text-xs"></i>
+                       </div>`,
+                className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+            });
+            L.marker([p.lat, p.lon], { icon, zIndexOffset: 500 }).addTo(placeLayer)
+                .bindPopup(`<b>${escapeHtml(p.label)}</b><br>`
+                    + `<span style="opacity:.7">Địa điểm đã lưu</span>`);
+        }
     }
 
     /* =====================================================================
@@ -6607,7 +6652,7 @@
     };
 
     // 3 = an toàn, 2 = cảnh báo, 1 = chỉ đường, 0 = thông tin
-    const VOICE_PRIORITY = { arrive: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, next_speed_pair: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
+    const VOICE_PRIORITY = { arrive: 3, arrive_home: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, next_speed_pair: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
 
     const VOICE_TEXTS = {
         // Ngắn gọn có chủ đích: câu dài thì người ta nghe nửa đầu rồi tắt.
@@ -6648,6 +6693,10 @@
         arrive: {
             'vi-VN': () => 'Bạn đã đến.',
             'en-US': () => 'You have arrived.'
+        },
+        arrive_home: {
+            'vi-VN': () => 'Bạn đã về nhà.',
+            'en-US': () => 'You are home.'
         },
         next_speed: {
             'vi-VN': (d) => d.dist ? `Phía trước giới hạn ${d.speed}.` : `Giới hạn ${d.speed}.`,
@@ -6935,15 +6984,31 @@
         $('customSpeedInputContainer').classList.toggle('hidden', field('speedWarningThreshold') !== 'custom');
     }
 
+    /*
+      * Người dùng đã TẮT biển giới hạn tốc độ (chọn "Chỉ tốc độ GPS").
+      *
+      * Trước đây cài đặt đó chỉ ẩn cái biển đi, còn cảnh báo vượt tốc độ vẫn
+      * kêu — mà nguồn cơn người ta tắt biển chính là vì dữ liệu giới hạn còn
+      * sai nhiều. Thành ra tắt rồi vẫn bị nhắc theo đúng con số mình không
+      * muốn tin, lại còn không thấy nó là bao nhiêu. Có một đoạn mã cũ cố
+      * chữa bằng cách cho biển hiện lên lúc đang vượt, tức là không tôn trọng
+      * cài đặt người dùng để bù cho một cảnh báo không nên phát ngay từ đầu.
+      *
+      * Nay tắt biển là tắt hẳn: không ô đỏ, không giọng nói, không nhắc biển
+      * phía trước. Số tốc độ GPS vẫn chạy bình thường.
+      */
+    const limitWarningsOff = () => field('speedDisplayMode') === 'gps';
+
     function checkOverspeed() {
         const now = Date.now();
         const sp = displayedSpeed();
         const limit = speedState.limit;
         const thr = getWarnThreshold();
 
-        // Không biết giới hạn thì không có gì để vượt. Cảnh báo theo một con
-        // số đoán được là cách nhanh nhất để người lái mất tin vào app.
-        if (limit == null) {
+        // Không biết giới hạn, hoặc người dùng đã tắt biển: không có gì để vượt.
+        // Cảnh báo theo một con số đoán được (hay một con số người ta đã bảo
+        // đừng dùng) là cách nhanh nhất để người lái mất tin vào app.
+        if (limit == null || limitWarningsOff()) {
             speedState.overSince = null;
             speedState.underSince = null;
             if (speedState.overspeed) {
@@ -6978,13 +7043,6 @@
         if (isOver !== speedState.overspeed) {
             speedState.overspeed = isOver;
             $('gps-speed-box').classList.toggle('overspeed', isOver);
-            // Chế độ "chỉ hiện GPS" ẩn hẳn ô biển tốc độ, nhưng cảnh báo vẫn
-            // chạy — thành ra người lái bị nhắc theo một con số KHÔNG nhìn
-            // thấy, không biết phải giảm xuống bao nhiêu. Lúc đang vượt thì
-            // hiện ô đó lên, hết vượt lại ẩn theo cài đặt.
-            if (field('speedDisplayMode') === 'gps') {
-                $('limit-speed-box').style.display = isOver ? 'flex' : 'none';
-            }
             if (!isOver) speedState.lastAlert = 0;
         }
         if (isOver && now - speedState.lastAlert >= SPEED_ALERT_REPEAT_MS) {
@@ -7078,7 +7136,7 @@
     }
 
     function checkLimitsAhead() {
-        if (!speedState.limit) return;
+        if (!speedState.limit || limitWarningsOff()) return;
         const warnAt = parseInt(field('nextSpeedDistance'), 10) || 200;
         const list = scanLimitsAhead();
         if (!list.length) { aheadSpokenKey = ''; return; }
@@ -7178,16 +7236,21 @@
     const CHILD_SAVED_RADIUS_M = 120;
 
     /** Đang đỗ trong bán kính một địa điểm đã lưu? Trả về tên chỗ đó. */
-    function stoppedAtSavedPlace() {
-        if (!userLatLng) return '';
-        const saved = loadPlaces();
-        for (const p of Object.values(saved)) {
+    /** Mục đã lưu mà xe đang đứng trong bán kính, hoặc null. */
+    function stoppedAtSavedSlot() {
+        if (!userLatLng) return null;
+        for (const p of Object.values(loadPlaces())) {
             if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
             if (haversine(userLatLng[0], userLatLng[1], p.lat, p.lon) <= CHILD_SAVED_RADIUS_M) {
-                return p.label || 'địa điểm đã lưu';
+                return p;
             }
         }
-        return '';
+        return null;
+    }
+
+    function stoppedAtSavedPlace() {
+        const p = stoppedAtSavedSlot();
+        return p ? (p.label || 'địa điểm đã lưu') : '';
     }
 
     // Dừng ngay trên trục đường thì gần như chắc là đèn đỏ hoặc tắc đường,
@@ -7253,9 +7316,26 @@
                 ? `Kiểm tra trẻ em trong xe. Bạn đã tới ${place} và dừng ${howLong}.`
                 : `Kiểm tra trẻ em trong xe, bạn vừa dừng xe được ${howLong}.`;
         }
+        showExitSuggest();
         openModal('childWarningModal');
         speak('child', { howLong, place });
         childWarnShownAt = Date.now();
+    }
+
+    /*
+     * Xe đã dừng và người lái vừa được nhắc nhìn ra ghế sau — đúng lúc để mời
+     * tắt app. Đây là chỗ duy nhất app được phép gợi ý thoát: lúc đang lái thì
+     * tuyệt đối không, và cũng không bày thành một nút lúc nào cũng nằm đó.
+     *
+     * Chỉ hiện khi vỏ Android có thật. Trong trình duyệt hay bản PWA thì trang
+     * web không có cách nào tự đóng, nên hiện nút ra là hứa suông.
+     */
+    function showExitSuggest() {
+        const btn = $('childExitBtn');
+        const hint = $('childExitHint');
+        const show = canExitApp();
+        if (btn) btn.classList.toggle('hidden', !show);
+        if (hint) hint.classList.toggle('hidden', !show);
     }
 
     // Khoảng lặng giữa "Bạn đã đến" và nhắc kiểm tra trẻ em.
@@ -7266,10 +7346,17 @@
 
     // Gọi từ module dẫn đường khi tới đích
     function onArrived() {
+        /*
+         * Về tới mục "Nhà riêng" thì chào bằng câu riêng. Nghe "Bạn đã đến"
+         * ngay trước cửa nhà mình thì khô khốc như vừa tới một địa chỉ lạ.
+         * Chỉ áp cho mục nhà, các mục khác vẫn đọc tên nơi đến như cũ.
+         */
+        const slot = stoppedAtSavedSlot();
+        const atHome = !!slot && slot.id === 'home';
         // Luôn báo đã đến, kể cả khi nhắc trẻ em đang tắt
-        speak('arrive', {});
-        const place = stoppedAtSavedPlace();
-        showToast(place ? `Đã đến ${place}` : 'Bạn đã đến');
+        speak(atHome ? 'arrive_home' : 'arrive', {});
+        const place = slot ? (slot.label || 'địa điểm đã lưu') : '';
+        showToast(atHome ? 'Bạn đã về nhà' : (place ? `Đã đến ${place}` : 'Bạn đã đến'));
 
         if (!field('childWarnToggle')) return;
         // PHẢI kiểm tra hasMoved ở đây nữa. Trước đây hàm này gọi thẳng
@@ -7544,6 +7631,41 @@
         return Date.now() - lastMoveAt < WAKE_IDLE_MS;
     }
 
+    /*
+     * Vỏ Android: lộ ra AndroidApp. Trong trình duyệt thường thì không có, nên
+     * mọi chỗ dùng phải tự hỏi trước — và nút "thoát app" chỉ hiện khi app
+     * THẬT SỰ thoát được, chứ không bày ra một nút bấm vào không làm gì.
+     */
+    const nativeApp = () => (typeof AndroidApp !== 'undefined' ? AndroidApp : null);
+
+    function canExitApp() {
+        const a = nativeApp();
+        if (!a) return false;
+        try { return a.canExit ? !!a.canExit() : typeof a.exitApp === 'function'; }
+        catch (e) { return false; }
+    }
+
+    function exitAppNow() {
+        const a = nativeApp();
+        if (!a) return;
+        // Nhắc trẻ em đã xem là xong, và dừng GPS trước khi đóng
+        childWarnShownAt = 0;
+        try { closeModal('childWarningModal'); } catch (e) { }
+        try { stopGps(); } catch (e) { }
+        try { a.exitApp(); } catch (e) { showToast('Không đóng được app'); }
+    }
+
+    /*
+     * Cờ giữ sáng của Android mạnh hơn Wake Lock API: MainActivity bật
+     * FLAG_KEEP_SCREEN_ON nên trang có nhả wake lock thì màn hình vẫn sáng.
+     * Nên luật giữ sáng phải điều khiển cả cờ đó, không thì chỉ là luật suông.
+     */
+    function nativeKeepAwake(on) {
+        const a = nativeApp();
+        if (!a || typeof a.keepAwake !== 'function') return;
+        try { a.keepAwake(!!on); } catch (e) { }
+    }
+
     async function requestWakeLock() {
         try {
             if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock) {
@@ -7562,7 +7684,9 @@
     function updateWakeLock() {
         // Trang bị ẩn thì hệ thống tự lo, không cần can thiệp
         if (document.visibilityState !== 'visible') return;
-        if (shouldStayAwake()) requestWakeLock();
+        const stay = shouldStayAwake();
+        nativeKeepAwake(stay);
+        if (stay) requestWakeLock();
         else if (wakeLock) releaseWakeLock();
     }
 
