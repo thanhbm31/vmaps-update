@@ -1119,7 +1119,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'e7ddbe6';
+    const BUILD_TAG = 'e79498a';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -5044,7 +5044,16 @@
             return null;
         }
         return {
-            speed: best.s, name: best.n || '', highway: best.h || '',
+            /*
+             * Đoạn đường có thể KHÔNG có giới hạn tốc độ.
+             *
+             * Dữ liệu giờ giữ cả những đường OSM chưa gắn thẻ maxspeed, vì
+             * chúng vẫn có TÊN và CẤP — hai thứ cần cho việc hiện tên đường
+             * và chọn đường lớn. Thiếu giới hạn thì trả null (chưa biết),
+             * không phải undefined, để các chỗ dùng phân biệt được rõ ràng.
+             */
+            speed: Number.isFinite(best.s) ? best.s : null,
+            name: best.n || '', highway: best.h || '',
             dist: bestDist, bearing: bestBearing
         };
     }
@@ -5172,7 +5181,7 @@
         currentRoad = road;
         if (!prev || prev.speed !== road.speed) {
             setSpeedLimit(road.speed);
-            if (prev) {
+            if (prev && road.speed != null) {
                 showToast(`Giới hạn ${road.speed} km/h`
                     + (road.name ? ' · ' + road.name : ''));
                 speak('next_speed', {
