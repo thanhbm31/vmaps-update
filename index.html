@@ -1096,7 +1096,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '17b8088';
+    const BUILD_TAG = 'e91d20d';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1273,6 +1273,40 @@
 
     function useMapbox() {
         return !mapboxOffReason && !!mapboxToken();
+    }
+
+    /*
+     * Chép khoá nhúng sẵn trong APK sang localStorage ngay lần chạy đầu.
+     *
+     * ĐÂY LÀ THỨ GIỮ CHO MAPBOX SỐNG SÓT QUA CẬP NHẬT ONLINE. Bản index.html
+     * đẩy lên kho cập nhật là kho CÔNG KHAI nên bắt buộc phải gỡ khoá ra,
+     * nếu không ai cũng tiêu được hạn mức của mình. Hậu quả phụ: lần cập nhật
+     * online ĐẦU TIÊN là MAPBOX_TOKEN_BUILD thành rỗng vĩnh viễn — mất tile
+     * Mapbox, mất tìm kiếm Mapbox, mất dẫn đường Mapbox, tụt hết về OSM, mà
+     * không một dòng thông báo.
+     *
+     * Chép sang localStorage thì khoá sống độc lập với file index.html.
+     * Ghi kèm nguồn 'build' để Cài đặt biết đường không hiện khoá ra màn hình.
+     */
+    const MAPBOX_TOKEN_SRC_KEY = 'vietnav.mapbox.token.src';
+
+    function persistBuildToken() {
+        if (!MAPBOX_TOKEN_BUILD) return;
+        try {
+            if ((localStorage.getItem(MAPBOX_TOKEN_KEY) || '').trim()) return;
+            localStorage.setItem(MAPBOX_TOKEN_KEY, MAPBOX_TOKEN_BUILD);
+            localStorage.setItem(MAPBOX_TOKEN_SRC_KEY, 'build');
+        } catch (e) { }
+    }
+
+    /** Khoá đang dùng đến từ đâu: 'build' (nhúng trong APK), 'user' (nhập tay), '' (không có). */
+    function mapboxTokenSource() {
+        if (!mapboxToken()) return '';
+        try {
+            const saved = (localStorage.getItem(MAPBOX_TOKEN_KEY) || '').trim();
+            if (saved) return localStorage.getItem(MAPBOX_TOKEN_SRC_KEY) === 'build' ? 'build' : 'user';
+        } catch (e) { }
+        return 'build';
     }
 
     /**
@@ -3136,7 +3170,17 @@
         const resultsEl = $('searchResults');
         if (!resultsEl) return;
         if (!results.length) {
-            resultsEl.innerHTML = '<p class="p-4 text-slate-400 text-center">Không tìm thấy kết quả</p>';
+            /*
+             * Phân biệt "tìm không ra" với "không hỏi được".
+             *
+             * Gõ "Hà Nội" mà app trả lời "Không tìm thấy kết quả" là nói sai:
+             * Hà Nội vẫn ở đó, chỉ là máy không hỏi được ai. Câu trả lời sai
+             * đó khiến người dùng đi sửa nhầm chỗ — đúng như đã xảy ra.
+             */
+            const msg = isOffline()
+                ? 'Mất mạng — chưa tìm được. Có sóng lại thì thử lại.'
+                : 'Không tìm thấy kết quả';
+            resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center">${msg}</p>`;
             return;
         }
         // Mốc khoảng cách. Danh sách đã xếp gần trước, nhưng không có mốc thì
@@ -4121,7 +4165,34 @@
         // Nếu không tải được tile thì phải nói ra, chứ để màn hình trống thì
         // người dùng không biết là mất mạng hay app hỏng.
         layer.on('tileerror', onTileError);
-        layer.on('tileload', () => { tileErrors = 0; });
+        layer.on('tileload', () => { tileErrors = 0; tilesLoaded++; });
+
+        /*
+         * Canh chừng trường hợp KHÔNG MỘT Ô NÀO về.
+         *
+         * onTileError chỉ kêu sau 6 ô hỏng, mà có những kiểu hỏng không sinh
+         * ra lấy một ô hỏng nào: Leaflet đo khung bằng 0 nên không xin ô nào,
+         * hoặc một lớp cache ở giữa trả về thứ gì đó trông như ảnh. Lúc ấy
+         * người lái nhìn một màn hình trơ, không chữ nào giải thích — đúng
+         * cảnh đã xảy ra với mảng xanh lá của service worker v1.
+         */
+        clearTimeout(tileWatchdog);
+        const mine = layer;
+        tilesLoaded = 0;
+        tileWatchdog = setTimeout(() => {
+            if (currentTileLayer !== mine || tilesLoaded > 0) return;
+            const el = $('map');
+            const tiny = !el || el.clientWidth < 50 || el.clientHeight < 50;
+            if (tiny) {
+                map.invalidateSize({ animate: false });
+                showToast('Khung bản đồ chưa đo được kích thước — đang dựng lại', 'warn');
+            } else {
+                showToast(isOffline()
+                    ? 'Không tải được bản đồ nền — đang mất mạng'
+                    : 'Không tải được bản đồ nền. Thử đổi kiểu bản đồ trong Cài đặt.', 'warn');
+                setNetBadge(true);
+            }
+        }, TILE_WATCHDOG_MS);
 
         // Thêm lớp mới TRƯỚC rồi mới bỏ lớp cũ: làm ngược lại thì có một
         // nhịp bản đồ trống trơn, giữa lúc đang lái thì rất khó chịu.
@@ -4133,6 +4204,9 @@
     }
 
     let tileErrors = 0;
+    let tilesLoaded = 0;
+    let tileWatchdog = null;
+    const TILE_WATCHDOG_MS = 12000;     // đủ cho 3G chậm, chưa đủ để người lái sốt ruột
     let tileWarnedAt = 0;
     const TILE_WARN_AFTER = 6;          // số tile hỏng liên tiếp mới cảnh báo
     const TILE_WARN_GAP_MS = 30000;
@@ -5688,8 +5762,67 @@
         renderNetworkStatus();
     }
 
-    function registerServiceWorker() {
+    /*
+     * Bản sw.js tối thiểu chấp nhận được.
+     *
+     * sw.js nằm trong APK và KHÔNG đi theo bản cập nhật online — bản đó chỉ
+     * thay mỗi index.html. Nên service worker cũ sống dai hơn app: cài APK
+     * tháng trước rồi cập nhật online mười lần thì vẫn là service worker
+     * tháng trước đang chặn mọi request.
+     *
+     * v1 có lỗi làm cả bản đồ thành một mảng xanh lá khi mất mạng (nó trả ô
+     * tile màu #00ff00 kèm mã 200), và vì mã 200 nên app không hề biết để báo.
+     * Chỉ cập nhật online thì không chữa được. Vậy nên trang phải tự đọc
+     * sw.js, thấy quá cũ thì gỡ hẳn ra và KHÔNG đăng ký lại — thà không có
+     * cache offline còn hơn có một lớp cache nói dối.
+     */
+    const SW_MIN_VERSION = 2;
+    const SW_RELOAD_KEY = 'vietnav.sw.reloaded';
+
+    /** Đọc số hiệu trong sw.js. Trả 0 nếu không đọc được hoặc file quá cũ (chưa có số). */
+    async function serviceWorkerVersion() {
+        try {
+            const res = await fetch('sw.js', { cache: 'no-store' });
+            if (!res.ok) return 0;
+            const m = (await res.text()).match(/SW_VERSION\s*=\s*(\d+)/);
+            return m ? parseInt(m[1], 10) : 0;
+        } catch (e) {
+            return -1;      // không đọc được ≠ cũ: để yên, đừng gỡ nhầm
+        }
+    }
+
+    /** Gỡ service worker và dọn sạch cache của nó. */
+    async function evictServiceWorker() {
+        try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+            if (window.caches) {
+                const names = await caches.keys();
+                await Promise.all(names.filter((n) => n.startsWith('vmaps-'))
+                    .map((n) => caches.delete(n)));
+            }
+            console.warn('Đã gỡ service worker cũ');
+            // Nó vẫn đang điều khiển trang này cho tới lần tải lại. Tải lại một
+            // lần duy nhất — cờ trong sessionStorage chặn vòng lặp vô tận.
+            if (navigator.serviceWorker.controller
+                && !sessionStorage.getItem(SW_RELOAD_KEY)) {
+                sessionStorage.setItem(SW_RELOAD_KEY, '1');
+                location.reload();
+            }
+        } catch (e) {
+            console.warn('Gỡ service worker:', e);
+        }
+    }
+
+    async function registerServiceWorker() {
         if (!('serviceWorker' in navigator)) return;
+
+        const ver = await serviceWorkerVersion();
+        if (ver >= 0 && ver < SW_MIN_VERSION) {
+            await evictServiceWorker();
+            return;     // KHÔNG đăng ký lại: file trong APK vẫn là bản hỏng
+        }
+
         // SW chỉ chạy trên HTTPS hoặc localhost
         navigator.serviceWorker.register('sw.js').then((reg) => {
             reg.addEventListener('updatefound', () => {
@@ -5930,8 +6063,15 @@
         if (!el) return;
         const v = el.value.trim();
         try {
-            if (v) localStorage.setItem(MAPBOX_TOKEN_KEY, v);
-            else localStorage.removeItem(MAPBOX_TOKEN_KEY);
+            if (v) {
+                localStorage.setItem(MAPBOX_TOKEN_KEY, v);
+                localStorage.setItem(MAPBOX_TOKEN_SRC_KEY, 'user');
+            } else {
+                localStorage.removeItem(MAPBOX_TOKEN_KEY);
+                localStorage.removeItem(MAPBOX_TOKEN_SRC_KEY);
+                // Xoá khoá tay xong thì khoá trong APK (nếu có) được dùng lại
+                persistBuildToken();
+            }
         } catch (e) {
             showToast('Không lưu được khoá trên máy này', 'warn');
             return;
@@ -5955,7 +6095,8 @@
             text = 'Mapbox đã tạm dừng: ' + mapboxOffReason + '. Đang dùng OpenStreetMap.';
             cls = 'text-orange-600 dark:text-orange-400';
         } else {
-            text = 'Đang dùng Mapbox (khoá …' + token.slice(-6) + ').';
+            const src = mapboxTokenSource() === 'build' ? 'kèm trong APK' : 'nhập tay';
+            text = 'Đang dùng Mapbox (khoá ' + src + ', …' + token.slice(-6) + ').';
             cls = 'text-emerald-600 dark:text-emerald-400';
         }
         el.className = 'text-[11px] mt-2 leading-relaxed ' + cls;
@@ -6031,7 +6172,10 @@
         if (el) {
             // Chỉ đổ lại khoá người dùng tự nhập. Khoá nhúng sẵn trong APK thì
             // không hiện ra, tránh việc vô tình chép đi chỗ khác.
-            try { el.value = localStorage.getItem(MAPBOX_TOKEN_KEY) || ''; } catch (e) { }
+            try {
+                el.value = mapboxTokenSource() === 'user'
+                    ? (localStorage.getItem(MAPBOX_TOKEN_KEY) || '') : '';
+            } catch (e) { }
         }
         renderMapboxStatus();
     }
@@ -6055,6 +6199,8 @@
     document.addEventListener('DOMContentLoaded', () => {
         safe('avoidOptions', initAvoidOptions);   // phải tạo trước khi bind để khôi phục được giá trị
         safe('settingFields', bindSettingFields);
+        // Phải chạy TRƯỚC initMap: rebuildTileLayer() hỏi khoá ngay lúc dựng lớp tile
+        safe('mapboxToken', persistBuildToken);
         safe('reportGrid', initReportGrid);
         safe('modals', initModals);
         safe('map', initMap);
