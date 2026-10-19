@@ -1081,6 +1081,42 @@
         </div>
     </div>
 
+    <!-- Tâm ngắm khi đang chọn điểm trên bản đồ -->
+    <div id="pickLayer" class="hidden fixed inset-0 z-40 pointer-events-none">
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <i class="fa-solid fa-location-crosshairs text-3xl text-rose-600 drop-shadow-lg"></i>
+        </div>
+        <div class="absolute left-0 right-0 bottom-0 p-4 pointer-events-auto"
+             style="padding-bottom: calc(var(--sab) + 1rem);">
+            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-3">
+                <p class="text-xs text-slate-500 mb-2 text-center">
+                    Kéo bản đồ để đưa tâm ngắm tới nơi cần lưu
+                </p>
+                <p id="pickTarget" class="text-sm font-bold text-center mb-3">Nhà riêng</p>
+                <div class="flex gap-2">
+                    <button type="button" onclick="cancelPick()"
+                        class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-semibold">Huỷ</button>
+                    <button type="button" onclick="confirmPick()"
+                        class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold">Lưu điểm này</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chọn lưu vào mục nào -->
+    <div id="savePlaceModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+        <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate"
+             style="padding-bottom: calc(var(--sab) + 1rem); max-height: 85dvh;">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <h3 class="flex-1 font-bold text-lg">Lưu vào mục nào?</h3>
+                <button onclick="closeModal('savePlaceModal')" aria-label="Đóng"
+                    class="text-slate-400 p-2"><i class="fa-solid fa-chevron-down text-xl"></i></button>
+            </div>
+            <div id="savePlaceSlots" class="overflow-y-auto p-3 space-y-2"></div>
+            <div class="px-4 pt-1 pb-2 text-xs text-slate-500" id="savePlaceHint"></div>
+        </div>
+    </div>
+
     <div id="searchModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate" style="padding-bottom: calc(var(--sab) + 1rem); max-height: 80dvh;">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700">
@@ -1119,7 +1155,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'e79498a';
+    const BUILD_TAG = '9bc8a02';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2421,7 +2457,20 @@
                 display_name: nm ? (where ? nm + ', ' + where : nm) : (where || query),
                 _dist: haversine(here[0], here[1], lat, lon)
             };
-        }).filter(Boolean);
+        }).filter(Boolean).map((r, i) => {
+            /*
+             * Giữ lại THỨ HẠNG kho địa điểm tự xếp.
+             *
+             * Gõ "Việt Tiệp" thì bệnh viện và cung văn hoá cùng khớp tên như
+             * nhau, nên chỉ còn khoảng cách phân định — và cung văn hoá gần
+             * hơn thì nó thắng, dù ai cũng hiểu người ta đang hỏi bệnh viện.
+             * Thứ hạng của Mapbox mang thông tin về mức độ nổi tiếng mà ta
+             * không có cách nào tự tính. Cộng điểm NHẸ (tối đa 6) nên nó chỉ
+             * phân định trong cùng một bậc khớp tên, không vượt bậc.
+             */
+            r._poiRank = Math.max(0, 6 - i);
+            return r;
+        });
     }
 
     /*
@@ -3688,7 +3737,9 @@
         // bật của thành phố đó 90. Chấm lại theo tên sẽ dìm chúng xuống đáy,
         // vì "Hồ Hoàn Kiếm" chẳng khớp chữ nào với câu gõ "Hà Nội".
         rows.forEach((r) => {
-            if (r._score == null) r._score = nameScore(query, r.display_name || '');
+            if (r._score == null) {
+                r._score = nameScore(query, r.display_name || '') + (r._poiRank || 0);
+            }
         });
 
         /*
@@ -3787,10 +3838,30 @@
             for (const km of ladder) {
                 if (!useMapbox()) break;
                 try {
-                    let mb = [];
-                    for (const q of variants) {
-                        mb = await searchMapbox(q, here, km);
-                        if (mb.length) break;
+                    /*
+                     * KHO ĐỊA ĐIỂM TRƯỚC, ở đây cũng vậy.
+                     *
+                     * Nhánh này trước đây chỉ hỏi kho địa chỉ. Mà "VinFast",
+                     * "Lotte", "Circle K" là TÊN CƠ SỞ — kho địa chỉ không có
+                     * loại đó. Hậu quả: gõ "VinFast" ra ĐÚNG KHÔNG CÓ GÌ, kể
+                     * cả trạm sạc và showroom VinFast ngay gần đó. Tên trơ
+                     * của thương hiệu chính là thứ hay được gõ nhất, mà lại
+                     * rơi vào đúng nhánh không hỏi kho chứa nó.
+                     */
+                    /*
+                     * Hỏi kho địa điểm bằng câu TRƠ, không kèm "Đường".
+                     *
+                     * variants[0] có thể là "Đường VinFast" — biến thể dựng
+                     * riêng cho kho địa chỉ để tìm tên phố. Đưa nó sang kho
+                     * địa điểm là hỏi sai hẳn: ở đó không có cơ sở nào tên
+                     * "Đường VinFast", nên lại ra rỗng y như trước.
+                     */
+                    let mb = await searchMapboxPoi(accented || expanded || raw, here, km);
+                    if (!mb.length) {
+                        for (const q of variants) {
+                            mb = await searchMapbox(q, here, km);
+                            if (mb.length) break;
+                        }
                     }
                     if (mb.length) {
                         if (hasWanted(mb)) return rankByHint(mb, hint);
@@ -3893,25 +3964,37 @@
          * điểm trước, thấy khớp tên là dừng, nên trường hợp thường gặp còn
          * tốn ÍT lượt hỏi hơn trước.
          */
+        /*
+         * Lượt quanh xe hỏi CẢ HAI KHO, không kho nào được che kho kia.
+         *
+         * Trước đây kho địa chỉ chỉ được hỏi khi kho địa điểm không ra gì.
+         * Nhưng hai kho chứa hai loại thứ khác nhau: gõ "cao tốc" thì kho
+         * địa điểm trả về mấy dịch vụ ven đường — tính là "đã tìm thấy" —
+         * nên con đường cao tốc, vốn nằm ở kho địa chỉ, không bao giờ được
+         * hỏi tới. Tốn thêm một lượt gọi, đổi lại không mất kết quả.
+         */
         if (useMapbox()) {
             try {
                 rows = rows.concat(await searchMapboxPoi(target, anchor, nearKm));
-                if (!goodHit() && !scope) {
-                    rows = rows.concat(await searchMapboxPoi(target, here, null));
-                }
             } catch (e) {
                 console.warn('Mapbox địa điểm:', e);
             }
-        }
-
-        if (useMapbox() && !goodHit()) {
             try {
                 for (const q of nearQueries) {
                     rows = rows.concat(await searchMapbox(q, anchor, nearKm));
                 }
-                if (!scope) rows = rows.concat(await searchMapbox(base, here, null));
             } catch (e) {
-                console.warn('Mapbox geocoding:', e);   // lỗi khoá/hạn mức: rơi xuống Nominatim
+                console.warn('Mapbox geocoding:', e);
+            }
+            // Chỉ lượt CẢ NƯỚC mới cần tiết kiệm: nó chỉ chạy khi quanh đây
+            // chưa có gì khớp tên.
+            if (!goodHit() && !scope) {
+                try {
+                    rows = rows.concat(await searchMapboxPoi(target, here, null));
+                    if (!goodHit()) rows = rows.concat(await searchMapbox(base, here, null));
+                } catch (e) {
+                    console.warn('Mapbox cả nước:', e);
+                }
             }
         }
         if (!goodHit() && rows.length <= (scope ? 0 : local.length)) {   // chưa ra gì
@@ -4018,25 +4101,52 @@
         'Siêu thị', 'Trung tâm thương mại', 'Cửa hàng tiện lợi', 'Quán cà phê',
         'Nhà hàng', 'Nhà vệ sinh', 'Trường học', 'ATM'];
 
+    /*
+     * Nút lọc nào đang được chọn. Rỗng = không nút nào.
+     *
+     * Trước đây các nút lọc KHÔNG hề có trạng thái "đang chọn" — bấm "Trạm
+     * sạc" thì kết quả đổi nhưng không nút nào sáng lên. Người dùng nhìn sang
+     * ô "Nhà riêng" đang có nền xanh và tưởng đó là nút đang chọn, trong khi
+     * nền xanh ở hàng địa điểm đã lưu mang nghĩa HOÀN TOÀN KHÁC: "chỗ này đã
+     * lưu toạ độ". Hai thứ khác nghĩa mà trông giống nhau thì người dùng đọc
+     * sai, và lỗi nằm ở chỗ thiết kế chứ không phải ở người dùng.
+     *
+     * Nay nút đang chọn tô đậm hẳn (nền chàm, chữ trắng) để không lẫn với
+     * nền xanh nhạt của địa điểm đã lưu.
+     */
+    let activeCategory = '';
+
+    function setActiveCategory(label) {
+        if (activeCategory === label) return;
+        activeCategory = label || '';
+        renderCategoryChips();
+    }
+
     function renderCategoryChips() {
         const el = $('categoryChips');
         if (!el) return;
         const cats = QUICK_CATEGORIES
             .map((n) => PLACE_CATEGORIES.find((c) => c.label === n))
             .filter(Boolean);
-        el.innerHTML = cats.map((c) => `
+        el.innerHTML = cats.map((c) => {
+            const on = c.label === activeCategory;
+            return `
             <button type="button" data-cat="${escapeHtml(c.label)}"
-                class="cat-chip shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold
-                       bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                <i class="fa-solid ${c.icon} text-slate-400"></i>
+                aria-pressed="${on ? 'true' : 'false'}"
+                class="cat-chip ${on ? 'cat-on' : ''} shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold
+                       ${on ? 'bg-indigo-600 text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}">
+                <i class="fa-solid ${c.icon} ${on ? 'text-white' : 'text-slate-400'}"></i>
                 <span>${escapeHtml(c.label)}</span>
-            </button>`).join('');
+            </button>`;
+        }).join('');
 
         el.querySelectorAll('.cat-chip').forEach((b) => b.addEventListener('click', async () => {
             const c = PLACE_CATEGORIES.find((x) => x.label === b.dataset.cat);
             if (!c) return;
             $('searchInput').value = c.label;
             renderSearchClear();
+            setActiveCategory(c.label);        // sáng lên NGAY, đừng đợi kết quả về
             renderSearchResults(await searchCategory(c));
         }));
     }
@@ -4087,7 +4197,15 @@
             btn.addEventListener('click', () => {
                 const p = loadPlaces()[id];
                 if (p) { closeModal('searchModal'); goToPlace(p); }
-                else savePlaceHere(id);        // chưa đặt → lưu vị trí hiện tại
+                /*
+                 * Chưa đặt thì MỞ BẢNG CHỌN, không lưu ngay.
+                 *
+                 * Trước đây bấm một cái là lưu thẳng vị trí GPS hiện tại vào
+                 * "Nhà riêng". Bấm nhầm lúc đang ở quán cà phê là nhà riêng
+                 * thành quán cà phê, không một lời hỏi lại — và nếu đã có nhà
+                 * riêng từ trước thì nó bị ghi đè mất luôn.
+                 */
+                else openSavePlace(id);
             });
             // Giữ lâu để xoá, tránh bấm nhầm khi đang lái
             let timer = null;
@@ -4097,25 +4215,123 @@
             ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) =>
                 btn.addEventListener(ev, () => clearTimeout(timer)));
         });
-        $('addPlaceChip')?.addEventListener('click', () => savePlaceHere(null));
+        $('addPlaceChip')?.addEventListener('click', () => openSavePlace(null));
     }
 
-    function savePlaceHere(id) {
-        if (!userLatLng) { showToast('Chưa có vị trí GPS', 'warn'); return; }
+    /* =====================================================================
+     * LƯU ĐỊA ĐIỂM — chọn mục trước, rồi mới chọn toạ độ
+     *
+     * Hai việc tách bạch: lưu VÀO ĐÂU, và lấy toạ độ TỪ ĐÂU. Gộp làm một
+     * thao tác là nguồn gốc của mọi lần đánh dấu nhầm.
+     * ===================================================================== */
+    let pickTargetId = null;        // đang chọn điểm trên bản đồ cho mục nào
+    let pickTargetLabel = '';
+
+    function slotLabel(id) {
+        const f = FIXED_PLACES.find((x) => x.id === id);
+        if (f) return f.label;
+        const p = loadPlaces()[id];
+        return p ? p.label : 'Địa điểm mới';
+    }
+
+    function openSavePlace(preset) {
+        const box = $('savePlaceSlots');
+        if (!box) return;
+        const saved = loadPlaces();
+        const custom = Object.values(saved).filter((p) => !FIXED_PLACES.some((f) => f.id === p.id));
+
+        const row = (id, label, icon, cur) => `
+            <div class="rounded-2xl border ${cur ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-700'} p-3">
+                <div class="flex items-center gap-2 mb-1">
+                    <i class="fa-solid ${icon} text-slate-400"></i>
+                    <span class="font-bold flex-1">${escapeHtml(label)}</span>
+                </div>
+                ${cur ? `<p class="text-xs text-amber-700 dark:text-amber-400 mb-2">
+                            Đang là: ${escapeHtml(cur)} — lưu mới sẽ THAY chỗ này.</p>`
+                      : '<p class="text-xs text-slate-500 mb-2">Chưa đặt.</p>'}
+                <div class="flex gap-2">
+                    <button type="button" data-save-here="${escapeHtml(id)}"
+                        class="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold">
+                        <i class="fa-solid fa-location-dot mr-1"></i>Vị trí hiện tại</button>
+                    <button type="button" data-save-pick="${escapeHtml(id)}"
+                        class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">
+                        <i class="fa-solid fa-map-location-dot mr-1"></i>Chọn trên bản đồ</button>
+                </div>
+            </div>`;
+
+        box.innerHTML =
+            FIXED_PLACES.map((f) => row(f.id, f.label, f.icon,
+                saved[f.id] ? fmtLatLon(saved[f.id]) : '')).join('') +
+            custom.map((c) => row(c.id, c.label, 'fa-star', fmtLatLon(c))).join('') +
+            row('__new', 'Địa điểm mới…', 'fa-plus', '');
+
+        $('savePlaceHint').textContent = preset
+            ? 'Bạn vừa bấm vào "' + slotLabel(preset) + '". Chọn cách lấy toạ độ, hoặc lưu vào mục khác.'
+            : 'Chọn mục cần lưu. Mục đã có sẵn sẽ bị thay, nên hãy đọc kỹ dòng màu vàng.';
+
+        box.querySelectorAll('[data-save-here]').forEach((b) =>
+            b.addEventListener('click', () => savePlaceAt(b.dataset.saveHere, null)));
+        box.querySelectorAll('[data-save-pick]').forEach((b) =>
+            b.addEventListener('click', () => startPickOnMap(b.dataset.savePick)));
+
+        closeModal('searchModal');
+        toggleModal('savePlaceModal');
+    }
+
+    const fmtLatLon = (p) => Number(p.lat).toFixed(4) + ', ' + Number(p.lon).toFixed(4);
+
+    /** Lưu vào mục id. pos=null nghĩa là lấy vị trí GPS hiện tại. */
+    function savePlaceAt(id, pos) {
+        const at = pos || userLatLng;
+        if (!at) { showToast('Chưa có vị trí GPS — hãy chọn trên bản đồ', 'warn'); return; }
+
         let label;
-        if (id) {
-            label = FIXED_PLACES.find((f) => f.id === id).label;
-        } else {
+        if (id === '__new') {
             label = (prompt('Tên địa điểm:') || '').trim();
             if (!label) return;
             id = 'p' + Date.now();
+        } else {
+            label = slotLabel(id);
         }
         const places = loadPlaces();
-        places[id] = { id, label, lat: userLatLng[0], lon: userLatLng[1] };
+        const had = places[id];
+        places[id] = { id, label, lat: at[0], lon: at[1] };
         savePlaces(places);
         renderSavedPlaces();
-        showToast('Đã lưu: ' + label);
+        closeModal('savePlaceModal');
+        showToast(had ? `Đã thay ${label} bằng vị trí mới` : `Đã lưu ${label}`);
     }
+
+    function startPickOnMap(id) {
+        if (!map) { showToast('Bản đồ chưa sẵn sàng', 'warn'); return; }
+        pickTargetId = id;
+        pickTargetLabel = id === '__new' ? 'Địa điểm mới' : slotLabel(id);
+        $('pickTarget').textContent = 'Lưu vào: ' + pickTargetLabel;
+        closeModal('savePlaceModal');
+        closeModal('searchModal');
+        setFollowCar(false);           // không để bản đồ tự bay về xe khi đang ngắm
+        $('pickLayer').classList.remove('hidden');
+    }
+
+    function cancelPick() {
+        pickTargetId = null;
+        $('pickLayer').classList.add('hidden');
+    }
+
+    function confirmPick() {
+        if (!pickTargetId || !map) { cancelPick(); return; }
+        const c = map.getCenter();
+        const id = pickTargetId;
+        cancelPick();
+        savePlaceAt(id, [c.lat, c.lng]);
+    }
+
+    /*
+     * savePlaceHere() ĐÃ BỊ BỎ. Nó lưu thẳng vị trí GPS hiện tại vào một mục
+     * chỉ với một cú bấm, ghi đè cái cũ không hỏi han. Thay bằng cặp
+     * openSavePlace() → savePlaceAt(), tách rõ "lưu vào đâu" với "lấy toạ độ
+     * từ đâu". Giữ dòng chú thích này để lần sau không ai dựng lại nó.
+     */
 
     function removePlace(id) {
         const places = loadPlaces();
@@ -4197,6 +4413,10 @@
         const el = $('searchClear');
         const input = $('searchInput');
         if (el && input) el.classList.toggle('show', !!input.value);
+        // Gõ sang chữ khác thì nút lọc không còn đúng nữa, phải tắt sáng
+        if (input && activeCategory && input.value.trim() !== activeCategory) {
+            setActiveCategory('');
+        }
     }
 
     function clearSearchText() {
@@ -5842,7 +6062,7 @@
     // =====================================================================
     // 5. MODAL: chỉ mở 1 cái, chạm nền / Esc để đóng
     // =====================================================================
-    const MODALS = ['reportModal', 'utilitiesModal', 'speedFeedbackModal', 'settingsModal', 'childWarningModal', 'searchModal'];
+    const MODALS = ['reportModal', 'utilitiesModal', 'speedFeedbackModal', 'settingsModal', 'childWarningModal', 'searchModal', 'savePlaceModal'];
     const isModalOpen = (id) => !$(id).classList.contains('hidden');
 
     function openModal(id) {
