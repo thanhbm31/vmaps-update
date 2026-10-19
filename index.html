@@ -1166,9 +1166,23 @@
             bản đồ đang sống bên dưới — việc nặng nhất trong cả màn hình, mà
             chẳng để làm gì vì bảng che gần kín rồi. Nền đục kín thì trình
             duyệt bỏ qua được phần bản đồ bên dưới. -->
-    <div id="searchModal" class="modal fixed inset-0 z-50 hidden flex-col justify-end">
+    <div id="searchModal" class="modal fixed inset-0 z-50 hidden flex-col">
+        <!-- CHỪA LỀ TRÊN theo vùng an toàn của máy.
+             Bảng cũ neo ở đáy nên không bao giờ chạm mép trên. Cho cao hết
+             màn hình mà quên lề trên thì ô tìm kiếm nằm đè lên thanh trạng
+             thái (giờ, pin, sóng) — bấm vào ô là trúng thanh kéo xuống của
+             hệ điều hành. var(--sat) là vùng an toàn trên; cộng thêm một
+             khoảng cho chỗ bấm thoải mái.
+
+             28px CỘNG THÊM, không phải chỉ var(--sat): app chạy ở chế độ toàn
+             màn hình (immersive) nên trên máy không có tai thỏ, env(safe-area-
+             inset-top) trả về 0 — chừa lề theo nó thôi thì vẫn dính mép trên,
+             đúng như đang bị. Mà thanh trạng thái vẫn hiện đè lên khi bàn
+             phím bật. 28px đủ qua thanh trạng thái Android (~24dp). -->
         <div class="bg-white dark:bg-slate-900 w-full shadow-2xl flex flex-col"
-             style="padding-bottom: calc(var(--sab) + 0.5rem); height: 100dvh; max-height: 100dvh;">
+             style="padding-top: calc(var(--sat) + 28px);
+                    padding-bottom: calc(var(--sab) + 0.5rem);
+                    box-sizing: border-box; flex: 1 1 auto; min-height: 0;">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
@@ -1205,7 +1219,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '70c5aac';
+    const BUILD_TAG = 'e63ac56';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3889,7 +3903,26 @@
             if (q.length >= 5 && inner.test(key)) return 'inner';
             return null;
         };
-        const kindScore = { exact: 100, start: 100, inner: 85 };
+        /* =================================================================
+         * TÊN TRƠ THÌ TRA DANH BẠ TOÀN QUỐC TRƯỚC, RỒI MỚI TỚI 30 KM QUANH XE
+         *
+         * Gõ "Hưng Yên" mà tỉnh Hưng Yên nằm cuối danh sách, trên nó là mấy
+         * cửa hàng tên "Hưng Yến" ngay gần. Lý do đo được: dòng danh bạ trong
+         * máy mang điểm CỐ ĐỊNH 100, còn một cửa hàng khớp tên được 100 điểm
+         * khớp cộng 6 điểm thứ hạng của kho địa điểm — 106 > 100, thế là
+         * tỉnh thua một hàng tạp hoá.
+         *
+         * Luật đúng, theo đúng cách người dùng mô tả: một cái tên KHÔNG kèm
+         * từ chỉ loại ("Hưng Yên") trước hết phải được hỏi "có phải tỉnh,
+         * thành phố, hay địa danh nổi tiếng toàn quốc không?". Có thì nó là
+         * câu trả lời, bất kể cách đó bao xa. Không thì mới tìm quanh xe.
+         *
+         * Vì vậy điểm ở đây phải CAO HƠN HẲN mọi điểm chấm theo tên (tối đa
+         * 112) cộng thứ hạng kho (tối đa 6). Còn câu CÓ từ chỉ loại ("hưng
+         * yến tạp hoá", "phở bò hưng yến") thì không khớp vào đây, vì phép
+         * khớp đòi cả câu phải là tên địa danh đó.
+         * ================================================================= */
+        const kindScore = { exact: 300, start: 300, inner: 200 };
 
         const out = [];
         let city = null;
