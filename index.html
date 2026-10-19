@@ -1195,7 +1195,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'd3dcb2b';
+    const BUILD_TAG = 'f34ddf7';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2493,6 +2493,9 @@
             return {
                 lat, lon,
                 display_name: nm ? (where ? nm + ', ' + where : nm) : (where || query),
+                // Loại của dòng này, để phần xếp hạng đưa địa danh lên trước
+                _kind: [p.feature_type, ...(Array.isArray(p.poi_category) ? p.poi_category : [])]
+                    .filter(Boolean).join(' ').toLowerCase(),
                 _dist: haversine(here[0], here[1], lat, lon)
             };
         }).filter(Boolean).map((r, i) => {
@@ -2559,6 +2562,7 @@
                 return {
                     lat, lon,
                     display_name: where ? nm + ', ' + where : nm,
+                    _kind: [p.osm_key, p.osm_value, p.type].filter(Boolean).join(' ').toLowerCase(),
                     _dist: haversine(here[0], here[1], lat, lon)
                 };
             }).filter(Boolean);
@@ -2595,7 +2599,11 @@
             // full_address có cả tỉnh/thành, đúng thứ ô mô tả bên dưới cần
             const name = p.full_address || p.place_formatted
                 || [p.name, p.place_formatted].filter(Boolean).join(', ') || p.name || '';
-            return { lat, lon, display_name: name || query, _dist: haversine(here[0], here[1], lat, lon) };
+            return {
+                lat, lon, display_name: name || query,
+                _kind: String(p.feature_type || '').toLowerCase(),
+                _dist: haversine(here[0], here[1], lat, lon)
+            };
         }).filter(Boolean);
 
         rows.sort((a, b) => a._dist - b._dist);
@@ -2944,6 +2952,33 @@
         }).filter(Boolean);
     }
 
+    /**
+     * Tra theo ĐÚNG TÊN NHÓM, bù cho chỗ hổng của lượt hỏi theo thẻ.
+     *
+     * Lượt theo thẻ bị giới hạn ở 25 chỗ gần nhất, nên ở vùng có nhiều cơ sở
+     * nhỏ thì cơ sở lớn hơn một chút ở xa hơn không bao giờ có mặt. Hỏi theo
+     * tên thì không phụ thuộc vào việc có bao nhiêu chỗ nhỏ chen trước.
+     *
+     * Dùng chính nhãn tiếng Việt của nhóm ("Bệnh viện", "Trạm sạc") và từ
+     * khoá người dùng hay gõ, giữ tối đa 2 câu để không phình số lượt gọi.
+     */
+    async function searchCategoryByName(cat, here, km) {
+        if (!useMapbox() || !cat) return [];
+        const qs = [];
+        const add = (t) => {
+            const v = String(t || '').trim();
+            if (v.length >= 3 && !qs.some((x) => x.toLowerCase() === v.toLowerCase())) qs.push(v);
+        };
+        add(cat.label);
+        (cat.brands || []).slice(0, 1).forEach(add);
+        let out = [];
+        for (const q of qs.slice(0, 2)) {
+            out = out.concat(await searchMapboxPoi(q, here, km));
+        }
+        out.forEach((r) => { r._cat = cat.label; });
+        return out;
+    }
+
     async function searchCategory(cat, gen) {
         if (gen == null) gen = newSearch();
         const here = await gpsForSearch();
@@ -2964,21 +2999,43 @@
             return [];
         }
 
-        // Mapbox trước — ổn định hơn Overpass công cộng rất nhiều.
-        // Một lượt duy nhất ở bán kính tối đa; xếp theo khoảng cách lo phần
-        // "gần ra trước".
-        for (const km of [CATEGORY_MAX_KM]) {
+        /* ------------------------------------------------------------------
+         * Mapbox trước — ổn định hơn Overpass công cộng rất nhiều.
+         *
+         * HAI LƯỢT, KHÔNG MỘT LƯỢT. Trước đây chỉ hỏi theo THẺ NHÓM, và
+         * Mapbox trả về 25 chỗ GẦN NHẤT trong 30 km. Đứng ở Kim Thành thì 25
+         * chỗ gần nhất là phòng khám, trạm y tế xã và một bệnh viện khác —
+         * hết chỗ trước khi tới Bệnh viện Kim Thành ở 9 km. Bán kính đã là 30
+         * km từ trước, nên nới thêm cũng không cứu được: cái chặn là 25 CHỖ
+         * GẦN NHẤT, không phải bán kính.
+         *
+         * Nên hỏi thêm một lượt theo ĐÚNG TÊN NHÓM ("bệnh viện"). Lượt đó
+         * tìm theo tên nên một bệnh viện ở 9 km vẫn ra, dù trước nó có bao
+         * nhiêu phòng khám. Gộp hai lượt, rồi xếp hạng như cũ: thứ mang đúng
+         * tên nhóm lên bậc 0, phòng khám / trạm y tế xuống bậc 2, trong cùng
+         * bậc mới xét gần xa. Đúng thứ tự người dùng yêu cầu: quét 30 km
+         * trước, rồi mới lọc cái nào giống từ khoá nhất cho lên đầu.
+         * ------------------------------------------------------------------ */
+        {
+            const km = CATEGORY_MAX_KM;
             try {
-                const mb = await searchMapboxCategory(cat, here, km);
+                let mb = await searchMapboxCategory(cat, here, km);
+                if (searchStale(gen)) return [];
+                try {
+                    mb = mb.concat(await searchCategoryByName(cat, here, km));
+                } catch (e) {
+                    console.warn('Mapbox tra tên nhóm:', e);
+                }
                 if (searchStale(gen)) return [];
                 if (mb.length) {
+                    // Trần cứng: bbox không phải lúc nào cũng được tôn trọng
+                    mb = dedupeByCoord(mb).filter((r) => r._dist <= km * 1000);
                     const kept = strictFilter(mb, cat);
                     rankCategoryRows(kept, cat);
                     return kept.slice(0, CAT_LIST_SIZE);
                 }
             } catch (e) {
                 console.warn('Mapbox tìm nhóm:', e);
-                break;      // lỗi khoá/hạn mức thì lượt sau cũng vậy
             }
         }
 
@@ -3574,21 +3631,20 @@
              * tan thuan" không khớp "Khu chế xuất Tân Thuận". Đó chính là lý
              * do đường tra OSM theo tên không cứu được gì.
              */
+            /*
+             * Cắt tên thành phố ra khỏi câu BẰNG CÁCH SO BẢN BỎ DẤU.
+             *
+             * Cách cũ cắt bằng regex tên CÓ DẤU ("Hà Nội"), nên câu gõ không
+             * dấu thì không cắt được gì: "Lotteria Ha Noi" được đem đi tra
+             * nguyên văn và chỉ ra 1 kết quả, trong khi "Lotteria Hà Nội"
+             * (cắt được, còn lại "Lotteria") ra rất nhiều. Đúng chỗ người
+             * dùng gọi là "chưa đồng nhất có dấu và không dấu".
+             *
+             * dropPhrase so theo bản bỏ dấu nên cắt được cả hai kiểu gõ, mà
+             * phần còn lại vẫn giữ nguyên dấu — thứ mà tra tên trong OSM cần.
+             */
             const full = String(query || '');
-            let restRaw = full.split(/[,;]/)
-                .filter((part) => {
-                    const pn = noAccent(part).replace(ADMIN_PREFIX, '').trim();
-                    return pn && pn !== key;
-                })
-                .join(', ').trim();
-            // Tên thành phố viết liền trong câu (không có dấu phẩy ngăn)
-            if (noAccent(restRaw).replace(ADMIN_PREFIX, '').trim() === q) {
-                const acc = VN_ACCENT_MAP.get(key) || '';
-                if (acc) {
-                    restRaw = restRaw.replace(new RegExp(acc.replace(RE_ESC, '\\$&'), 'gi'), ' ')
-                        .replace(/\s+/g, ' ').replace(/[,;]\s*$/, '').trim();
-                }
-            }
+            let restRaw = stripAdminWords(dropPhrase(full, key));
             if (restRaw.length < 3) restRaw = rest;
             return { name: row[0], g: [row[1], row[2]], rest, restRaw };
         }
@@ -3655,6 +3711,94 @@
      * xếp theo khoảng cách tới người tìm — đi từ Phú Thọ về Hà Nội thì Mỹ
      * Đình lên trước, từ Hải Phòng lên thì Hoàn Kiếm lên trước.
      */
+    /* =====================================================================
+     * ĐỊA ĐIỂM GHIM SẴN — toạ độ do người dùng cung cấp, không hỏi mạng
+     *
+     * Vì sao cần: nhà máy VinFast Hải Phòng đã ĐỔI TÊN thành "Công ty cổ
+     * phần thương mại và sản xuất VinFast". Các kho tìm kiếm còn giữ tên cũ
+     * (hoặc không có gì), nên gõ "nhà máy VinFast" ra sai hoặc không ra. Toạ
+     * độ cổng thì không kho nào có — mà người lái cần đúng cái cổng, không
+     * phải một điểm giữa khu đất.
+     *
+     * Những dòng này luôn đứng đầu danh sách và không cần mạng.
+     *
+     * CẨN THẬN VỚI "NHÀ MÁY" KHÔNG DẤU: "nha may" cũng là "nhà may" (may đo)
+     * và dễ kéo theo công ty may mặc. Nên điều kiện bắt buộc là phải có chữ
+     * "vinfast" trong câu; chỉ "nhà máy" trơ thì KHÔNG khớp dòng nào ở đây.
+     * ===================================================================== */
+    const VINFAST_HP_GATE = [20.80715729952948, 106.87128170198282];
+    const VINFAST_HP_GATE2 = [20.80643374979639, 106.87395519999649];
+    const VINFAST_HT = [18.063650181461895, 106.41737520224419];
+
+    const PINNED_PLACES = [
+        {
+            id: 'vf-hp-main',
+            name: 'Công ty cổ phần thương mại và sản xuất VinFast — cổng chính',
+            where: 'Cát Hải, Hải Phòng',
+            at: VINFAST_HP_GATE,
+            prov: 'hai phong'
+        },
+        {
+            id: 'vf-hp-side',
+            name: 'Công ty cổ phần thương mại và sản xuất VinFast — cổng phụ',
+            where: 'Cát Hải, Hải Phòng',
+            at: VINFAST_HP_GATE2,
+            prov: 'hai phong'
+        },
+        {
+            id: 'vf-ht',
+            name: 'Nhà máy sản xuất VinFast Hà Tĩnh',
+            where: 'Vũng Áng, Hà Tĩnh',
+            at: VINFAST_HT,
+            prov: 'ha tinh'
+        }
+    ];
+
+    // Chữ cho biết người ta đang tìm NHÀ MÁY, không phải nhà may hay may mặc
+    const FACTORY_WORDS = /\b(nha may|factory|san xuat|xuong|cong ty)\b/;
+    // Chữ tố giác đây là nghề may, không phải nhà máy. Dùng để dìm kết quả lạc.
+    const TAILOR_WORDS = /\b(may mac|nha may do|may do|thoi trang|garment|det may|quan ao|vai)\b/;
+
+    /**
+     * Dòng ghim sẵn khớp với câu gõ. Có dấu hay không đều khớp, vì so trên
+     * bản bỏ dấu.
+     */
+    function pinnedPlaces(query, here) {
+        const q = noAccent(query).replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!q.includes('vinfast')) return [];
+
+        const bare = q === 'vinfast';
+        const wantsFactory = bare || FACTORY_WORDS.test(q) || /\boto|o to|car|xe\b/.test(q);
+        if (!wantsFactory) return [];
+
+        const saysHaTinh = /ha tinh/.test(q);
+        const saysHaiPhong = /hai phong/.test(q);
+        const saysGate = /\bcong\b|\bcong chinh\b|\bcong phu\b|gate/.test(q);
+
+        let rows = PINNED_PLACES.filter((pl) => {
+            if (saysHaTinh && !saysHaiPhong) return pl.prov === 'ha tinh';
+            if (saysHaiPhong && !saysHaTinh) return pl.prov === 'hai phong';
+            /*
+             * Không nói rõ tỉnh nào: hiện CẢ HAI nhà máy, đúng yêu cầu "chỉ
+             * tìm nhà máy VinFast thì hiện cả Hải Phòng và Hà Tĩnh". Cổng phụ
+             * chỉ hiện khi người ta hỏi tới cổng, để danh sách không bị hai
+             * dòng gần như y nhau chen lên đầu.
+             */
+            return pl.id !== 'vf-hp-side' || saysGate;
+        });
+
+        return rows.map((pl, i) => ({
+            lat: pl.at[0], lon: pl.at[1],
+            display_name: pl.name + ', ' + pl.where,
+            _local: true,
+            _pinned: true,
+            // Trên mọi kết quả hỏi được từ mạng, và cổng chính trên cổng phụ
+            _score: 200 - i,
+            _kind: 'place',
+            _dist: here ? haversine(here[0], here[1], pl.at[0], pl.at[1]) : 0
+        }));
+    }
+
     function localPlaces(query, here) {
         // "Thành phố Hồ Chí Minh" và "Hồ Chí Minh" phải là một
         let q = noAccent(query).replace(ADMIN_PREFIX, '').trim();
@@ -3690,10 +3834,21 @@
         return out;
     }
 
-    /** Có dấu rồi thì để nguyên; chưa có thì thử thêm dấu cho tên tỉnh thành. */
+    /**
+     * Thêm dấu cho những tên tỉnh thành đang viết trơ trong câu.
+     *
+     * KHÔNG được bỏ cuộc chỉ vì câu đã có dấu một phần. Cách cũ thoát ngay
+     * khi thấy bất kỳ dấu nào, nên "TP HCM" — sau khi mở viết tắt thành
+     * "Thành phố HCM" — bị coi là "đã có dấu" và chữ HCM không bao giờ được
+     * đổi thành "Hồ Chí Minh". Kết quả: gõ "TP HCM" ra khác gõ "Hồ Chí
+     * Minh", đúng chỗ người dùng nói chưa đồng nhất.
+     *
+     * Chạy trên câu đã có dấu không gây hại: biểu thức chỉ khớp những khoá
+     * VIẾT TRƠ, chữ đã có dấu không khớp khoá nào.
+     */
     function addVnAccents(q) {
         const s = (q || '').trim();
-        if (!s || noAccent(s) !== s.toLowerCase()) return '';   // đã có dấu
+        if (!s) return '';
         let out = s;
         let hit = false;
         for (const key of VN_ACCENT_KEYS) {
@@ -3712,6 +3867,98 @@
      * không "Thành phố Hà Nội" sẽ không trùng với câu gõ "Hà Nội".
      */
     const ADMIN_PREFIX = /^(thanh pho|tp\.?|tinh|quan|huyen|thi xa|thi tran|phuong|xa|duong|pho)\s+/;
+
+    /* =====================================================================
+     * CÓ DẤU / KHÔNG DẤU PHẢI RA CÙNG MỘT KẾT QUẢ
+     *
+     * Ba lỗi người dùng báo đều cùng một gốc: câu gõ vào được "chữa" một
+     * nửa rồi gửi nguyên cho máy tìm kiếm.
+     *
+     *  - "Thanh pho da nang": addVnAccents chỉ thêm dấu cho tên tỉnh thành,
+     *    nên câu gửi đi là "Thanh pho Đà Nẵng" — nửa có dấu nửa không. Máy
+     *    tìm kiếm thấy chữ "pho" không dấu và trả về PHỐ Đà Nẵng ở Thuỷ
+     *    Nguyên, Hải Phòng. Đúng chữ nó được hỏi, sai hoàn toàn ý người hỏi.
+     *  - "Lotteria Ha Noi" ra 1 kết quả, "Lotteria Hà Nội" ra nhiều: phần
+     *    cắt tên thành phố ra khỏi câu dùng regex CÓ DẤU, nên với câu không
+     *    dấu nó không cắt được gì, và "Lotteria Ha Noi" được đem đi tra
+     *    nguyên văn trong phạm vi Hà Nội.
+     *  - "Hồ Chí Minh" ra nhiều hơn "Thành phố Hồ Chí Minh": chữ "Thành
+     *    phố" được giữ lại trong câu hỏi và làm lệch kết quả.
+     *
+     * Cách sửa: tách từ, so khớp theo bản BỎ DẤU, nhưng giữ nguyên dấu ở
+     * phần còn lại. Nhờ vậy "thành phố", "tp", "tỉnh" bị bỏ dù gõ có dấu
+     * hay không, và tên thành phố cũng cắt được ra khỏi câu dù gõ kiểu nào.
+     * ===================================================================== */
+    const ADMIN_WORDS = ['thanh pho', 'tp', 'tinh', 'thi xa', 'thi tran'];
+
+    /** Tách thành từ, kèm bản bỏ dấu của từng từ. */
+    function words(text) {
+        return String(text || '').split(/\s+/).filter(Boolean)
+            .map((w) => ({ raw: w, na: noAccent(w).replace(/[.,;]/g, '') }));
+    }
+
+    /**
+     * Bỏ cụm từ `phraseNa` (đã bỏ dấu) khỏi câu, GIỮ NGUYÊN DẤU phần còn lại.
+     * So khớp theo bản bỏ dấu nên gõ kiểu nào cũng cắt được.
+     */
+    function dropPhrase(text, phraseNa) {
+        const want = String(phraseNa || '').trim().split(/\s+/).filter(Boolean);
+        if (!want.length) return String(text || '').trim();
+        const ws = words(text);
+        const out = [];
+        for (let i = 0; i < ws.length;) {
+            let hit = true;
+            for (let k = 0; k < want.length; k++) {
+                if (!ws[i + k] || ws[i + k].na !== want[k]) { hit = false; break; }
+            }
+            if (hit) { i += want.length; continue; }
+            out.push(ws[i].raw);
+            i++;
+        }
+        return out.join(' ').replace(/\s*,\s*,/g, ',').replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
+    }
+
+    /** Bỏ "thành phố", "tp", "tỉnh"… ở bất cứ đâu trong câu, giữ nguyên dấu. */
+    function stripAdminWords(text) {
+        let out = String(text || '').trim();
+        for (const w of ADMIN_WORDS) out = dropPhrase(out, w);
+        return out.trim();
+    }
+
+    /**
+     * Mọi cách hỏi của cùng một câu, xếp theo thứ tự ưu tiên:
+     * bản CÓ DẤU và đã bỏ chữ đệm hành chính trước, rồi mới tới bản gõ thô.
+     *
+     * Dùng CẢ danh sách này đi hỏi rồi gộp kết quả — không chọn một bản rồi
+     * bỏ các bản kia, vì mỗi kho dữ liệu nhạy với một kiểu gõ khác nhau.
+     */
+    function queryForms(raw) {
+        const expanded = expandAbbrev(String(raw || '').trim());
+        const accented = addVnAccents(expanded);
+        const forms = [];
+        const push = (t, acc) => {
+            const v = String(t || '').trim();
+            if (v.length < 2) return;
+            if (forms.some((f) => f.q.toLowerCase() === v.toLowerCase())) return;
+            forms.push({ q: v, accented: !!acc });
+        };
+        /*
+         * MỌI bản đều bỏ chữ đệm hành chính.
+         *
+         * Giữ lại bản "còn nguyên chữ đệm" chính là giữ lại câu nửa có dấu
+         * nửa không ("Thanh pho Đà Nẵng") — thứ làm kho tìm kiếm bắt chữ
+         * "pho" và trả về Phố Đà Nẵng ở Thuỷ Nguyên. Chữ "thành phố",
+         * "tỉnh" không mang thêm thông tin tìm kiếm nào: "Thành phố Hồ Chí
+         * Minh" và "Hồ Chí Minh" là cùng một nơi.
+         *
+         * Tên phố thật như "Phố Huế" KHÔNG bị ảnh hưởng: danh sách chỉ có
+         * "thành phố", "tp", "tỉnh", "thị xã", "thị trấn" — không có "phố".
+         */
+        push(stripAdminWords(accented || expanded), !!accented);
+        push(stripAdminWords(expanded), false);
+        push(stripAdminWords(raw), false);
+        return forms;
+    }
 
     /**
      * Câu gõ khớp với tên này tới mức nào. Càng cao càng sát.
@@ -3774,6 +4021,18 @@
     }
 
     function filterByPhrase(rows, query) {
+        // Dòng ghim sẵn là toạ độ do người dùng cung cấp — không đem đi so
+        // chữ với câu gõ, vì tên chính thức có thể chẳng chứa cụm nào trong
+        // câu ("nhà máy VinFast" vs "Công ty cổ phần thương mại và sản xuất").
+        const keepPinned = rows.filter((r) => r._pinned);
+        if (keepPinned.length) {
+            const rest = filterByPhraseInner(rows.filter((r) => !r._pinned), query);
+            return keepPinned.concat(rest);
+        }
+        return filterByPhraseInner(rows, query);
+    }
+
+    function filterByPhraseInner(rows, query) {
         const core = corePhrase(query);
         // Một chữ thì lọc quá tay: "Vinh", "Huế" vốn hay nằm trong tên dài hơn
         if (!core || core.split(' ').length < 2) return rows;
@@ -3828,6 +4087,28 @@
      * Hải Phòng vẫn ra Vincom Hải Phòng trước Vincom Hà Nội, mà gõ "Hà Nội"
      * thì thành phố Hà Nội vẫn lên đầu dù ở xa.
      */
+    /* =====================================================================
+     * ĐỊA DANH LÊN TRƯỚC, RỒI MỚI TỚI KM
+     *
+     * Gõ "Đà Nẵng" thì thứ người ta muốn là THÀNH PHỐ Đà Nẵng, không phải
+     * một cửa hàng hay con phố mang tên Đà Nẵng ở ngay gần. Khớp tên như
+     * nhau mà chỉ còn khoảng cách phân định thì cái gần luôn thắng — nên
+     * địa danh (tỉnh, thành, quận, huyện, phường, xã, khu dân cư) được cộng
+     * điểm để nổi lên trước, sau đó trong cùng một bậc mới xét gần xa.
+     * ===================================================================== */
+    const PLACE_KINDS = [
+        'region', 'district', 'place', 'locality', 'neighborhood', 'municipality',
+        'city', 'town', 'village', 'county', 'state', 'suburb', 'quarter',
+        'borough', 'administrative', 'boundary', 'province'
+    ];
+    const PLACE_BONUS = 25;
+
+    function rowIsPlace(r) {
+        const k = [r._kind, r.class, r.type].filter(Boolean).join(' ').toLowerCase();
+        if (!k) return false;
+        return PLACE_KINDS.some((w) => k.includes(w));
+    }
+
     function rankByName(rows, query) {
         // Dòng từ danh bạ trong máy đã mang sẵn điểm: thành phố 100, điểm nổi
         // bật của thành phố đó 90. Chấm lại theo tên sẽ dìm chúng xuống đáy,
@@ -3835,6 +4116,7 @@
         rows.forEach((r) => {
             if (r._score == null) {
                 r._score = nameScore(query, r.display_name || '') + (r._poiRank || 0);
+                if (rowIsPlace(r)) r._score += PLACE_BONUS;
             }
         });
 
@@ -3912,6 +4194,38 @@
         const accented = addVnAccents(expanded);
         const looksLikeStreet = looksLikeStreetQuery(raw);
 
+        /*
+         * Mọi cách hỏi của cùng một câu, bản có dấu và đã bỏ chữ đệm hành
+         * chính đứng đầu. HỎI HẾT rồi gộp — đúng yêu cầu "gõ không dấu hay
+         * gõ thiếu TP thì tự tìm tất cả phương án và ghép lại".
+         */
+        const forms = queryForms(raw);
+        const canon = forms.length ? forms[0].q : raw;
+
+        /*
+         * Dòng ghim sẵn (toạ độ cổng nhà máy VinFast) chen lên ĐẦU cả hai
+         * nhánh. Để trong localPlaces thì nhánh nút chọn nhanh và nhánh tên
+         * trơ thương hiệu không bao giờ thấy — mà gõ trơ "vinfast" chính là
+         * đường đi vào nhánh tên trơ.
+         */
+        const pinned = pinnedPlaces(raw, here);
+
+        /*
+         * Hỏi nhà máy thì phải DÌM nghề may xuống.
+         *
+         * Bỏ dấu đi thì "nhà máy" và "nhà may" là một chuỗi, nên câu hỏi về
+         * nhà máy rất dễ kéo theo công ty may mặc, cửa hàng may đo.
+         */
+        const wantsFactory = FACTORY_WORDS.test(noAccent(raw)) && !TAILOR_WORDS.test(noAccent(raw));
+        const dropTailors = (list) => {
+            if (!wantsFactory) return list;
+            list.forEach((r) => {
+                if (r._pinned) return;
+                if (TAILOR_WORDS.test(noAccent(r.display_name || ''))) r._score = (r._score || 0) - 60;
+            });
+            return list;
+        };
+
         // Các cách hỏi, thử lần lượt. Bỏ trùng để khỏi hỏi hai lần cùng một câu.
         const variants = [];
         const push = (s) => {
@@ -3970,7 +4284,7 @@
                      * địa điểm là hỏi sai hẳn: ở đó không có cơ sở nào tên
                      * "Đường VinFast", nên lại ra rỗng y như trước.
                      */
-                    let mb = await searchMapboxPoi(accented || expanded || raw, here, km);
+                    let mb = await searchMapboxPoi(canon, here, km);
                     if (!mb.length) {
                         for (const q of variants) {
                             mb = await searchMapbox(q, here, km);
@@ -4008,7 +4322,7 @@
             rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
             // Trần cứng: bounded của Nominatim không phải lúc nào cũng được tôn trọng
             rows = rows.filter((r) => r._dist <= maxKm * 1000);
-            rows = filterByPhrase(rows, accented || expanded || raw);
+            rows = filterByPhrase(rows, canon);
             if (hint) rankCategoryRows(rows, hint);
             else {
                 /*
@@ -4016,11 +4330,13 @@
                  * rồi mới tới gần xa — đúng yêu cầu "tìm theo tên cụ thể thì
                  * show kết quả theo tên đúng trước rồi mới theo km".
                  */
-                const core = corePhrase(accented || expanded || raw);
-                if (core && core.split(' ').length >= 2) rankByName(rows, accented || expanded || raw);
+                const core = corePhrase(canon);
+                if (core && core.split(' ').length >= 2) rankByName(rows, canon);
                 else rows.sort((a, b) => a._dist - b._dist);
             }
-            return rows.slice(0, 12);
+            dropTailors(rows);
+            rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || (a._dist - b._dist));
+            return dedupeByCoord(pinned.concat(rows)).slice(0, 12);
         }
 
         // ------------------------------------------------------------------
@@ -4043,8 +4359,7 @@
          * không bao giờ được gửi đi. Hỏi hết, gộp lại, rồi để phần chấm
          * điểm tên dọn dẹp — rác được 0 điểm nên tự rơi xuống đáy.
          */
-        const base = accented || expanded || raw;
-        const nearQueries = looksLikeStreet ? ['Đường ' + base, base] : [base];
+        const base = canon;
 
         /*
          * Câu đã ghi rõ tỉnh thành thì MỌI lượt hỏi lấy nơi đó làm tâm, và
@@ -4057,9 +4372,34 @@
         const local = localPlaces(base, here);   // danh bạ trong máy: luôn có, không cần mạng
         let rows = scope ? [] : local.slice();
 
-        // Tên cần tìm, đã bỏ phần tỉnh thành và GIỮ NGUYÊN DẤU
-        const target = scope ? scope.restRaw : base;
         const nearKm = scope ? SCOPE_KM : NEAR_PASS_KM;
+
+        /*
+         * Hỏi NHIỀU CÁCH rồi gộp, không chọn một cách rồi bỏ các cách khác.
+         *
+         * Mỗi kho dữ liệu nhạy với một kiểu gõ khác nhau: kho địa điểm của
+         * Mapbox chịu được gõ không dấu khá tốt, kho địa chỉ thì cần đúng
+         * dấu, Photon lại tìm mờ. Trước đây chỉ một bản được gửi đi nên kết
+         * quả phụ thuộc vào việc người dùng có bỏ dấu hay không — đúng chỗ
+         * "chưa đồng nhất".
+         *
+         * Giới hạn 2 cách để số lượt gọi mạng không phình ra: bản chuẩn (có
+         * dấu, đã bỏ chữ đệm) và bản gõ thô. Thường hai bản này trùng nhau
+         * nên phần lớn trường hợp vẫn chỉ một lượt như trước.
+         */
+        const askForms = (scope ? queryForms(scope.restRaw) : forms).slice(0, 2);
+        const askList = askForms.map((f) => f.q);
+        const nearQueries = looksLikeStreet
+            ? ['Đường ' + askList[0], ...askList]
+            : askList.slice();
+
+        /*
+         * Tên cần tìm dùng để CHẤM ĐIỂM: lấy bản chuẩn (có dấu, đã bỏ chữ
+         * đệm và bỏ tên tỉnh thành). Chấm điểm theo bản gõ thô thì câu gõ
+         * không dấu lại cho điểm khác câu gõ có dấu — vẫn là cái lệch cũ,
+         * chỉ chuyển từ lúc hỏi sang lúc xếp hạng.
+         */
+        const target = askList[0] || base;
         /*
          * "Đã tìm thấy" chỉ tính kết quả TRỰC TUYẾN.
          *
@@ -4098,10 +4438,12 @@
          * hỏi tới. Tốn thêm một lượt gọi, đổi lại không mất kết quả.
          */
         if (useMapbox()) {
-            try {
-                rows = rows.concat(await searchMapboxPoi(target, anchor, nearKm));
-            } catch (e) {
-                console.warn('Mapbox địa điểm:', e);
+            for (const q of askList) {
+                try {
+                    rows = rows.concat(await searchMapboxPoi(q, anchor, nearKm));
+                } catch (e) {
+                    console.warn('Mapbox địa điểm:', e);
+                }
             }
             try {
                 for (const q of nearQueries) {
@@ -4196,7 +4538,9 @@
             });
             rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         }
-        return rows.slice(0, 12);
+        dropTailors(rows);
+        rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || (a._dist - b._dist));
+        return dedupeByCoord(pinned.concat(rows)).slice(0, 12);
     }
 
     /**
