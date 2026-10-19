@@ -1096,7 +1096,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'e91d20d';
+    const BUILD_TAG = 'f9de89a';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2836,131 +2836,251 @@
      *              tìm cả nước — dùng khi tìm theo nhóm, vì "siêu thị gần
      *              nhất" mà ra tỉnh khác là sai hẳn ý người hỏi.
      */
+    /*
+     * Bảng chữ có dấu cho các tên tỉnh, thành phố hay gõ.
+     *
+     * Gõ "Ha Noi" phải ra Hà Nội. Không thể tự thêm dấu cho tiếng Việt nói
+     * chung — "ma" có thể là ma, má, mà, mã, mạ — nhưng tên tỉnh thành là
+     * một danh sách đóng và ngắn, nên tra bảng được.
+     *
+     * Đây chỉ là CÂU HỎI THÊM: tên gốc vẫn được hỏi song song, kết quả gộp
+     * lại. Nên một dòng sai hay thừa trong bảng cũng không làm mất kết quả.
+     * Giữ cả tên cũ lẫn tên mới sau sáp nhập, vì người ta vẫn gõ tên cũ.
+     */
+    const VN_PLACE_NAMES = [
+        'Hà Nội', 'Hải Phòng', 'Hồ Chí Minh', 'Sài Gòn', 'Đà Nẵng', 'Cần Thơ', 'Huế',
+        'Hải Dương', 'Quảng Ninh', 'Hạ Long', 'Thanh Hoá', 'Nghệ An', 'Vinh', 'Hà Tĩnh',
+        'Quảng Bình', 'Quảng Trị', 'Quảng Nam', 'Quảng Ngãi', 'Bình Định', 'Quy Nhơn',
+        'Phú Yên', 'Khánh Hoà', 'Nha Trang', 'Ninh Thuận', 'Bình Thuận', 'Lâm Đồng',
+        'Đà Lạt', 'Đắk Lắk', 'Đắk Nông', 'Gia Lai', 'Kon Tum', 'Bình Dương', 'Bình Phước',
+        'Đồng Nai', 'Tây Ninh', 'Bà Rịa', 'Vũng Tàu', 'Long An', 'Tiền Giang', 'Bến Tre',
+        'Vĩnh Long', 'Đồng Tháp', 'An Giang', 'Kiên Giang', 'Phú Quốc', 'Cà Mau',
+        'Bạc Liêu', 'Sóc Trăng', 'Trà Vinh', 'Hậu Giang', 'Lào Cai', 'Sa Pa', 'Yên Bái',
+        'Tuyên Quang', 'Hà Giang', 'Cao Bằng', 'Lạng Sơn', 'Bắc Giang', 'Bắc Ninh',
+        'Bắc Kạn', 'Thái Nguyên', 'Điện Biên', 'Lai Châu', 'Sơn La', 'Hoà Bình',
+        'Phú Thọ', 'Vĩnh Phúc', 'Hà Nam', 'Nam Định', 'Thái Bình', 'Ninh Bình', 'Hưng Yên'
+    ];
+    const VN_ACCENT_MAP = (() => {
+        const m = new Map();
+        for (const n of VN_PLACE_NAMES) m.set(noAccent(n), n);
+        return m;
+    })();
+    // Khớp cụm dài trước: "ha giang" phải thắng "ha" nếu sau này có mục một chữ
+    const VN_ACCENT_KEYS = [...VN_ACCENT_MAP.keys()].sort((a, b) => b.length - a.length);
+
+    /** Có dấu rồi thì để nguyên; chưa có thì thử thêm dấu cho tên tỉnh thành. */
+    function addVnAccents(q) {
+        const s = (q || '').trim();
+        if (!s || noAccent(s) !== s.toLowerCase()) return '';   // đã có dấu
+        let out = s;
+        let hit = false;
+        for (const key of VN_ACCENT_KEYS) {
+            // Ranh giới bằng \p{L}: \b của JS không nhận ra chữ "đ"
+            const re = new RegExp('(^|[^\\p{L}])' + key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                + '(?![\\p{L}])', 'giu');
+            if (!re.test(out)) continue;
+            out = out.replace(re, (_, pre) => pre + VN_ACCENT_MAP.get(key));
+            hit = true;
+        }
+        return hit ? out : '';
+    }
+
+    /*
+     * Những chữ đứng trước tên hành chính. Phải bỏ đi trước khi so khớp, nếu
+     * không "Thành phố Hà Nội" sẽ không trùng với câu gõ "Hà Nội".
+     */
+    const ADMIN_PREFIX = /^(thanh pho|tp\.?|tinh|quan|huyen|thi xa|thi tran|phuong|xa|duong|pho)\s+/;
+
+    /**
+     * Câu gõ khớp với tên này tới mức nào. Càng cao càng sát.
+     *
+     * ĐÂY LÀ THỨ SỬA LỖI "tìm Hà Nội chỉ ra cao tốc Hà Nội – Hải Phòng".
+     * Trước đây danh sách chỉ xếp theo khoảng cách, nên một con đường có chữ
+     * "Hà Nội" trong tên, nằm cách 2 km, luôn đứng trên thành phố Hà Nội cách
+     * 90 km. Gần không có nghĩa là đúng thứ người ta hỏi.
+     *
+     * So khớp sau khi bỏ dấu, nên "ha noi" và "Hà Nội" là một.
+     */
+    function nameScore(query, displayName) {
+        const q = noAccent(query);
+        if (!q) return 0;
+        const full = noAccent(displayName);
+        // Phần trước dấu phẩy đầu tiên là TÊN; phần sau là địa chỉ hành chính
+        let first = full.split(',')[0].trim().replace(ADMIN_PREFIX, '');
+        if (first === q) return 100;                       // trùng khít
+        if (first.startsWith(q + ' ')) return 80;          // "Vincom Plaza ..." với câu "vincom"
+        if (first.endsWith(' ' + q)) return 70;
+        if (new RegExp('(^|[^\\p{L}])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            + '(?![\\p{L}])', 'u').test(first)) return 60; // đủ từ, nằm giữa
+        if (first.includes(q)) return 40;                  // dính một phần chữ
+        if (full.includes(q)) return 20;                   // chỉ khớp ở phần địa chỉ
+        return 0;
+    }
+
+    /**
+     * Xếp hạng kết quả gõ tay: ĐỘ KHỚP TÊN trước, rồi mới tới gần xa.
+     *
+     * Hai thứ cùng độ khớp thì cái gần hơn lên trước — nhờ vậy gõ "Vincom" ở
+     * Hải Phòng vẫn ra Vincom Hải Phòng trước Vincom Hà Nội, mà gõ "Hà Nội"
+     * thì thành phố Hà Nội vẫn lên đầu dù ở xa.
+     */
+    function rankByName(rows, query) {
+        rows.forEach((r) => { r._score = nameScore(query, r.display_name || ''); });
+        rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
+        return rows;
+    }
+
+    /** Bỏ trùng theo toạ độ làm tròn (nhiều lượt hỏi hay trả về cùng một nơi). */
+    function dedupeByCoord(rows) {
+        const seen = new Set();
+        return rows.filter((r) => {
+            const k = Number(r.lat).toFixed(4) + ',' + Number(r.lon).toFixed(4);
+            return !seen.has(k) && seen.add(k);
+        });
+    }
+
+    /** Một lượt hỏi Nominatim. km rỗng = hỏi cả nước, chỉ thiên vị chỗ gần. */
+    async function nominatimPass(variants, here, km) {
+        const vb = km
+            ? `&viewbox=${viewboxOf(here, km)}&bounded=1`
+            : `&viewbox=${viewboxOf(here, 60)}`;     // thiên vị, KHÔNG chặn
+        let rows = [];
+        for (const q of variants) {
+            const got = await nominatim(
+                `format=json&q=${encodeURIComponent(q)}&limit=20&addressdetails=1`
+                + `&countrycodes=vn${vb}`);
+            rows = rows.concat(got);
+            if (rows.length >= 20) break;
+        }
+        return rows;
+    }
+
+    /** Bán kính lượt "quanh xe" khi gõ tay. Chỉ để ưu tiên, không phải trần. */
+    const NEAR_PASS_KM = 25;
+
+    /**
+     * @param maxKm Trần bán kính. CHỈ dùng cho các nút chọn nhanh (nhà hàng,
+     *              trạm sạc...), vì "siêu thị gần nhất" mà ra tỉnh khác là
+     *              sai hẳn ý người hỏi.
+     *
+     *              GÕ TAY THÌ KHÔNG CÓ TRẦN. Trước đây ô tìm kiếm cũng chạy
+     *              thang 5-10-20-50 km và dừng ở lượt đầu tiên có kết quả,
+     *              nên đứng ở Kim Thành gõ "Hà Nội" là dừng ngay ở 5 km với
+     *              con đường cao tốc mang tên Hà Nội — thành phố Hà Nội không
+     *              bao giờ được hỏi tới.
+     */
     async function searchByName(query, here, maxKm) {
         const raw = (query || '').trim();
         if (raw.length < 2 || !here) return [];
 
-        // Thang bán kính dùng cho lần tìm này
-        const ladder = maxKm
-            ? SEARCH_RADII_KM.filter((k) => k && k <= maxKm).concat(
-                SEARCH_RADII_KM.some((k) => k === maxKm) ? [] : [maxKm])
-            : SEARCH_RADII_KM;
-
-        // Khung nhìn quanh xe (~±55 km). Không đặt bounded=1: vẫn muốn thấy nơi
-        // xa nếu đúng tên, chỉ muốn nơi gần được ưu tiên.
-        const d = 0.5;
-        const viewbox = `${(here[1] - d).toFixed(4)},${(here[0] + d).toFixed(4)},`
-            + `${(here[1] + d).toFixed(4)},${(here[0] - d).toFixed(4)}`;
-
         const expanded = expandAbbrev(raw);
-        const queries = expanded.toLowerCase() === raw.toLowerCase() ? [raw] : [expanded, raw];
-
-        // MẶC ĐỊNH LÀ TÊN ĐƯỜNG. Gõ "Tô Hiệu" ở Hải Phòng là đang tìm con
-        // đường đó, nhưng để trơ thì máy chủ tìm kiếm hay trả về một cửa
-        // hàng hay một người cùng tên ở đâu đó. Thêm một lượt hỏi kèm chữ
-        // "Đường" phía trước để tên phố được ưu tiên.
-        //
-        // Chỉ làm khi câu gõ KHÔNG phải từ khoá nhóm (TTTM, siêu thị, THCS...)
-        // và chưa tự nói rõ loại — những cái đó đã có đường xử lý riêng.
+        const accented = addVnAccents(expanded);
         const looksLikeStreet = looksLikeStreetQuery(raw);
-        if (looksLikeStreet) queries.unshift('Đường ' + expanded);
 
-        // QUÉT NỚI DẦN BÁN KÍNH — đây mới là thứ sửa được lỗi "gõ Vincom ở
-        // Hải Phòng lại ra Vincom Hà Nội".
-        //
-        // Vì sao không chỉ dựa vào proximity: proximity của Mapbox (và viewbox
-        // không có bounded của Nominatim) CHỈ thiên lệch xếp hạng, không giới
-        // hạn vùng. Thương hiệu có hàng trăm chi nhánh thì cả 10 kết quả trả
-        // về có thể là ở Hà Nội, lúc đó app sắp lại theo khoảng cách cũng vô
-        // dụng vì chi nhánh Hải Phòng chưa bao giờ có trong danh sách.
-        //
-        // Nên chặn cứng theo khung, bắt đầu hẹp rồi nới. Lượt cuối (null) bỏ
-        // khung, để nơi thật sự ở xa — "Lăng Bác" chẳng hạn — vẫn ra.
-        //
-        // NHƯNG dừng ở lượt đầu CÓ KẾT QUẢ là chưa đủ, và đây là chỗ hai yêu
-        // cầu đánh nhau: gõ "nhà máy VinFast" thì ở 5 km đã có showroom và
-        // trạm sạc VinFast, dừng lại thì nhà máy cách 25 km không bao giờ
-        // xuất hiện. Nên khi câu tìm có từ chỉ loại, chỉ được dừng khi đã
-        // thấy ĐÚNG loại đó; chưa thấy thì giữ tạm rồi nới tiếp.
+        // Các cách hỏi, thử lần lượt. Bỏ trùng để khỏi hỏi hai lần cùng một câu.
+        const variants = [];
+        const push = (s) => {
+            const t = (s || '').trim();
+            if (t && !variants.some((v) => v.toLowerCase() === t.toLowerCase())) variants.push(t);
+        };
+        // MẶC ĐỊNH LÀ TÊN ĐƯỜNG: gõ "Tô Hiệu" ở Hải Phòng là đang tìm con phố
+        // đó, nhưng để trơ thì máy tìm hay trả về một cửa hàng cùng tên.
+        if (looksLikeStreet) push('Đường ' + (accented || expanded));
+        push(accented);
+        push(expanded);
+        push(raw);
+
         const hint = matchTypeHint(raw);
         const hasWanted = (list) => !hint || list.some((r) =>
             hint.prefer && hint.prefer.test(noAccent(r.display_name || '')));
 
-        let best = [];
-        for (const km of ladder) {
-            if (!useMapbox()) break;
-            try {
-                // Thử cả biến thể "Đường <tên>" khi câu gõ trông như tên phố
-                let mb = [];
-                for (const q of (looksLikeStreet ? ['Đường ' + expanded, expanded] : [expanded])) {
-                    mb = await searchMapbox(q, here, km);
-                    if (mb.length) break;
+        // ------------------------------------------------------------------
+        // NÚT CHỌN NHANH: nới dần bán kính, có trần, dừng khi thấy đúng loại.
+        // ------------------------------------------------------------------
+        if (maxKm) {
+            const ladder = SEARCH_RADII_KM.filter((k) => k && k <= maxKm)
+                .concat(SEARCH_RADII_KM.some((k) => k === maxKm) ? [] : [maxKm]);
+            let best = [];
+            for (const km of ladder) {
+                if (!useMapbox()) break;
+                try {
+                    let mb = [];
+                    for (const q of variants) {
+                        mb = await searchMapbox(q, here, km);
+                        if (mb.length) break;
+                    }
+                    if (mb.length) {
+                        if (hasWanted(mb)) return rankByHint(mb, hint);
+                        if (!best.length) best = mb;
+                    }
+                } catch (e) {
+                    console.warn('Mapbox geocoding:', e);
+                    break;
                 }
-                if (mb.length) {
-                    if (hasWanted(mb)) return rankByHint(mb, hint);
-                    if (!best.length) best = mb;    // giữ làm phương án cuối
+            }
+            if (best.length) return rankByHint(best, hint);
+
+            let rows = [];
+            try {
+                let keep = [];
+                for (const km of ladder) {
+                    rows = await nominatimPass(variants, here, km);
+                    if (rows.length) {
+                        if (hasWanted(rows)) break;
+                        if (!keep.length) keep = rows;
+                    }
+                }
+                if (!rows.length || !hasWanted(rows)) rows = keep;
+            } catch (e) {
+                console.warn('Nominatim:', e);
+                showToast('Lỗi tìm kiếm địa điểm', 'warn');
+                return [];
+            }
+            rows = dedupeByCoord(rows);
+            rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
+            // Trần cứng: bounded của Nominatim không phải lúc nào cũng được tôn trọng
+            rows = rows.filter((r) => r._dist <= maxKm * 1000);
+            if (hint) rankCategoryRows(rows, hint);
+            else rows.sort((a, b) => a._dist - b._dist);
+            return rows.slice(0, 8);
+        }
+
+        // ------------------------------------------------------------------
+        // GÕ TAY: hai lượt, KHÔNG trần. Một lượt quanh xe để chi nhánh gần
+        // chắc chắn có mặt, một lượt cả nước để nơi xa vẫn ra. Gộp cả hai rồi
+        // mới xếp hạng — không lượt nào được quyền kết thúc việc tìm kiếm.
+        // ------------------------------------------------------------------
+        let rows = [];
+        if (useMapbox()) {
+            for (const km of [NEAR_PASS_KM, null]) {
+                try {
+                    for (const q of variants) {
+                        const mb = await searchMapbox(q, here, km);
+                        rows = rows.concat(mb);
+                        if (mb.length) break;      // biến thể đầu có kết quả là đủ cho lượt này
+                    }
+                } catch (e) {
+                    console.warn('Mapbox geocoding:', e);
+                    break;                          // lỗi khoá/hạn mức thì lượt sau cũng vậy
+                }
+            }
+        }
+        if (!rows.length) {
+            try {
+                for (const km of [NEAR_PASS_KM, null]) {
+                    rows = rows.concat(await nominatimPass(variants, here, km));
                 }
             } catch (e) {
-                console.warn('Mapbox geocoding:', e);
-                break;      // lỗi khoá/hạn mức thì lượt sau cũng vậy
+                console.warn('Nominatim:', e);
+                showToast('Lỗi tìm kiếm địa điểm', 'warn');
+                return [];
             }
         }
-        if (best.length) return rankByHint(best, hint);
 
-        let rows = [];
-        try {
-            // bounded=1 ở các lượt có khung: Nominatim cũng chỉ coi viewbox là
-            // gợi ý nếu thiếu cờ này.
-            let keep = [];
-            for (const km of ladder) {
-                const vb = km ? `&viewbox=${viewboxOf(here, km)}&bounded=1`
-                    : `&viewbox=${viewbox}`;
-                rows = [];
-                for (const q of queries) {
-                    const got = await nominatim(
-                        `format=json&q=${encodeURIComponent(q)}&limit=20&addressdetails=1`
-                        + `&countrycodes=vn${vb}`);
-                    rows = rows.concat(got);
-                    if (rows.length >= 20) break;
-                }
-                // Cùng luật với nhánh Mapbox ở trên: có từ chỉ loại thì phải
-                // thấy đúng loại mới được dừng nới bán kính.
-                if (rows.length) {
-                    if (hasWanted(rows)) break;
-                    if (!keep.length) keep = rows;
-                }
-            }
-            if (!rows.length || !hasWanted(rows)) rows = keep;
-        } catch (e) {
-            console.warn('Nominatim:', e);
-            showToast('Lỗi tìm kiếm địa điểm', 'warn');
-            return [];
-        }
-
-        // Bỏ trùng theo toạ độ làm tròn (hai truy vấn hay trả về cùng một nơi)
-        const seen = new Set();
-        rows = rows.filter((r) => {
-            const k = Number(r.lat).toFixed(4) + ',' + Number(r.lon).toFixed(4);
-            return !seen.has(k) && seen.add(k);
-        });
-
-        // Xếp theo khoảng cách tới xe. Đây là mấu chốt: gõ "Vincom" ở Hải Phòng
-        // mà Nominatim trả Vincom Hà Nội lên đầu thì danh sách vô dụng.
-        rows.forEach((r) => {
-            r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon));
-        });
-
-        // Có từ chỉ loại trong câu ("nhà máy VinFast") thì loại đúng phải lên
-        // trước, rồi mới xét gần xa. Một hãng lớn có nhà máy, showroom, đại lý
-        // và trạm sạc trùng tên nhau — chỉ xếp theo khoảng cách thì showroom
-        // ngay gần luôn che mất nhà máy, đúng thứ người ta cần tới.
-        // Chặn lần cuối theo khoảng cách thật: bounded của Nominatim không
-        // phải lúc nào cũng được tôn trọng, nên không tin suông vào nó.
-        if (maxKm) rows = rows.filter((r) => r._dist <= maxKm * 1000);
-
+        rows = dedupeByCoord(rows);
+        rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
         if (hint) rankCategoryRows(rows, hint);
-        else rows.sort((a, b) => a._dist - b._dist);
-
+        else rankByName(rows, accented || expanded || raw);
         return rows.slice(0, 8);
     }
 
@@ -4834,7 +4954,17 @@
             const v = localStorage.getItem(CHARGE_TYPE_KEY);
             if (CHARGE_TYPES.some((t) => t.id === v)) return v;
         } catch (e) { }
-        return 'both';
+        /*
+         * MẶC ĐỊNH LÀ DC, không phải cả hai.
+         *
+         * Trên đường thì chỉ trạm sạc nhanh mới đáng ghé — sạc AC 7 kW nghĩa
+         * là đứng đó vài tiếng. Để 'both' thì các chấm AC phủ kín bản đồ và
+         * che mất đúng thứ người lái đang cần tìm.
+         *
+         * Ai muốn thấy AC vẫn bật được trong Cài đặt; lựa chọn đó được nhớ
+         * lại nên chỉ phải chọn một lần.
+         */
+        return 'dc';
     }
 
     function setChargeType(id) {
