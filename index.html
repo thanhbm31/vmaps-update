@@ -1157,8 +1157,18 @@
         </div>
     </div>
 
-    <div id="searchModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
-        <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate" style="padding-bottom: calc(var(--sab) + 1rem); max-height: 80dvh;">
+    <!-- Bảng tìm kiếm chiếm TOÀN MÀN HÌNH.
+         Hai lý do, cả hai đều do người dùng báo:
+         1. Danh sách kết quả cần chỗ để đọc — bảng cao 80% màn hình thì mỗi
+            lần chỉ thấy vài dòng, phải cuộn mới biết có gì.
+         2. Gõ chữ bị giật. Bảng cũ trong suốt một nửa kèm làm mờ nền
+            (backdrop-blur) nên MỖI lần gõ máy phải vẽ lại lớp mờ chồng lên
+            bản đồ đang sống bên dưới — việc nặng nhất trong cả màn hình, mà
+            chẳng để làm gì vì bảng che gần kín rồi. Nền đục kín thì trình
+            duyệt bỏ qua được phần bản đồ bên dưới. -->
+    <div id="searchModal" class="modal fixed inset-0 z-50 hidden flex-col justify-end">
+        <div class="bg-white dark:bg-slate-900 w-full shadow-2xl flex flex-col"
+             style="padding-bottom: calc(var(--sab) + 0.5rem); height: 100dvh; max-height: 100dvh;">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
@@ -1195,7 +1205,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'f34ddf7';
+    const BUILD_TAG = '70c5aac';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2349,6 +2359,18 @@
     }
 
     const ABBREV = [
+        /*
+         * Khu đô thị hay gọi tắt. "VHOP" là cách gọi quen của Vinhomes Ocean
+         * Park; để trơ thì không kho nào hiểu.
+         *
+         * LƯU Ý: đây mới chỉ là sửa CÂU HỎI. Toạ độ hai khu Ocean Park 1 và 2
+         * vẫn chưa có trong app — xem mục 2.21 trong file logic, đang chờ toạ
+         * độ cổng chính. Tôi không tự đặt toạ độ cho một khu đô thị: đặt sai
+         * là dẫn người lái tới nhầm chỗ.
+         */
+        [/(^|[^\p{L}])vhop\s*(\d?)/giu, '$1Vinhomes Ocean Park $2'],
+        [/(^|[^\p{L}])kđt\s*\.?\s*/giu, '$1Khu đô thị '],
+
         // --- Loại đường: luôn kèm số nên nhận diện chắc, dấu chấm tuỳ ý ---
         [/(^|[^\p{L}])ql\s*\.?\s*(\d+[a-z]?)/giu, '$1Quốc lộ $2'],
         [/(^|[^\p{L}])(?:ct|đct|dct)\s*\.?\s*(\d+[a-z]?)/giu, '$1Cao tốc $2'],
@@ -2711,8 +2733,42 @@
           tags: ['shop=car_repair'] },
         { mb: 'car_wash', label: 'Rửa xe', icon: 'fa-shower', words: ['rua xe', 'car wash'],
           tags: ['amenity=car_wash'] },
-        { mb: 'police', label: 'Công an', icon: 'fa-building-shield', words: ['cong an', 'canh sat', 'police'],
-          tags: ['amenity=police'] },
+        /*
+         * CƠ QUAN NHÀ NƯỚC — tiếng Việt gọi một chỗ bằng nhiều cách.
+         *
+         * "trụ sở công an", "cơ quan công an", "đồn công an", "công an xã"
+         * đều là một thứ. Thiếu các cách gọi này thì tìm "trụ sở công an"
+         * rơi xuống đường tìm theo tên và bỏ sót công an xã ngay cạnh.
+         *
+         * prefer/demote để công an xã — thứ gần nhất, hay bị bỏ sót — lên
+         * trước, còn trường công an, bệnh viện ngành thì xuống.
+         */
+        { mb: 'police', label: 'Công an', icon: 'fa-building-shield',
+          words: ['cong an', 'canh sat', 'police', 'tru so cong an', 'co quan cong an',
+                  'don cong an', 'cong an xa', 'cong an phuong', 'cong an huyen',
+                  'cong an quan', 'cong an tinh', 'tru so canh sat'],
+          tags: ['amenity=police'],
+          prefer: /cong an|canh sat|police/,
+          demote: /truong|hoc vien|benh vien|cua hang|cong ty/ },
+        { label: 'UBND', icon: 'fa-landmark-flag',
+          words: ['ubnd', 'uy ban nhan dan', 'uy ban', 'tru so ubnd', 'tru so uy ban',
+                  'uy ban xa', 'uy ban phuong', 'uy ban huyen', 'tru so hanh chinh',
+                  'co quan hanh chinh'],
+          tags: ['amenity=townhall', 'office=government'],
+          prefer: /ubnd|uy ban nhan dan|uy ban|hanh chinh cong|tru so/,
+          demote: /cua hang|cong ty|quan an/ },
+        /*
+         * TRƯỜNG ĐẠI HỌC — phải tách khỏi trường phổ thông và ký túc xá.
+         *
+         * Gõ "trường đại học" ở Hải Phòng từng ra trường tiểu học và để Ký
+         * túc xá Đại học Hàng Hải đứng trên Đại học Hải Phòng, vì cả hai đều
+         * "có đủ chữ trong tên" nên cùng điểm, chỉ còn khoảng cách phân định.
+         */
+        { mb: 'college', label: 'Trường đại học', icon: 'fa-graduation-cap',
+          words: ['truong dai hoc', 'dai hoc', 'cao dang', 'hoc vien', 'university', 'college'],
+          tags: ['amenity=university', 'amenity=college'],
+          prefer: /^(truong )?(dai hoc|hoc vien|cao dang)|dai hoc quoc gia/,
+          demote: /ky tuc xa|tieu hoc|thcs|thpt|trung hoc|mam non|mau giao|trung tam|cua hang|can tin/ },
         { mb: 'bus_station', label: 'Bến xe', icon: 'fa-bus', words: ['ben xe', 'bus station'],
           tags: ['amenity=bus_station'] }
     ];
@@ -3806,18 +3862,53 @@
         // một cái tên đầy đủ nghĩa, chặn theo độ dài là chặn nhầm.
         if (CITY_SHORT[q]) q = noAccent(CITY_SHORT[q]);     // "hn" → "ha noi"
         if (q.length < 3) return [];
-        const hit = (key) => key === q || (q.length >= 5 && key.startsWith(q));
+        /*
+         * Khớp cả cụm từ NẰM GIỮA tên, không chỉ từ đầu tên.
+         *
+         * "Sân bay Nội Bài" và "Sân bay Tân Sơn Nhất" vốn đã nằm sẵn trong
+         * danh bạ, nhưng gõ "Nội Bài" lại không ra gì: phép so cũ chỉ chấp
+         * nhận trùng khít hoặc trùng TỪ ĐẦU tên. Người ta gọi sân bay bằng
+         * tên riêng chứ ít ai gõ cả chữ "sân bay" ở đầu.
+         *
+         * Ranh giới bằng \p{L} để "nội bài" không khớp vào giữa một chữ khác.
+         */
+        const inner = new RegExp('(^|[^\\p{L}])' + q.replace(RE_ESC, '\\$&')
+            + '(?![\\p{L}])', 'u');
+        /*
+         * Trùng khít / trùng từ đầu tên là chắc chắn hơn khớp cụm nằm giữa.
+         *
+         * Cùng cho 100 điểm thì gõ "Hà Nội" sẽ có "Ga Hà Nội" và "UBND thành
+         * phố Hà Nội" ngang hàng với chính thành phố Hà Nội — ba dòng cùng
+         * điểm, thứ tự do khoảng cách quyết định, và thành phố có thể bị đẩy
+         * xuống. Khớp cụm nằm giữa vẫn hữu ích ("Nội Bài" → "Sân bay Nội
+         * Bài") nhưng phải xếp sau.
+         */
+        const matchKind = (key) => {
+            if (key === q) return 'exact';
+            if (q.length >= 5 && key.startsWith(q)) return 'start';
+            if (q.length >= 5 && inner.test(key)) return 'inner';
+            return null;
+        };
+        const kindScore = { exact: 100, start: 100, inner: 85 };
 
         const out = [];
         let city = null;
+        // Dòng nào cũng phải có khoảng cách: thiếu thì mọi phép xếp theo gần
+        // xa ở phía sau lặng lẽ so với undefined và cho thứ tự ngẫu nhiên.
+        const withDist = (row) => {
+            if (here) row._dist = haversine(here[0], here[1], row.lat, row.lon);
+            return row;
+        };
         for (const [n, lat, lon] of VN_CITIES) {
-            if (!hit(noAccent(n))) continue;
-            out.push({ lat, lon, display_name: n + ', Việt Nam', _local: true, _score: 100 });
-            if (!city) city = cityKey(n);
+            const k = matchKind(noAccent(n));
+            if (!k) continue;
+            out.push(withDist({ lat, lon, display_name: n + ', Việt Nam', _local: true, _score: kindScore[k] }));
+            if (!city && k !== 'inner') city = cityKey(n);
         }
         for (const [n, lat, lon, c] of VN_LANDMARKS) {
-            if (!hit(noAccent(n))) continue;
-            out.push({ lat, lon, display_name: n + ', ' + c, _local: true, _score: 100 });
+            const k = matchKind(noAccent(n));
+            if (!k) continue;
+            out.push(withDist({ lat, lon, display_name: n + ', ' + c, _local: true, _score: kindScore[k] }));
         }
 
         if (city && here) {
@@ -3831,6 +3922,13 @@
                 .slice(0, LANDMARK_SHOW);
             out.push(...marks);
         }
+        /*
+         * Xếp ngay tại đây: khớp chắc chắn hơn lên trước, cùng bậc thì gần
+         * hơn lên trước. Trả về một danh sách chưa xếp thì mỗi nơi dùng nó
+         * lại phải tự nhớ mà xếp — và chỗ nào quên thì thứ tự thành ngẫu
+         * nhiên theo thứ tự duyệt bảng dữ liệu.
+         */
+        out.sort((a, b) => (b._score - a._score) || ((a._dist || 0) - (b._dist || 0)));
         return out;
     }
 
@@ -4044,17 +4142,38 @@
     // Dưới mức này chỉ là dính một phần chữ.
     const NAME_MATCH_MIN = 60;
 
+    /*
+     * Khớp ĐÚNG CẢ DẤU hơn khớp sau khi bỏ dấu.
+     *
+     * Gõ "tp hung yen" thì "Hưng Yến" (một cơ sở kinh doanh) và "Hưng Yên"
+     * (thành phố) đều được 100 điểm, vì phép so bỏ dấu trước khi so. Cơ sở
+     * kinh doanh còn được cộng thứ hạng của kho địa điểm nên vượt lên trên
+     * thành phố. Dấu trong tiếng Việt là chữ, không phải trang trí: trùng cả
+     * dấu thì chắc chắn hơn, nên được cộng thêm.
+     */
+    const ACCENT_EXACT_BONUS = 12;
+
+    function accentMatch(query, displayName) {
+        const q = String(query || '').trim().toLowerCase();
+        if (!q) return false;
+        const first = String(displayName || '').split(',')[0].trim().toLowerCase();
+        if (!first) return false;
+        return first === q || first.startsWith(q + ' ') || first.endsWith(' ' + q)
+            || new RegExp('(^|[^\\p{L}])' + q.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(first);
+    }
+
     function nameScore(query, displayName) {
         const q = noAccent(query);
         if (!q) return 0;
         const full = noAccent(displayName);
         // Phần trước dấu phẩy đầu tiên là TÊN; phần sau là địa chỉ hành chính
         let first = full.split(',')[0].trim().replace(ADMIN_PREFIX, '');
-        if (first === q) return 100;                       // trùng khít
-        if (first.startsWith(q + ' ')) return 80;          // "Vincom Plaza ..." với câu "vincom"
-        if (first.endsWith(' ' + q)) return 70;
+        const bonus = accentMatch(query, displayName) ? ACCENT_EXACT_BONUS : 0;
+        if (first === q) return 100 + bonus;               // trùng khít
+        if (first.startsWith(q + ' ')) return 80 + bonus;   // "Vincom Plaza ..." với câu "vincom"
+        if (first.endsWith(' ' + q)) return 70 + bonus;
         if (new RegExp('(^|[^\\p{L}])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            + '(?![\\p{L}])', 'u').test(first)) return 60; // đủ từ, nằm giữa
+            + '(?![\\p{L}])', 'u').test(first)) return 60 + bonus; // đủ từ, nằm giữa
         if (first.includes(q)) return 40;                  // dính một phần chữ
 
         /*
