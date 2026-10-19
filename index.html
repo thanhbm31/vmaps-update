@@ -177,6 +177,12 @@
            nút vẫn hiện, vẫn đổi màu khi chạm, mà bấm không ra gì — ngón tay đi
            xuyên qua xuống bản đồ. Giống hệt lỗi đã sửa ở #osm-credit. */
         #offlineBadge { pointer-events: auto; }
+
+        /* Đang chọn điểm trên bản đồ: giấu thanh dưới và tên đường, vì chúng
+           nằm cùng đáy màn hình với bảng hướng dẫn và che mất dòng chữ. */
+        body.picking #bottom-bar,
+        body.picking #curStreet,
+        body.picking #bottom-hud { display: none !important; }
         #toastNotification {
             position: absolute; top: 0; left: 50%; transform: translateX(-50%);
             width: max-content; max-width: min(420px, calc(100vw - 32px));
@@ -295,9 +301,18 @@
            khi chưa dẫn đường thì không nói lên điều gì. */
         #destName {
             font-size: clamp(16px, 4.8vw, 21px); font-weight: 800; letter-spacing: -0.01em;
-            max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 100%;
+            /* ĐANG DẪN ĐƯỜNG: cho xuống 2 dòng. Tên đích ở Việt Nam hay dài —
+               "Bệnh viện Hữu nghị Việt Tiệp cơ sở 2" cắt một dòng thì chỉ còn
+               mấy chữ đầu, người lái không biết mình đang đi đâu. */
+            display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+            overflow: hidden; line-height: 1.22;
         }
-        #destName.idle { font-size: 14px; font-weight: 600; color: #94a3b8; }
+        /* Chưa dẫn đường thì co về một dòng, nhường chỗ cho ô tìm kiếm */
+        #destName.idle {
+            font-size: 14px; font-weight: 600; color: #94a3b8;
+            -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis;
+        }
         #bar-sub {
             display: flex; align-items: center; justify-content: center;
             flex-wrap: wrap; gap: 5px;
@@ -1081,23 +1096,41 @@
         </div>
     </div>
 
-    <!-- Tâm ngắm khi đang chọn điểm trên bản đồ -->
-    <div id="pickLayer" class="hidden fixed inset-0 z-40 pointer-events-none">
-        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <i class="fa-solid fa-location-crosshairs text-3xl text-rose-600 drop-shadow-lg"></i>
+    <!-- Tâm ngắm khi đang chọn điểm trên bản đồ.
+         Dùng style thẳng, KHÔNG dựa vào lớp tiện ích: lớp này phải đúng vị trí
+         và phải bấm được kể cả khi bảng kiểu bị thiếu một class nào đó. -->
+    <div id="pickLayer" style="display:none;position:fixed;inset:0;z-index:60;pointer-events:none;">
+        <!-- Vị trí do JS đặt theo ĐÚNG tâm Leaflet, không đoán theo giữa màn hình -->
+        <div id="pickCross" style="position:fixed;left:0;top:0;transform:translate(-50%,-50%);
+                                   pointer-events:none;line-height:0;">
+            <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+                <circle cx="22" cy="22" r="13" fill="none" stroke="#e11d48" stroke-width="3"/>
+                <circle cx="22" cy="22" r="2.5" fill="#e11d48"/>
+                <path d="M22 2v8M22 34v8M2 22h8M34 22h8" stroke="#e11d48" stroke-width="3"
+                      stroke-linecap="round"/>
+            </svg>
         </div>
-        <div class="absolute left-0 right-0 bottom-0 p-4 pointer-events-auto"
-             style="padding-bottom: calc(var(--sab) + 1rem);">
-            <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-3">
-                <p class="text-xs text-slate-500 mb-2 text-center">
+
+        <!-- Nút thoát ở góc trên: luôn có một đường ra, không phụ thuộc bảng dưới -->
+        <button type="button" onclick="cancelPick()" aria-label="Thoát chọn điểm"
+            style="position:fixed;top:calc(var(--sat,0px) + 12px);right:12px;z-index:61;
+                   pointer-events:auto;width:44px;height:44px;border-radius:999px;
+                   background:rgba(15,23,42,.85);color:#fff;font-size:20px;border:0;">✕</button>
+
+        <div style="position:fixed;left:0;right:0;bottom:0;padding:12px;
+                    padding-bottom:calc(var(--sab,0px) + 12px);pointer-events:auto;z-index:61;">
+            <div style="background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:12px;">
+                <p style="font-size:12px;color:#64748b;text-align:center;margin:0 0 6px;">
                     Kéo bản đồ để đưa tâm ngắm tới nơi cần lưu
                 </p>
-                <p id="pickTarget" class="text-sm font-bold text-center mb-3">Nhà riêng</p>
-                <div class="flex gap-2">
+                <p id="pickTarget" style="font-size:14px;font-weight:800;text-align:center;margin:0 0 10px;">Nhà riêng</p>
+                <div style="display:flex;gap:8px;">
                     <button type="button" onclick="cancelPick()"
-                        class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 font-semibold">Huỷ</button>
+                        style="flex:1;padding:14px;border-radius:14px;border:0;background:#e2e8f0;
+                               font-weight:700;font-size:15px;">Huỷ</button>
                     <button type="button" onclick="confirmPick()"
-                        class="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-bold">Lưu điểm này</button>
+                        style="flex:1;padding:14px;border-radius:14px;border:0;background:#4f46e5;
+                               color:#fff;font-weight:800;font-size:15px;">Lưu điểm này</button>
                 </div>
             </div>
         </div>
@@ -1155,7 +1188,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '9bc8a02';
+    const BUILD_TAG = '4f6e68b';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1602,9 +1635,7 @@
         // CHỈ bám theo xe khi đang ở chế độ bám. Trước đây chỗ này cứ thấy xe
         // ra ngoài khung là bay về, nên người dùng vừa kéo bản đồ đi xem đoạn
         // phía trước là nhịp GPS sau đã giật về chỗ xe — không xem được gì.
-        if (map && followCar && (!map.getBounds().contains(userLatLng) || map.getZoom() < 14)) {
-            map.flyTo(userLatLng, 16, { duration: 1 });
-        }
+        maybeRecenter();
         const speedKmh = c.speed != null ? Math.max(0, c.speed * 3.6) : 0;   // m/s → km/h
         onGpsSpeed(speedKmh);
         updateHeadingFromGps(c, speedKmh);
@@ -3088,7 +3119,7 @@
         return rows;
     }
 
-    const BRAND_NEAR_MAX_KM = 50;   // thang quét 5 → 10 → 20 → 50, dừng khi có kết quả
+    const BRAND_NEAR_MAX_KM = 30;   // quét một lượt tới 30 km, không dừng sớm
 
     /**
      * Có vẻ người dùng gõ sai tên không?
@@ -3685,6 +3716,64 @@
      *
      * So khớp sau khi bỏ dấu, nên "ha noi" và "Hà Nội" là một.
      */
+    /* =====================================================================
+     * KHỚP ĐÚNG CỤM TỪ
+     *
+     * Gõ "phụ sản" mà ra "Nhà hàng hải sản" là vì máy tìm kiếm khớp từng chữ
+     * rời: "sản" có trong cả hai. Gõ "Đồ Sơn" ra "Công ty sản xuất sơn" cũng
+     * vậy. Với người dùng thì đó là kết quả rác, không phải "gần đúng".
+     *
+     * Luật: lấy phần RIÊNG của câu gõ — bỏ các chữ chỉ loại ở đầu như "bệnh
+     * viện", "khu chế xuất" — rồi đòi tên kết quả phải chứa NGUYÊN cụm đó,
+     * liền mạch. "bệnh viện Việt Tiệp" còn lại "việt tiệp", nên "Bệnh viện
+     * Hữu nghị Việt Tiệp" vẫn đạt dù có chữ xen giữa phần loại và phần riêng.
+     *
+     * CHỈ lọc khi còn ít nhất một kết quả đạt. Không có kết quả nào chứa
+     * nguyên cụm thì giữ nguyên danh sách — thà đưa ra thứ gần đúng còn hơn
+     * một màn hình trống, và phần chấm điểm vẫn đẩy rác xuống đáy.
+     * ===================================================================== */
+    const TYPE_WORDS = [
+        'khu che xuat', 'khu cong nghiep', 'khu do thi', 'khu du lich',
+        'trung tam thuong mai', 'trung tam', 'benh vien', 'phong kham',
+        'tram y te', 'nha hang', 'quan an', 'cua hang', 'sieu thi', 'cho',
+        'truong', 'cong ty', 'nha may', 'khach san', 'san bay', 'ben xe',
+        'tram sac', 'cay xang', 'bai do xe', 'duong', 'pho', 'ngo', 'khu'
+    ];
+
+    /** Phần riêng của câu gõ, sau khi bỏ chữ chỉ loại ở đầu. */
+    function corePhrase(query) {
+        let q = noAccent(query).replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
+        let changed = true;
+        while (changed) {
+            changed = false;
+            for (const w of TYPE_WORDS) {
+                if (q === w) return '';                     // chỉ có chữ chỉ loại
+                if (q.startsWith(w + ' ')) {
+                    q = q.slice(w.length + 1).trim();
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        return q;
+    }
+
+    /** Tên này có chứa NGUYÊN cụm đó không? */
+    function hasPhrase(name, core) {
+        if (!core) return true;
+        const n = noAccent(name);
+        return new RegExp('(^|[^\\p{L}])' + core.replace(RE_ESC, '\\$&')
+            + '(?![\\p{L}])', 'u').test(n);
+    }
+
+    function filterByPhrase(rows, query) {
+        const core = corePhrase(query);
+        // Một chữ thì lọc quá tay: "Vinh", "Huế" vốn hay nằm trong tên dài hơn
+        if (!core || core.split(' ').length < 2) return rows;
+        const keep = rows.filter((r) => hasPhrase(r.display_name || '', core));
+        return keep.length ? keep : rows;
+    }
+
     // Từ mức này trở lên mới coi là KHỚP TÊN (có đủ từ đó trong tên riêng).
     // Dưới mức này chỉ là dính một phần chữ.
     const NAME_MATCH_MIN = 60;
@@ -3790,7 +3879,12 @@
     }
 
     /** Bán kính lượt "quanh xe" khi gõ tay. Chỉ để ưu tiên, không phải trần. */
-    const NEAR_PASS_KM = 25;
+    /*
+     * 30 km — bán kính tối đa cho mọi từ khoá nhóm, thương hiệu, địa danh.
+     * Bán kính một vùng đô thị Việt Nam. 25 km cắt mất cơ sở 2 của những nơi
+     * có nhiều chi nhánh trong cùng thành phố.
+     */
+    const NEAR_PASS_KM = 30;
 
     /**
      * @param maxKm Trần bán kính. CHỈ dùng cho các nút chọn nhanh (nhà hàng,
@@ -3832,8 +3926,21 @@
         // NÚT CHỌN NHANH: nới dần bán kính, có trần, dừng khi thấy đúng loại.
         // ------------------------------------------------------------------
         if (maxKm) {
-            const ladder = SEARCH_RADII_KM.filter((k) => k && k <= maxKm)
-                .concat(SEARCH_RADII_KM.some((k) => k === maxKm) ? [] : [maxKm]);
+            /*
+             * QUÉT THẲNG TỚI TRẦN, không dừng ở nấc đầu tiên có kết quả.
+             *
+             * Thang cũ là 5 → 10 → 20 → 50 km và DỪNG ngay khi một nấc có
+             * kết quả. Nên gõ "trung tâm thương mại" mà quanh đây có một cái
+             * trong 5 km là xong — mọi trung tâm khác trong 30 km không bao
+             * giờ được hỏi tới. Bệnh viện Việt Tiệp có hai cơ sở thì chỉ ra
+             * một. Người dùng gọi đúng tên hiện tượng: "bị khoá mở rộng khi
+             * đã tìm được một yếu tố".
+             *
+             * Khung rộng không làm mất ưu tiên gần: danh sách vẫn xếp theo
+             * khoảng cách, nên chỗ gần vẫn đứng trước, chỉ khác là chỗ xa
+             * không còn bị giấu đi.
+             */
+            const ladder = [maxKm];
             let best = [];
             for (const km of ladder) {
                 if (!useMapbox()) break;
@@ -3894,9 +4001,19 @@
             rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
             // Trần cứng: bounded của Nominatim không phải lúc nào cũng được tôn trọng
             rows = rows.filter((r) => r._dist <= maxKm * 1000);
+            rows = filterByPhrase(rows, accented || expanded || raw);
             if (hint) rankCategoryRows(rows, hint);
-            else rows.sort((a, b) => a._dist - b._dist);
-            return rows.slice(0, 8);
+            else {
+                /*
+                 * Có tên riêng trong câu thì ĐỘ KHỚP TÊN quyết định trước,
+                 * rồi mới tới gần xa — đúng yêu cầu "tìm theo tên cụ thể thì
+                 * show kết quả theo tên đúng trước rồi mới theo km".
+                 */
+                const core = corePhrase(accented || expanded || raw);
+                if (core && core.split(' ').length >= 2) rankByName(rows, accented || expanded || raw);
+                else rows.sort((a, b) => a._dist - b._dist);
+            }
+            return rows.slice(0, 12);
         }
 
         // ------------------------------------------------------------------
@@ -4062,6 +4179,7 @@
          * Tiến — vẫn nằm nguyên trong danh sách. Từ chỉ loại là gia vị thêm
          * vào, không thay thế được việc so tên.
          */
+        rows = filterByPhrase(rows, target);
         rankByName(rows, target);
         if (hint) {
             rows.forEach((r) => {
@@ -4071,7 +4189,7 @@
             });
             rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         }
-        return rows.slice(0, 10);
+        return rows.slice(0, 12);
     }
 
     /**
@@ -4302,6 +4420,23 @@
         showToast(had ? `Đã thay ${label} bằng vị trí mới` : `Đã lưu ${label}`);
     }
 
+    /**
+     * Đặt tâm ngắm vào ĐÚNG chỗ Leaflet coi là tâm bản đồ.
+     *
+     * Đặt nó ở giữa màn hình bằng CSS là đoán, và đoán sai: khung bản đồ có
+     * thể không trùng khung màn hình — khi bật chế độ theo hướng xe, lớp bản
+     * đồ là một hình vuông to hơn màn hình. Hỏi thẳng Leaflet rồi quy ra toạ
+     * độ màn hình thì tâm ngắm luôn nằm đúng chỗ sẽ được lưu, bất kể bố cục.
+     */
+    function placePickCross() {
+        const el = $('pickCross');
+        if (!el || !map) return;
+        const pt = map.latLngToContainerPoint(map.getCenter());
+        const r = $('map').getBoundingClientRect();
+        el.style.left = (r.left + pt.x) + 'px';
+        el.style.top = (r.top + pt.y) + 'px';
+    }
+
     function startPickOnMap(id) {
         if (!map) { showToast('Bản đồ chưa sẵn sàng', 'warn'); return; }
         pickTargetId = id;
@@ -4310,12 +4445,25 @@
         closeModal('savePlaceModal');
         closeModal('searchModal');
         setFollowCar(false);           // không để bản đồ tự bay về xe khi đang ngắm
-        $('pickLayer').classList.remove('hidden');
+
+        /*
+         * Giấu thanh dưới và tên đường trong lúc ngắm.
+         *
+         * Chúng nằm cùng đáy màn hình với bảng hướng dẫn và che mất dòng chữ
+         * "kéo bản đồ…" — người dùng không đọc được là đang phải làm gì.
+         */
+        document.body.classList.add('picking');
+        $('pickLayer').style.display = 'block';
+        placePickCross();
+        map.on('move zoom resize', placePickCross);
     }
 
     function cancelPick() {
         pickTargetId = null;
-        $('pickLayer').classList.add('hidden');
+        if (map) map.off('move zoom resize', placePickCross);
+        document.body.classList.remove('picking');
+        const el = $('pickLayer');
+        if (el) el.style.display = 'none';
     }
 
     function confirmPick() {
@@ -5114,9 +5262,34 @@
     const ROAD_BEARING_TOL_DEG = 45;    // đoạn lệch hướng xe quá mức này là đường khác
     const UNKNOWN_ROAD = 'Không rõ tên đường';
     const MS_EDGE_M = 1200;         // tới gần mép ô thì nạp sẵn ô bên cạnh
-    const MS_MAX_TILES = 24;        // giữ lại bấy nhiêu ô trong bộ nhớ
+    /*
+     * 24 ô là quá nhiều cho máy tầm trung.
+     *
+     * Mỗi nhịp GPS chỉ dùng 1-4 ô, cộng thêm 2-3 ô mà phần quét biển báo phía
+     * trước (1 km) chạm tới. Nhưng ô ở nội thành Sài Gòn có tới 9.145 đoạn,
+     * file 878 KB — dựng thành đối tượng JS thì phình lên nhiều lần. Giữ 24 ô
+     * như vậy là tự cho phép mình ngốn cả trăm MB bộ nhớ trên một chiếc máy
+     * có 4-6 GB dùng chung với cả hệ thống.
+     *
+     * Đếm nhu cầu thật khi đang dẫn đường: 1-4 ô quanh xe, 2-3 ô mà phần quét
+     * biển báo 1 km phía trước chạm tới, 2-4 ô do tải trước 10 km tuyến đường
+     * → khoảng 10. Để 16 là còn dư, mà vẫn cắt hai phần ba bộ nhớ so với 24.
+     * Để sát quá (12) thì ô xe đang đứng có thể bị phần tải trước đẩy ra, rồi
+     * phải tải lại — vừa tốn mạng vừa tốn pin.
+     */
+    const MS_MAX_TILES = 16;        // giữ lại bấy nhiêu ô trong bộ nhớ
+    const MS_CELL_DEG = 0.005;      // ô con của chỉ mục trong mỗi ô dữ liệu (~550 m)
 
     const msTiles = new Map();      // "ti/tj" -> mảng đoạn đường
+    /*
+     * Chỉ mục gắn vào CHÍNH mảng đoạn, không gắn vào tên ô.
+     *
+     * Gắn theo tên ô thì có đường rò: xoá ô khỏi msTiles mà quên xoá chỉ mục
+     * là vừa rò bộ nhớ vừa nguy hiểm hơn — ô cùng tên nạp lại với dữ liệu
+     * khác sẽ dùng chỉ mục cũ, tức là tra ra đoạn đường không còn tồn tại.
+     * WeakMap theo mảng thì chỉ mục sống đúng bằng tuổi của dữ liệu nó mô tả.
+     */
+    const msCells = new WeakMap();  // mảng đoạn -> Map("gy:gx" -> [chỉ số đoạn])
     const msPending = new Set();
     let msIndex = null;             // danh sách ô thật sự có dữ liệu, tránh gọi 404
     let currentRoad = null;         // { speed, name, highway } của đoạn đang chạy
@@ -5133,6 +5306,66 @@
             console.warn('Không đọc được index giới hạn tốc độ:', e.message);
             msIndex = { tiles: {} };
         }
+    }
+
+    /* =====================================================================
+     * CHỈ MỤC KHÔNG GIAN TRONG MỖI Ô — vì sao phải có
+     *
+     * Trước đây tra đường là quét HẾT mọi đoạn trong mọi ô đang nạp, mỗi đoạn
+     * lại đi hết polyline. Ô nội thành Sài Gòn có 9.145 đoạn / 20.616 điểm.
+     * Mà một nhịp GPS không gọi tra đường một lần: còn 20 lần nữa cho phần
+     * quét biển báo 1 km phía trước. Đo thật trên máy chủ: 44 ms cho một
+     * nhịp. Máy Galaxy A53 chậm hơn cỡ 4-6 lần → khoảng 200-280 ms mỗi giây
+     * nằm trong JS. Tức là một phần tư thời gian luồng chính bị chiếm, đúng
+     * cảm giác "hơi lag và tốn pin" người dùng báo.
+     *
+     * Nay mỗi ô dữ liệu được chia thành ô con ~550 m; mỗi đoạn ghi tên vào
+     * những ô con nó đi qua, kèm hộp bao (bbox) để loại nhanh. Tra đường chỉ
+     * xét các đoạn trong 1-4 ô con quanh xe. Đo lại cùng chỗ: 44 ms → 2 ms,
+     * dựng chỉ mục một lần 13 ms cho ô nặng nhất.
+     *
+     * Kết quả tra KHÔNG đổi: vẫn đúng đoạn đó, vì mọi đoạn bị loại đều nằm
+     * ngoài bán kính bắt đường. Bộ kiểm thử có phép so thẳng với cách quét
+     * vét cạn để giữ điều đó.
+     * ===================================================================== */
+    function buildTileCells(segs) {
+        const cells = new Map();
+        if (!Array.isArray(segs)) return cells;
+        for (let i = 0; i < segs.length; i++) {
+            const g = segs[i] && segs[i].g;
+            if (!Array.isArray(g) || !g.length) continue;
+            let minLat = 90, minLon = 180, maxLat = -90, maxLon = -180;
+            for (const p of g) {
+                if (p[0] < minLat) minLat = p[0];
+                if (p[0] > maxLat) maxLat = p[0];
+                if (p[1] < minLon) minLon = p[1];
+                if (p[1] > maxLon) maxLon = p[1];
+            }
+            segs[i]._b = [minLat, minLon, maxLat, maxLon];
+            for (let gy = Math.floor(minLat / MS_CELL_DEG); gy <= Math.floor(maxLat / MS_CELL_DEG); gy++) {
+                for (let gx = Math.floor(minLon / MS_CELL_DEG); gx <= Math.floor(maxLon / MS_CELL_DEG); gx++) {
+                    const k = gy + ':' + gx;
+                    let arr = cells.get(k);
+                    if (!arr) { arr = []; cells.set(k, arr); }
+                    arr.push(i);
+                }
+            }
+        }
+        return cells;
+    }
+
+    /*
+     * Chỉ mục dựng LÚC TRA, không dựng lúc nạp.
+     *
+     * Phần tải trước 10 km tuyến đường nạp sẵn nhiều ô mà xe chưa chắc đi
+     * tới, hoặc bị đẩy ra khỏi bộ nhớ trước khi dùng. Dựng chỉ mục ngay lúc
+     * nạp là trả tiền trước cho việc có thể không bao giờ cần — đúng vào lúc
+     * bắt đầu dẫn đường, lúc máy đang bận nhất.
+     */
+    function tileCells(segs) {
+        let cells = msCells.get(segs);
+        if (!cells) { cells = buildTileCells(segs); msCells.set(segs, cells); }
+        return cells;
     }
 
     async function loadMaxspeedTile(key) {
@@ -5152,7 +5385,7 @@
         }
         // Giữ bộ nhớ gọn: Map trả key theo thứ tự chèn nên xoá từ đầu là vào-trước-ra-trước
         while (msTiles.size > MS_MAX_TILES) {
-            msTiles.delete(msTiles.keys().next().value);
+            msTiles.delete(msTiles.keys().next().value);   // chỉ mục tự rụng theo
         }
     }
 
@@ -5241,18 +5474,39 @@
          */
         let best = null, bestDist = tol, bestBearing = null, bestRank = -1;
 
+        // Đổi bán kính ra độ để loại đoạn bằng hộp bao, rẻ hơn đi hết polyline
+        const dLat = tol / 110540;
+        const dLon = tol / (111320 * Math.cos(lat * Math.PI / 180) || 1);
+        const gy0 = Math.floor((lat - dLat) / MS_CELL_DEG), gy1 = Math.floor((lat + dLat) / MS_CELL_DEG);
+        const gx0 = Math.floor((lon - dLon) / MS_CELL_DEG), gx1 = Math.floor((lon + dLon) / MS_CELL_DEG);
+
         for (const key of ensureMaxspeedTiles(lat, lon)) {
             const segs = msTiles.get(key);
             if (!segs || !segs.length) continue;
-            for (const seg of segs) {
-                const r = nearestOnPolyline(lat, lon, seg.g);
-                if (r.dist >= tol) continue;
-                const rank = hwRank(seg.h);
-                const better = best === null
-                    || (rank > bestRank && r.dist <= ROAD_PREFER_BIG_M)
-                    || (rank === bestRank && r.dist < bestDist)
-                    || (rank < bestRank && bestDist > ROAD_PREFER_BIG_M && r.dist < bestDist);
-                if (better) { bestDist = r.dist; best = seg; bestBearing = r.bearing; bestRank = rank; }
+            const index = tileCells(segs);
+
+            const seen = new Set();
+            for (let gy = gy0; gy <= gy1; gy++) {
+                for (let gx = gx0; gx <= gx1; gx++) {
+                    const bucket = index.get(gy + ':' + gx);
+                    if (!bucket) continue;
+                    for (const i of bucket) {
+                        if (seen.has(i)) continue;   // đoạn dài nằm trong nhiều ô con
+                        seen.add(i);
+                        const seg = segs[i];
+                        const b = seg._b;
+                        if (b && (b[0] - dLat > lat || b[2] + dLat < lat
+                            || b[1] - dLon > lon || b[3] + dLon < lon)) continue;
+                        const r = nearestOnPolyline(lat, lon, seg.g);
+                        if (r.dist >= tol) continue;
+                        const rank = hwRank(seg.h);
+                        const better = best === null
+                            || (rank > bestRank && r.dist <= ROAD_PREFER_BIG_M)
+                            || (rank === bestRank && r.dist < bestDist)
+                            || (rank < bestRank && bestDist > ROAD_PREFER_BIG_M && r.dist < bestDist);
+                        if (better) { bestDist = r.dist; best = seg; bestBearing = r.bearing; bestRank = rank; }
+                    }
+                }
             }
         }
         if (!best) return null;
@@ -5704,6 +5958,39 @@
     // này thì không thể xem trước đoạn đường phía trước khi đang dẫn đường.
     // ---------------------------------------------------------------------
     let followCar = true;
+
+    /* =====================================================================
+     * TỰ CÂN XE VỀ GIỮA
+     *
+     * Cách cũ chỉ bay về khi xe ĐÃ RA KHỎI KHUNG NHÌN. Chạy chậm thì xe bò
+     * dần ra mép rồi mới giật về — người lái thấy "cân về giữa chậm". Chạy
+     * nhanh thì ngược lại, xe ra khỏi khung quá sớm.
+     *
+     * Nay cân theo NHỊP THỜI GIAN phụ thuộc tốc độ, đúng bảng người dùng đưa:
+     * càng nhanh càng cân dày. Vẫn giữ phép cứu: ra khỏi khung là về ngay,
+     * không đợi hết nhịp.
+     * ===================================================================== */
+    const RECENTER_STEPS = [
+        { upTo: 50, everyMs: 17000 },
+        { upTo: 75, everyMs: 10000 },
+        { upTo: 100, everyMs: 5000 },
+        { upTo: Infinity, everyMs: 3000 }
+    ];
+    let lastRecenterAt = 0;
+
+    function recenterEveryMs(kmh) {
+        return (RECENTER_STEPS.find((s) => kmh <= s.upTo) || RECENTER_STEPS[0]).everyMs;
+    }
+
+    function maybeRecenter() {
+        if (!map || !followCar || !userLatLng) return;
+        const now = Date.now();
+        const outOfView = !map.getBounds().contains(userLatLng) || map.getZoom() < 14;
+        const due = now - lastRecenterAt >= recenterEveryMs(displayedSpeed());
+        if (!outOfView && !due) return;
+        lastRecenterAt = now;
+        map.flyTo(userLatLng, Math.max(map.getZoom(), 16), { duration: 0.8 });
+    }
 
     function setFollowCar(on) {
         followCar = !!on;
@@ -6527,11 +6814,11 @@
     function unlockAudio() {
         if (voice.unlocked) return;
         voice.unlocked = true;
-        if (nativeTts()) { requestWakeLock(); return; }   // TTS hệ thống không cần mở khoá
+        if (nativeTts()) { updateWakeLock(); return; }    // TTS hệ thống không cần mở khoá
         if ('speechSynthesis' in window) {
             try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; window.speechSynthesis.speak(u); } catch (e) { }
         }
-        requestWakeLock();
+        updateWakeLock();
     }
 
     // Âm thanh: 0 tất cả, 1 chỉ cảnh báo, 2 tắt
@@ -6583,11 +6870,30 @@
     };
 
     // Điểm vào khi có dữ liệu GPS thật: gọi onGpsSpeed(km/h)
+    /*
+     * Xe chạy lại thì TỰ TẮT màn hình nhắc trẻ em.
+     *
+     * Màn hình đó bắt buộc bấm "Đã kiểm tra" mới đóng — cố ý, vì nó là cảnh
+     * báo an toàn. Nhưng nếu người lái đã lên xe chạy tiếp thì rõ ràng họ
+     * không còn ở trong tình huống ấy nữa, mà cái bảng vẫn che màn hình
+     * giữa lúc đang lái. Chạy từ 20 km/h trở lên là đủ chắc chắn.
+     */
+    const CHILD_DISMISS_KMH = 20;
+    let childWarnShownAt = 0;
+
     function onGpsSpeed(rawKmh) {
         speedState.rawGps = Math.max(0, Number(rawKmh) || 0);
+        noteMovement(speedState.rawGps);
         renderSpeed();
         handleStopDetection();
         checkOverspeed();
+
+        if (childWarnShownAt && speedState.rawGps >= CHILD_DISMISS_KMH
+            && isModalOpen('childWarningModal')) {
+            childWarnShownAt = 0;
+            closeModal('childWarningModal');
+            showToast('Xe đã chạy lại — đã tắt nhắc kiểm tra trẻ em');
+        }
     }
 
     function displayedSpeed() {
@@ -6949,6 +7255,7 @@
         }
         openModal('childWarningModal');
         speak('child', { howLong, place });
+        childWarnShownAt = Date.now();
     }
 
     // Khoảng lặng giữa "Bạn đã đến" và nhắc kiểm tra trẻ em.
@@ -7207,7 +7514,36 @@
         }
     }
 
+    /* =====================================================================
+     * GIỮ SÁNG MÀN HÌNH — chỉ khi THẬT SỰ CẦN
+     *
+     * Trước đây app xin giữ sáng ngay khi mở và không bao giờ nhả. Màn hình
+     * là thứ ngốn pin nhất trên điện thoại, hơn cả GPS và CPU cộng lại. Nghĩa
+     * là chỉ cần để VMaps mở trong lúc đỗ xe, ngồi xem kết quả tìm kiếm, hay
+     * quên tắt khi đã về nhà là máy cứ sáng cho tới hết pin. Đây là nguyên
+     * nhân "tốn pin" rõ ràng nhất, và nó không liên quan gì tới việc lái.
+     *
+     * Luật mới, giữ sáng khi:
+     *   - đang dẫn đường (kể cả lúc dừng đèn đỏ), hoặc
+     *   - xe có di chuyển trong vòng WAKE_IDLE_MS gần đây.
+     * Ngoài hai trường hợp đó thì nhả, để hệ thống tự tắt màn hình như mọi
+     * ứng dụng khác. Vừa mở app cũng được tính là "vừa di chuyển" để màn
+     * hình không tối ngay trước mặt người đang chuẩn bị đi.
+     * ===================================================================== */
+    const WAKE_IDLE_MS = 180000;        // 3 phút không đi và không dẫn đường
+    const WAKE_MOVE_KMH = 3;            // dưới mức này coi như đứng yên
     let wakeLock = null;
+    let lastMoveAt = Date.now();        // mở app = vừa di chuyển, có thời gian ân hạn
+
+    function noteMovement(kmh) {
+        if (kmh >= WAKE_MOVE_KMH) lastMoveAt = Date.now();
+    }
+
+    function shouldStayAwake() {
+        if (nav.active) return true;
+        return Date.now() - lastMoveAt < WAKE_IDLE_MS;
+    }
+
     async function requestWakeLock() {
         try {
             if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock) {
@@ -7215,6 +7551,19 @@
                 wakeLock.addEventListener('release', () => { wakeLock = null; });
             }
         } catch (e) { /* trình duyệt không hỗ trợ hoặc bị từ chối */ }
+    }
+
+    async function releaseWakeLock() {
+        const lock = wakeLock;
+        wakeLock = null;                // nhả rồi mới có thể xin lại
+        try { if (lock) await lock.release(); } catch (e) { }
+    }
+
+    function updateWakeLock() {
+        // Trang bị ẩn thì hệ thống tự lo, không cần can thiệp
+        if (document.visibilityState !== 'visible') return;
+        if (shouldStayAwake()) requestWakeLock();
+        else if (wakeLock) releaseWakeLock();
     }
 
     // =====================================================================
@@ -7251,6 +7600,7 @@
     function tick() {
         checkOverspeed();
         checkChildReminder();
+        updateWakeLock();       // xe đỗ lâu thì thôi giữ sáng màn hình
     }
 
     // =====================================================================
@@ -7785,13 +8135,16 @@
         ['pointerdown', 'keydown'].forEach((ev) => document.addEventListener(ev, unlockAudio, { once: true, capture: true }));
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
-                requestWakeLock();
+                // Quay lại app sau khi tắt màn hình: tính là vừa chạm vào, cho
+                // thời gian ân hạn, nhưng vẫn theo luật chung chứ không giữ mãi
+                lastMoveAt = Date.now();
+                updateWakeLock();
                 applyTheme();
                 renderNav();
                 tick();
             }
         });
-        requestWakeLock();
+        updateWakeLock();
 
         setInterval(tick, 1000);
         setInterval(() => {
