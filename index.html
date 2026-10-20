@@ -1228,7 +1228,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '80528fe';
+    const BUILD_TAG = '028269c';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3217,12 +3217,125 @@
         return rows.slice(0, CAT_LIST_SIZE);
     }
 
+    /* =====================================================================
+     * DÁN LINK GOOGLE MAPS VÀO Ô TÌM KIẾM
+     *
+     * Người ta gửi cho nhau địa chỉ bằng link Google Maps chứ ít ai gõ lại
+     * tên. Dán nguyên cái link vào ô tìm kiếm thì trước đây app đem cả chuỗi
+     * đó đi tra tên và tất nhiên không ra gì.
+     *
+     * Các dạng link lấy được TOẠ ĐỘ THẲNG TỪ CHUỖI, không cần hỏi mạng:
+     *   .../maps/@20.8,106.6,15z                     → điểm giữa khung nhìn
+     *   .../maps/place/Tên/@20.8,106.6,17z/data=...  → có cả tên lẫn toạ độ
+     *   .../maps/place/20.8,106.6
+     *   ...?q=20.8,106.6   ...&destination=20.8,106.6   ...&ll=20.8,106.6
+     *   ...!3d20.8!4d106.6                            → toạ độ thật của địa
+     *                                                   điểm, chính xác hơn
+     *                                                   @ (là tâm khung nhìn)
+     *
+     * Link RÚT GỌN (maps.app.goo.gl/xxx, goo.gl/maps/xxx) KHÔNG chứa toạ độ:
+     * phải hỏi máy chủ Google mới biết nó trỏ đi đâu, mà trình duyệt chặn
+     * đọc kết quả chuyển hướng sang tên miền khác. Nên không hứa suông: nhận
+     * ra là link rút gọn thì nói thẳng cách lấy link đầy đủ.
+     * ===================================================================== */
+    const GMAP_HOST = /(^|\.)(google\.[a-z.]+|goo\.gl|maps\.app\.goo\.gl)$/i;
+
+    function isMapLink(text) {
+        const t = String(text || '').trim();
+        if (!/^https?:\/\//i.test(t)) return false;
+        try { return GMAP_HOST.test(new URL(t).hostname); } catch (e) { return false; }
+    }
+
+    function isShortMapLink(text) {
+        const t = String(text || '').trim();
+        try {
+            const h = new URL(t).hostname;
+            return /goo\.gl$/i.test(h);
+        } catch (e) { return false; }
+    }
+
+    /** Toạ độ + tên lấy từ link Google Maps, hoặc null. */
+    function parseMapLink(text) {
+        const t = String(text || '').trim();
+        if (!isMapLink(t)) return null;
+        let url;
+        try { url = new URL(t); } catch (e) { return null; }
+
+        const num = '(-?\\d+(?:\\.\\d+)?)';
+        const ok = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon)
+            && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 && (lat !== 0 || lon !== 0);
+
+        // Tên địa điểm nằm trong /place/<tên>/
+        let name = '';
+        const mName = url.pathname.match(/\/place\/([^/@]+)/);
+        if (mName) {
+            try { name = decodeURIComponent(mName[1]).replace(/\+/g, ' ').trim(); } catch (e) { }
+            if (/^-?\d+(\.\d+)?,/.test(name)) name = '';     // "place/20.8,106.6" là toạ độ
+        }
+
+        // !3d!4d là TOẠ ĐỘ THẬT của địa điểm; @ chỉ là tâm khung nhìn khi chụp
+        const whole = url.href;
+        const m3d = whole.match(new RegExp('!3d' + num + '!4d' + num));
+        if (m3d) {
+            const lat = parseFloat(m3d[1]), lon = parseFloat(m3d[2]);
+            if (ok(lat, lon)) return { lat, lon, name };
+        }
+
+        for (const key of ['destination', 'q', 'll', 'daddr', 'center', 'viewpoint']) {
+            const v = url.searchParams.get(key);
+            if (!v) continue;
+            const m = v.match(new RegExp('^' + num + '\\s*,\\s*' + num + '$'));
+            if (m) {
+                const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+                if (ok(lat, lon)) return { lat, lon, name: name || '' };
+            }
+            // q=Tên địa điểm (không phải toạ độ) thì dùng làm câu tìm
+            if (!name && key === 'q') name = v.replace(/\+/g, ' ').trim();
+        }
+
+        const mAt = url.pathname.match(new RegExp('@' + num + ',' + num));
+        if (mAt) {
+            const lat = parseFloat(mAt[1]), lon = parseFloat(mAt[2]);
+            if (ok(lat, lon)) return { lat, lon, name };
+        }
+
+        const mPlace = url.pathname.match(new RegExp('/place/' + num + ',' + num));
+        if (mPlace) {
+            const lat = parseFloat(mPlace[1]), lon = parseFloat(mPlace[2]);
+            if (ok(lat, lon)) return { lat, lon, name: '' };
+        }
+
+        // Không có toạ độ nhưng có tên thì vẫn cứu được: đem tên đi tìm
+        return name ? { lat: null, lon: null, name } : null;
+    }
+
     async function searchPlace(query) {
         /*
          * Bỏ câu lệnh NGAY TỪ ĐẦU, trước cả phần nhận nhóm và phần khoanh
          * vùng tỉnh thành — cả hai đều đọc câu gốc. Để sót thì "chỉ đường
          * đến bệnh viện Việt Tiệp" không được nhận là câu hỏi về bệnh viện.
          */
+        /*
+         * Dán link Google Maps thì xử lý TRƯỚC MỌI THỨ: cả chuỗi link không
+         * phải là một cái tên, đem đi tra thì chỉ ra rác.
+         */
+        const link = parseMapLink(query);
+        if (link) {
+            if (link.lat != null) {
+                return [{
+                    lat: link.lat, lon: link.lon,
+                    display_name: link.name || `Vị trí từ link (${link.lat.toFixed(5)}, ${link.lon.toFixed(5)})`,
+                    _dist: userLatLng ? haversine(userLatLng[0], userLatLng[1], link.lat, link.lon) : 0,
+                    _score: 300, _fromLink: true
+                }];
+            }
+            // Link chỉ có tên: tìm tiếp theo tên đó
+            query = link.name;
+        } else if (isShortMapLink(query)) {
+            showToast('Link rút gọn chưa mở được. Hãy mở link đó rồi chép lại địa chỉ đầy đủ trên thanh trình duyệt.', 'warn');
+            return [];
+        }
+
         const raw = stripCommandWords((query || '').trim());
         if (raw.length < 2) return [];
 
@@ -5357,6 +5470,8 @@
                     <div class="text-xs text-slate-500 mt-1">${escapeHtml(dest.name)}</div>
                     ${km ? `<div class="text-xs font-bold text-blue-600 dark:text-blue-400 mt-2">
                               <i class="fa-solid fa-location-arrow mr-1"></i>Cách khoảng ${km} đường chim bay</div>` : ''}
+                    <div id="previewInfo" class="hidden text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                        <i class="fa-solid fa-route mr-1"></i>Đang tính lộ trình...</div>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="startPendingRoute()" data-needs-network
@@ -5386,6 +5501,19 @@
             </div>`;
 
         if (broad) loadNotablePlaces(dest);
+
+        /*
+         * VẼ SẴN NÉT ĐƯỜNG NGAY Ở BƯỚC XÁC NHẬN.
+         *
+         * Người dùng muốn thấy đường đi TRƯỚC khi bấm "Bắt đầu dẫn đường":
+         * nhìn nét vẽ mới biết nó dẫn vòng lối nào, có hợp ý không. Nút con
+         * mắt vẫn giữ cho trường hợp đã đóng bảng rồi muốn xem lại.
+         *
+         * Không vẽ cho tỉnh/thành: dẫn đường tới "tâm Hà Nội" gần như không
+         * bao giờ là thứ người ta muốn, vẽ một nét 90 km chỉ tổ rối mắt —
+         * lúc đó danh sách điểm nổi bật bên dưới mới là thứ cần.
+         */
+        if (!broad) previewPendingRoute({ keepSheet: true });
     }
 
     let pendingDest = null;
@@ -5409,11 +5537,15 @@
      * Không viết một đường tính tuyến riêng — hai đường song song là hai
      * chỗ phải sửa mỗi lần đổi, và chỗ ít dùng luôn là chỗ mục rữa trước.
      * ===================================================================== */
-    async function previewPendingRoute() {
+    async function previewPendingRoute(opts = {}) {
         if (!pendingDest) return;
         const d = pendingDest;
-        closeModal('searchModal');
-        await calculateRoute(d.lat, d.lon, { name: d.name, preview: true });
+        // Vẽ sẵn ở bước xác nhận thì GIỮ bảng đang mở; bấm nút con mắt thì
+        // đóng bảng lại để nhìn bản đồ cho rõ.
+        if (!opts.keepSheet) closeModal('searchModal');
+        await calculateRoute(d.lat, d.lon, {
+            name: d.name, preview: true, silent: !!opts.keepSheet
+        });
     }
 
     function savePendingDest() {
@@ -5606,7 +5738,17 @@
                 silenceGuidance();
                 const kmP = (route.distance / 1000).toFixed(1).replace('.', ',');
                 const minP = Math.round(route.duration / 60);
-                showToast(`Xem lộ trình: ${kmP} km · khoảng ${minP} phút (chưa dẫn đường)`);
+                if (opts.silent) {
+                    // Bảng xác nhận đang mở: ghi thẳng vào bảng, đừng bắn
+                    // toast đè lên thứ người ta đang đọc.
+                    const box = $('previewInfo');
+                    if (box) {
+                        box.textContent = `Lộ trình: ${kmP} km · khoảng ${minP} phút`;
+                        box.classList.remove('hidden');
+                    }
+                } else {
+                    showToast(`Xem lộ trình: ${kmP} km · khoảng ${minP} phút (chưa dẫn đường)`);
+                }
                 return;
             }
 
@@ -5875,7 +6017,8 @@
         speak('route_start', {
             dist,
             dir: next.dir,
-            street: next.name || 'đoạn kế tiếp',
+            street: next.name || '',
+            dest: (nav.destName || '').split(',')[0].trim(),
             total: navState.remainingKm,
             min: navState.etaMin
         });
@@ -7471,6 +7614,19 @@
     // 3 = an toàn, 2 = cảnh báo, 1 = chỉ đường, 0 = thông tin
     const VOICE_PRIORITY = { arrive: 3, arrive_home: 3, child: 3, speed: 3, camera: 2, tunnel: 2, next_speed: 2, next_speed_pair: 2, test_voice: 3, route_start: 1, turn: 1, report: 0 };
 
+    /**
+     * Vế "vào <tên đường>" của câu chỉ đường.
+     *
+     * Một chỗ duy nhất cho cả câu mở đầu lẫn câu rẽ: hai chỗ thì sớm muộn
+     * cũng lệch nhau. Không có tên, hoặc tên là "không rõ", thì BỎ HẲN vế
+     * này — đọc "vào đoạn kế tiếp" nghe như máy hỏng mà chẳng thêm tin gì.
+     */
+    function streetPhrase(street) {
+        const st = String(street || '').trim();
+        if (!st || st === UNKNOWN_ROAD || /^đoạn kế tiếp$/i.test(st)) return '';
+        return ' vào ' + spokenStreet(st);
+    }
+
     const VOICE_TEXTS = {
         // Ngắn gọn có chủ đích: câu dài thì người ta nghe nửa đầu rồi tắt.
         child: {
@@ -7490,10 +7646,22 @@
             'en-US': (d) => `Attention. Traffic camera ahead in ${d.dist} meters.`
         },
         route_start: {
-            'vi-VN': (d) => `Bắt đầu dẫn đường. Tổng quãng đường ${String(d.total).replace('.', ',')} ki lô mét, khoảng ${d.min} phút. `
+            /*
+             * ĐỌC TÊN ĐÍCH ĐẾN ngay câu mở đầu.
+             *
+             * "Bắt đầu dẫn đường" trơ không nói được điều quan trọng nhất:
+             * đang dẫn đi ĐÂU. Bấm nhầm một dòng trong danh sách rồi nghe
+             * câu trơ đó thì không có cách nào biết mình đang được dẫn sang
+             * chỗ khác — mãi tới lúc nhìn màn hình mới phát hiện.
+             *
+             * Tên đích lấy phần trước dấu phẩy: đọc cả địa chỉ hành chính
+             * thì câu dài lê thê mà người lái chỉ cần cái tên.
+             */
+            'vi-VN': (d) => `Bắt đầu dẫn đường${d.dest ? ' đến ' + d.dest : ''}. `
+                + `Tổng quãng đường ${String(d.total).replace('.', ',')} ki lô mét, khoảng ${d.min} phút. `
                 + (d.dist >= 1000
-                    ? `Đi thẳng ${(d.dist / 1000).toFixed(1).replace('.', ',')} ki lô mét rồi ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi} vào ${spokenStreet(d.street)}.`
-                    : `Sau ${d.dist} mét, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi} vào ${spokenStreet(d.street)}.`),
+                    ? `Đi thẳng ${(d.dist / 1000).toFixed(1).replace('.', ',')} ki lô mét rồi ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi}${streetPhrase(d.street)}.`
+                    : `Sau ${d.dist} mét, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi}${streetPhrase(d.street)}.`),
             'en-US': (d) => `Starting navigation. ${d.total} kilometers, about ${d.min} minutes. `
                 + `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.street}.`
         },
@@ -7506,9 +7674,7 @@
              */
             'vi-VN': (d) => {
                 const turn = (TURN_TEXT[d.dir] || TURN_TEXT.straight).vi;
-                const st = (d.street || '').trim();
-                const where = st && st !== UNKNOWN_ROAD ? ` vào ${spokenStreet(st)}` : '';
-                return `${d.dist} mét nữa, ${turn}${where}.`;
+                return `${d.dist} mét nữa, ${turn}${streetPhrase(d.street)}.`;
             },
             'en-US': (d) => `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.streetEn || d.street}.`
         },
