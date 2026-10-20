@@ -1219,7 +1219,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'e63ac56';
+    const BUILD_TAG = '9702fe1';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3178,7 +3178,12 @@
     }
 
     async function searchPlace(query) {
-        const raw = (query || '').trim();
+        /*
+         * Bỏ câu lệnh NGAY TỪ ĐẦU, trước cả phần nhận nhóm và phần khoanh
+         * vùng tỉnh thành — cả hai đều đọc câu gốc. Để sót thì "chỉ đường
+         * đến bệnh viện Việt Tiệp" không được nhận là câu hỏi về bệnh viện.
+         */
+        const raw = stripCommandWords((query || '').trim());
         if (raw.length < 2) return [];
 
         // Tìm theo nhóm đi trước: nó làm mới GPS rồi xếp theo khoảng cách thật
@@ -4056,6 +4061,69 @@
         return out.trim();
     }
 
+    /* =====================================================================
+     * BỎ CÂU LỆNH, GIỮ LẠI TÊN NƠI CẦN ĐẾN
+     *
+     * "chỉ đường đến bến xe Niệm Nghĩa" mà đem nguyên cả câu đi tra thì máy
+     * tìm kiếm coi "chỉ đường đến bến xe..." là MỘT CÁI TÊN và trả về những
+     * chỗ chẳng liên quan. Người lái nói theo thói quen, không ai gõ trơ tên
+     * địa điểm mỗi lần.
+     *
+     * CHỖ DỄ SAI NHẤT — bỏ dấu đi thì nhiều chữ đụng nhau:
+     *   "đến" ≡ "đền"  → "Đền Hùng" mà bỏ chữ đầu thì còn "Hùng"
+     *   "tới" ≡ "tôi", "tối"
+     *   "về"  ≡ "vé"
+     * Nên chia làm hai loại:
+     *   - Cụm NHIỀU CHỮ ("chỉ đường đến", "dẫn đường tới", "đi đến"): so sau
+     *     khi bỏ dấu cũng an toàn, vì không có địa danh nào trùng cả cụm.
+     *   - Chữ ĐƠN ("đến", "tới", "về"): CHỈ bỏ khi câu gõ CÓ DẤU đúng chữ
+     *     đó. Gõ không dấu "den hung" thì giữ nguyên — thà tra thừa một chữ
+     *     còn hơn cắt mất tên Đền Hùng.
+     * Và luôn phải còn lại ít nhất 2 ký tự, nếu không thì trả câu gốc.
+     * ===================================================================== */
+    const CMD_PHRASES = [
+        'chi duong den', 'chi duong toi', 'chi duong ve', 'chi duong',
+        'dan duong den', 'dan duong toi', 'dan duong ve', 'dan duong',
+        'tim duong den', 'tim duong toi', 'tim duong ve', 'tim duong',
+        'duong den', 'duong toi', 'duong ve',
+        'dua toi den', 'dua toi toi', 'dua toi ve', 'dua toi',
+        'cho toi den', 'cho toi toi', 'cho toi ve', 'cho toi',
+        'di den', 'di toi', 'di ve', 'di tu day den', 'lam on cho toi den',
+        'navigate to', 'directions to', 'route to', 'drive to', 'go to',
+        'take me to'
+    ].sort((a, b) => b.length - a.length);     // cụm dài xét trước
+
+    const CMD_SINGLE = ['đến', 'tới', 'về', 'đi'];
+
+    function stripCommandWords(query) {
+        let out = String(query || '').trim();
+        if (!out) return out;
+
+        // 1. Cụm nhiều chữ, so trên bản bỏ dấu, chỉ ở ĐẦU câu
+        for (let i = 0; i < 3; i++) {                 // "làm ơn cho tôi đến ..." có thể lồng nhau
+            const na = noAccent(out).replace(/\s+/g, ' ').trim();
+            const found = CMD_PHRASES.find((c) => na === c || na.startsWith(c + ' '));
+            if (!found) break;
+            const rest = dropLeadingWords(out, found.split(' ').length);
+            if (noAccent(rest).trim().length < 2) break;   // cắt xong rỗng thì thôi
+            out = rest;
+        }
+
+        // 2. Chữ đơn: chỉ bỏ khi CÓ DẤU đúng chữ đó
+        for (let i = 0; i < 2; i++) {
+            const first = out.split(/\s+/)[0] || '';
+            if (!CMD_SINGLE.includes(first.toLowerCase())) break;
+            const rest = dropLeadingWords(out, 1);
+            if (noAccent(rest).trim().length < 2) break;
+            out = rest;
+        }
+        return out.trim() || String(query || '').trim();
+    }
+
+    function dropLeadingWords(text, n) {
+        return String(text || '').trim().split(/\s+/).slice(n).join(' ');
+    }
+
     /**
      * Mọi cách hỏi của cùng một câu, xếp theo thứ tự ưu tiên:
      * bản CÓ DẤU và đã bỏ chữ đệm hành chính trước, rồi mới tới bản gõ thô.
@@ -4064,7 +4132,7 @@
      * bỏ các bản kia, vì mỗi kho dữ liệu nhạy với một kiểu gõ khác nhau.
      */
     function queryForms(raw) {
-        const expanded = expandAbbrev(String(raw || '').trim());
+        const expanded = expandAbbrev(stripCommandWords(String(raw || '').trim()));
         const accented = addVnAccents(expanded);
         const forms = [];
         const push = (t, acc) => {
