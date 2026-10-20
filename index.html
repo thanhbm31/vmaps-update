@@ -114,15 +114,54 @@
         #ui-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
 
         /* Glassmorphism (blur nhẹ hơn để đỡ nặng GPU trên máy yếu / đầu xe) */
+        /* =====================================================================
+         * ĐỒ HOẠ NHẸ: BỎ LÀM MỜ NỀN
+         *
+         * backdrop-filter là hiệu ứng ĐẮT NHẤT trong cả màn hình này. Mỗi
+         * bảng kính nằm ĐÈ LÊN BẢN ĐỒ ĐANG SỐNG, nên mỗi khung hình bản đồ
+         * nhúc nhích là máy phải đọc lại vùng ảnh bên dưới, làm mờ nó, rồi
+         * vẽ chồng lên — với 9 bảng kính thì đó là 9 lần mỗi khung hình.
+         * Trên máy tầm trung, đây là thứ ăn khung hình nhiều hơn mọi thứ
+         * khác cộng lại khi vuốt bản đồ.
+         *
+         * Nền đục hơn một chút (0.95 thay vì 0.88) trông gần như y hệt mà
+         * không phải tính gì: chữ vẫn đọc được trên nền bản đồ rối.
+         * ===================================================================== */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(203, 213, 225, 0.6);
         }
         .dark .glass-panel {
-            background: rgba(30, 41, 59, 0.88);
+            background: rgba(30, 41, 59, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /*
+         * Thay cho animate-pulse / ping / bounce.
+         *
+         * Ba hiệu ứng đó chạy VÔ HẠN: trình duyệt phải giữ một lớp hợp thành
+         * sống và vẽ lại đều đặn kể cả khi người dùng không chạm gì. Trên xe
+         * thì màn hình bật suốt chuyến, nên đó là pin đổi lấy một thứ nhấp
+         * nháy. Viền đậm cộng nền nhạt gây chú ý tương đương mà tĩnh hoàn
+         * toàn — vẽ một lần rồi thôi.
+         */
+        /* =====================================================================
+         * ĐỒ HOẠ NHẸ (2): BỎ BÓNG ĐỔ TRÊN GHIM BẢN ĐỒ
+         *
+         * Mỗi bóng đổ là một lần trình duyệt phải vẽ thêm một lớp mờ quanh
+         * hình. Một hai cái thì không sao — nhưng ghim trạm sạc có thể lên
+         * tới hàng trăm, và Leaflet vẽ lại TẤT CẢ mỗi lần vuốt hay mỗi lần
+         * bản đồ bay. Viền trắng 2px đã đủ tách ghim khỏi nền bản đồ rối,
+         * mà không tốn gì.
+         *
+         * Luật !important ở đây là cố ý: chặn cả những chỗ sau này lỡ thêm
+         * lớp shadow của Tailwind vào ghim.
+         * ===================================================================== */
+        .vm-icon { box-shadow: none !important; }
+
+        .vm-attention {
+            outline: 2px solid rgba(239, 68, 68, 0.9);
+            outline-offset: 1px;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -215,7 +254,7 @@
             text-align: center;
         }
 
-        /* Vòng sáng quanh xe. animate-ping của Tailwind nhấp 1 lần/giây, nhìn
+        /* Vòng sáng quanh xe. vm-attention của Tailwind nhấp 1 lần/giây, nhìn
            lâu rất mỏi mắt khi đang lái — giãn ra 2,6 giây và dịu biên độ. */
         @keyframes carPulse {
             0%   { transform: scale(0.9); opacity: 0.45; }
@@ -504,7 +543,7 @@
                     <span id="netBadgeText">Mất mạng — cảnh báo camera vẫn chạy, tìm đường tạm ngưng</span>
                     <button onclick="repairTiles('Đang tải lại bản đồ')" class="underline font-bold">Tải lại</button>
                 </div>
-                <div id="toastNotification" role="status" aria-live="polite" class="bg-slate-800/90 dark:bg-slate-100/90 text-white dark:text-slate-900 px-4 py-2 rounded-2xl shadow-lg text-sm font-medium opacity-0 transition-opacity duration-300 backdrop-blur-sm"></div>
+                <div id="toastNotification" role="status" aria-live="polite" class="bg-slate-800/90 dark:bg-slate-100/90 text-white dark:text-slate-900 px-4 py-2 rounded-2xl shadow-lg text-sm font-medium opacity-0 transition-opacity duration-300"></div>
             </div>
         </div>
 
@@ -546,7 +585,7 @@
                     </div>
                 </div>
                 <!-- Biển tốc độ TIẾP THEO: dạng viên thuốc nằm dưới, không làm cụm rộng ra -->
-                <div id="next-limit-box" class="hidden items-center gap-2 glass-panel rounded-full pl-1 pr-3 py-1 shadow-lg animate-pulse">
+                <div id="next-limit-box" class="hidden items-center gap-2 glass-panel rounded-full pl-1 pr-3 py-1 shadow-lg vm-attention">
                     <div class="w-8 h-8 rounded-full border-[3px] border-red-600 bg-white flex items-center justify-center flex-shrink-0">
                         <span id="nextLimitValue" class="text-sm font-black text-black leading-none">50</span>
                     </div>
@@ -599,7 +638,7 @@
     </div>
 
     <!-- ================= REPORT MODAL ================= -->
-    <div id="reportModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="reportModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate" style="padding-bottom: calc(var(--sab) + 2rem)">
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
                 <h3 class="text-xl font-bold text-slate-800 dark:text-white">Báo cáo cho cộng đồng</h3>
@@ -620,7 +659,7 @@
     </div>
 
     <!-- ================= UTILITIES MODAL ================= -->
-    <div id="utilitiesModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="utilitiesModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate" style="padding-bottom: calc(var(--sab) + 2rem)">
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
                 <h3 class="text-xl font-bold text-slate-800 dark:text-white">Hiện trên bản đồ</h3>
@@ -639,7 +678,7 @@
     </div>
 
     <!-- ================= SPEED LIMIT FEEDBACK MODAL ================= -->
-    <div id="speedFeedbackModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-center items-center transition-opacity px-4">
+    <div id="speedFeedbackModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-center items-center transition-opacity px-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col modal-animate p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white">Tốc độ đúng là bao nhiêu?</h3>
@@ -660,7 +699,7 @@
     </div>
 
     <!-- ================= SETTINGS MODAL ================= -->
-    <div id="settingsModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="settingsModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full h-[85dvh] rounded-t-3xl shadow-2xl flex flex-col modal-animate">
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
                 <h3 class="text-xl font-bold">Cài đặt bản đồ</h3>
@@ -718,26 +757,11 @@
                             <i class="fa-solid fa-folder-open mr-2"></i>Chọn file index.html đã tải về
                         </button>
 
-                        <div>
-                            <label for="manifestUrl" class="block text-xs font-semibold text-slate-500 mb-1">Địa chỉ file kiểm tra phiên bản (update.json)</label>
-                            <div class="flex gap-2">
-                                <input id="manifestUrl" type="url" inputmode="url" placeholder="https://.../update.json"
-                                       autocomplete="off" spellcheck="false"
-                                       class="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
-                                <button onclick="saveManifestUrl()" class="bg-slate-700 text-white rounded-xl px-4 font-bold text-sm">Lưu</button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="updateUrl" class="block text-xs font-semibold text-slate-500 mb-1">Hoặc tải thẳng index.html từ địa chỉ</label>
-                            <div class="flex gap-2">
-                                <input id="updateUrl" type="url" inputmode="url" placeholder="https://..."
-                                       data-setting="updateUrl"
-                                       class="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-blue-500">
-                                <button onclick="updateFromUrl()" data-needs-network class="bg-slate-700 text-white rounded-xl px-4 font-bold text-sm">Tải</button>
-                            </div>
-                        </div>
-
+                        <!-- Hai ô nhập địa chỉ (update.json và index.html) đã BỎ
+                             theo yêu cầu. Nút "Kiểm tra bản mới" vẫn chạy: địa
+                             chỉ kiểm tra phiên bản do bản dựng nhúng sẵn, người
+                             dùng không phải tự gõ. Vẫn còn đường chọn file đã
+                             tải về cho trường hợp không có mạng. -->
                         <button onclick="updateReset()" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 font-semibold text-sm text-slate-600 dark:text-slate-300">
                             Quay về bản gốc trong APK
                         </button>
@@ -748,34 +772,9 @@
                         </button>
                         <div id="voiceDiag" class="hidden text-[11px] leading-relaxed font-mono px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 whitespace-pre-wrap"></div>
 
-                        <hr class="border-slate-200 dark:border-slate-700">
-                        <div>
-                            <div class="text-sm font-semibold mb-1">Khoá Mapbox</div>
-                            <p class="text-xs text-slate-500 mb-2">
-                                Dán khoá công khai (bắt đầu bằng <span class="font-mono">pk.</span>) để dùng bản đồ,
-                                tìm kiếm và dẫn đường của Mapbox. Bỏ trống thì app chạy bằng OpenStreetMap như cũ.
-                            </p>
-                            <div class="flex gap-2">
-                                <input type="text" id="mapboxTokenInput" placeholder="pk.eyJ1..." autocomplete="off"
-                                       spellcheck="false"
-                                       class="flex-1 min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono outline-none focus:border-blue-500">
-                                <button onclick="saveMapboxToken()" class="bg-slate-700 text-white rounded-xl px-4 font-bold text-sm">Lưu</button>
-                            </div>
-                            <div id="mapboxStatus" class="text-[11px] mt-2 leading-relaxed"></div>
-                        </div>
-
-                        <hr class="border-slate-200 dark:border-slate-700">
-                        <div>
-                            <div class="text-sm font-semibold mb-1">Bản đồ vector chạy GPU (thử nghiệm)</div>
-                            <p class="text-xs text-slate-500 mb-2">
-                                Mở trang so sánh dùng MapLibre GL: bản đồ vẽ bằng GPU thay vì thẻ HTML.
-                                Vuốt thử rồi so với bản đồ thường để biết có mượt hơn trên máy bạn không.
-                                Trang có hiện số khung hình và số tile đã tải.
-                            </p>
-                            <button onclick="openGlMap()" data-needs-network class="w-full bg-purple-600 text-white rounded-xl px-4 py-3 font-bold text-sm">
-                                <i class="fa-solid fa-cube mr-2"></i>Mở bản đồ GPU
-                            </button>
-                        </div>
+                        <!-- Ô nhập khoá Mapbox đã BỎ theo yêu cầu: khoá do bản
+                             dựng cấp sẵn, người dùng không phải biết tới nó.
+                             Phần mã đọc khoá vẫn giữ nguyên, chỉ bỏ ô nhập. -->
                     </div>
                 </div>
 
@@ -1029,19 +1028,26 @@
 
                 <!-- 4. Chia sẻ -->
                 <div class="pb-4">
-                    <button onclick="shareApp()" class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-sm transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3 active:scale-95">
+                    <button onclick="shareApp()" class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-sm transition-colors shadow flex items-center justify-center gap-3 active:scale-95">
                         <i class="fa-solid fa-share-nodes text-lg"></i> Chia sẻ ứng dụng cho bạn bè
                     </button>
                     <p class="text-[10px] text-center text-slate-400 mt-2">Chia sẻ VietNav qua Zalo, Messenger, SMS...</p>
+
+                    <!-- Thoát hẳn app. Chỉ hiện trong APK: trang web không tự
+                         đóng được, bày nút ra là hứa suông. -->
+                    <button id="exitAppBtn" onclick="exitAppNow()"
+                            class="hidden w-full mt-3 py-3.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-bold text-sm">
+                        <i class="fa-solid fa-power-off mr-2"></i>Thoát ứng dụng
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ================= CHILD WARNING MODAL ================= -->
-    <div id="childWarningModal" class="modal fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm hidden flex-col justify-center items-center transition-opacity px-4">
+    <div id="childWarningModal" class="modal fixed inset-0 z-[60] bg-black/70 hidden flex-col justify-center items-center transition-opacity px-4">
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col items-center text-center p-6 modal-animate border-4 border-yellow-400">
-            <div class="w-24 h-24 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center text-yellow-600 mb-4 animate-bounce">
+            <div class="w-24 h-24 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center text-yellow-600 mb-4">
                 <i class="fa-solid fa-child-reaching text-5xl"></i>
             </div>
             <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-2 uppercase">Chú ý phía sau!</h3>
@@ -1058,7 +1064,7 @@
     </div>
 
     <!-- ================= KIỂU BẢN ĐỒ ================= -->
-    <div id="mapStyleModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="mapStyleModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl modal-animate"
              style="padding-bottom: calc(var(--sab) + 1rem);">
             <div class="flex items-center justify-between px-5 pt-5 pb-3">
@@ -1073,7 +1079,7 @@
 
     <!-- ================= SEARCH MODAL (Nominatim) ================= -->
     <!-- Chạm vào tên đích trên thanh dưới khi đang dẫn đường -->
-    <div id="navActionsModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="navActionsModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl modal-animate"
              style="padding-bottom: calc(var(--sab) + 1rem);">
             <div class="flex items-center justify-between px-5 pt-5 pb-3">
@@ -1147,7 +1153,7 @@
     </div>
 
     <!-- Chọn lưu vào mục nào -->
-    <div id="savePlaceModal" class="modal fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex-col justify-end transition-opacity">
+    <div id="savePlaceModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
         <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl flex flex-col modal-animate"
              style="padding-bottom: calc(var(--sab) + 1rem); max-height: 85dvh;">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
@@ -1222,7 +1228,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '330e15a';
+    const BUILD_TAG = '80528fe';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1236,8 +1242,26 @@
     const STORE_KEY = 'vietnav.settings.v1';
     const REPORT_TTL_MS = 30 * 60 * 1000;           // Marker báo cáo tự ẩn sau 30 phút
     const REPORT_COOLDOWN_MS = 60 * 1000;           // Chống bấm trùng cùng loại liên tục
-    const CHILD_STOP_MS = DEMO_MODE ? 20 * 1000 : 3 * 60 * 1000; // Tránh báo nhầm khi dừng đèn đỏ
-    const STOP_SPEED_KMH = 3;                       // Dưới mức này coi là đứng yên (nhiễu GPS)
+    /*
+     * 90 giây, không phải 3 phút.
+     *
+     * 3 phút là quá muộn cho đúng việc mà lời nhắc này sinh ra để làm: người
+     * lớn xuống xe, khoá cửa, đi khỏi — trẻ còn ngồi sau. Chuỗi việc đó xong
+     * trong khoảng một phút. Nhắc sau 3 phút là nhắc lúc người ta đã vào nhà.
+     *
+     * Vẫn phải có một khoảng chờ, vì dừng đèn đỏ cũng là dừng. 90 giây dài
+     * hơn hầu hết đèn đỏ ở Việt Nam, và phần "dừng ngay trên trục đường lớn
+     * thì bỏ qua" vẫn chặn những ca còn lại.
+     */
+    const CHILD_STOP_MS = DEMO_MODE ? 20 * 1000 : 90 * 1000;
+    /*
+     * Dưới 5 km/h là ĐI BỘ, tức là đã xuống xe — không còn là lái nữa.
+     *
+     * 3 km/h trước đây đặt theo nhiễu GPS lúc đứng yên. Nhưng xe nhích trong
+     * bãi, bò trong ngõ cũng ở quanh mức đó, nên mốc này mới là mốc đúng cho
+     * câu hỏi "người ta đã rời xe chưa".
+     */
+    const STOP_SPEED_KMH = 5;
     const OVERSPEED_CONFIRM_MS = 2000;              // Vượt liên tục 2s mới báo (lọc nhiễu)
     // Về dưới giới hạn liên tục bấy nhiêu mới tắt báo. Chống nhấp nháy bằng
     // THỜI GIAN chứ không bằng lề tốc độ — lề tốc độ làm app báo đỏ trong
@@ -1670,8 +1694,12 @@
         // ra ngoài khung là bay về, nên người dùng vừa kéo bản đồ đi xem đoạn
         // phía trước là nhịp GPS sau đã giật về chỗ xe — không xem được gì.
         maybeRecenter();
-        const speedKmh = c.speed != null ? Math.max(0, c.speed * 3.6) : 0;   // m/s → km/h
-        onGpsSpeed(speedKmh);
+        const now = Date.now();
+        const rawKmh = c.speed != null ? Math.max(0, c.speed * 3.6) : 0;   // m/s → km/h
+        const speedKmh = plausibleSpeed(rawKmh, c, now);
+        noteFix(c, now);
+        // null = nhịp này không đáng tin, giữ nguyên số đang hiện
+        if (speedKmh !== null) onGpsSpeed(speedKmh);
         updateHeadingFromGps(c, speedKmh);
         checkNearbyCameras();
         updateNavigationProgress();
@@ -1877,7 +1905,7 @@
         speedCameras.forEach((cam) => {
             const st = STYLE[cam.kind] || STYLE.other;
             const icon = L.divIcon({
-                html: `<div class="vm-icon rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white text-white ${st.bg}">
+                html: `<div class="vm-icon rounded-full w-8 h-8 flex items-center justify-center border-2 border-white text-white ${st.bg}">
                          <i class="fa-solid ${st.icon} text-xs"></i>
                        </div>`,
                 className: '', iconSize: [32, 32], iconAnchor: [16, 16]
@@ -2139,7 +2167,16 @@
     // kể cả khi dữ liệu đã nạp — vẽ cả nước thì bản đồ thành một đống điểm.
     // Vuốt bản đồ đi xa hoặc xe chạy tới thì vùng này đi theo, nên chỗ mới
     // vẫn hiện.
-    const CHG_SHOW_RADIUS_M = 25000;
+    /*
+     * 10 km, không phải 25 km.
+     *
+     * Mỗi ghim là một thẻ DOM mà Leaflet phải tính lại vị trí TỪNG KHUNG
+     * HÌNH khi vuốt hay khi bản đồ bay. Trong một thành phố, vòng 25 km ôm
+     * gần như toàn bộ trạm sạc của cả vùng — vài trăm thẻ, đủ làm máy tầm
+     * trung giật. Mà trạm cách 20 km thì không ai ghé: xe đi tới đó là vùng
+     * hiển thị đã trôi theo và trạm vẫn hiện ra đúng lúc cần.
+     */
+    const CHG_SHOW_RADIUS_M = 10000;
 
     function chargingToDraw() {
         const here = userLatLng || getCurrentPos();
@@ -2197,7 +2234,7 @@
                 : kw >= 50 ? 'bg-blue-600' : 'bg-green-600';
             const size = slow ? 24 : 32;
             const icon = L.divIcon({
-                html: `<div class="vm-icon ${tone} text-white ${slow ? 'rounded-md w-6 h-6' : 'rounded-full w-8 h-8'} flex items-center justify-center shadow-lg border-2 border-white">
+                html: `<div class="vm-icon ${tone} text-white ${slow ? 'rounded-md w-6 h-6' : 'rounded-full w-8 h-8'} flex items-center justify-center border-2 border-white">
                          <i class="fa-solid ${slow ? 'fa-plug' : 'fa-charging-station'} ${slow ? 'text-[9px]' : 'text-xs'}"></i>
                        </div>`,
                 className: '', iconSize: [size, size], iconAnchor: [size / 2, size / 2]
@@ -2329,7 +2366,7 @@
             const d = UTILITIES_DATA[k];
             for (const p of (poiData[k] || []).slice(0, perKey)) {
                 const icon = L.divIcon({
-                    html: `<div class="vm-icon ${d.bg} ${d.color} rounded-full w-7 h-7 flex items-center justify-center shadow border-2 border-white">
+                    html: `<div class="vm-icon ${d.bg} ${d.color} rounded-full w-7 h-7 flex items-center justify-center border-2 border-white">
                              <i class="fa-solid ${d.icon} text-[11px]"></i>
                            </div>`,
                     className: '', iconSize: [28, 28], iconAnchor: [14, 14]
@@ -4937,7 +4974,7 @@
         for (const p of Object.values(loadPlaces())) {
             if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
             const icon = L.divIcon({
-                html: `<div class="vm-icon bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow border-2 border-white">
+                html: `<div class="vm-icon bg-emerald-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white">
                          <i class="fa-solid ${placeIcon(p.id)} text-xs"></i>
                        </div>`,
                 className: '', iconSize: [32, 32], iconAnchor: [16, 16]
@@ -5120,7 +5157,7 @@
     function micBusy(on) {
         const i = $('micIcon');
         if (!i) return;
-        i.className = on ? 'fa-solid fa-microphone-lines text-red-500 animate-pulse' : 'fa-solid fa-microphone';
+        i.className = on ? 'fa-solid fa-microphone-lines text-red-500 vm-attention' : 'fa-solid fa-microphone';
     }
 
     // Vỏ Android gọi ngược vào đây khi nhận xong
@@ -5326,6 +5363,13 @@
                             class="flex-1 bg-blue-600 text-white rounded-xl px-4 py-3 font-bold">
                         <i class="fa-solid fa-route mr-2"></i>Bắt đầu dẫn đường
                     </button>
+                    <!-- Chỉ TÔ ĐƯỜNG, không dẫn: xem trước đi lối nào, bao xa,
+                         mà không bị giọng nói và cảnh báo chệch tuyến bám theo. -->
+                    <button onclick="previewPendingRoute()" data-needs-network
+                            aria-label="Xem lộ trình, không dẫn đường"
+                            class="px-4 rounded-xl border border-blue-300 dark:border-blue-800 text-blue-600 dark:text-blue-400 font-bold">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
                     <button onclick="savePendingDest()" aria-label="Lưu địa điểm"
                             class="w-12 rounded-xl border border-slate-300 dark:border-slate-600 text-yellow-500">
                         <i class="fa-solid fa-star"></i>
@@ -5353,6 +5397,25 @@
         setDestination(d.lat, d.lon, d.name);
     }
 
+    /* =====================================================================
+     * XEM LỘ TRÌNH MÀ KHÔNG DẪN ĐƯỜNG
+     *
+     * Vẽ tuyến lên bản đồ, cho biết bao xa và mất bao lâu, rồi DỪNG ở đó:
+     * không đọc chỉ đường, không bám theo xe, không cảnh báo chệch tuyến.
+     * Dùng khi chỉ muốn biết đường đi lối nào trước khi quyết định.
+     *
+     * Cách làm: vẫn gọi đúng phần tính tuyến như thường, nhưng ngay sau đó
+     * TẮT cờ dẫn đường và dọn HUD. Giữ lại nét vẽ tuyến và ghim đích.
+     * Không viết một đường tính tuyến riêng — hai đường song song là hai
+     * chỗ phải sửa mỗi lần đổi, và chỗ ít dùng luôn là chỗ mục rữa trước.
+     * ===================================================================== */
+    async function previewPendingRoute() {
+        if (!pendingDest) return;
+        const d = pendingDest;
+        closeModal('searchModal');
+        await calculateRoute(d.lat, d.lon, { name: d.name, preview: true });
+    }
+
     function savePendingDest() {
         if (!pendingDest) return;
         const label = (prompt('Tên địa điểm:', (pendingDest.name || '').split(',')[0]) || '').trim();
@@ -5369,7 +5432,7 @@
         if (destMarker) map.removeLayer(destMarker);
         destMarker = L.marker([lat, lon], {
             icon: L.divIcon({
-                html: `<div class="vm-icon bg-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg border-2 border-white"><i class="fa-solid fa-flag"></i></div>`,
+                html: `<div class="vm-icon bg-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center border-2 border-white"><i class="fa-solid fa-flag"></i></div>`,
                 className: '', iconSize: [40, 40], iconAnchor: [20, 40]
             })
         }).addTo(map).bindPopup(escapeHtml(name || 'Điểm đến'));
@@ -5525,7 +5588,27 @@
             if (!opts.silent) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
 
             if (gen !== nav.gen) return;           // kiểm lại lần nữa cho chắc
+            // Đặt cờ TRƯỚC khi dựng: phần dựng có đọc câu mở đầu, mà xem
+            // trước thì phải im từ đầu chứ không phải tắt sau khi đã kêu.
+            nav.preview = !!opts.preview;
             beginNavigation(route, [destLat, destLon], opts.name);
+
+            /*
+             * Chế độ xem trước: tuyến đã vẽ xong thì hạ cờ dẫn đường xuống
+             * ngay. Hạ SAU khi dựng để vẫn có đủ số liệu quãng đường và thời
+             * gian mà báo cho người dùng.
+             */
+            if (opts.preview) {
+                nav.preview = false;
+                nav.active = false;
+                nav.steps = [];
+                resetNavState();
+                silenceGuidance();
+                const kmP = (route.distance / 1000).toFixed(1).replace('.', ',');
+                const minP = Math.round(route.duration / 60);
+                showToast(`Xem lộ trình: ${kmP} km · khoảng ${minP} phút (chưa dẫn đường)`);
+                return;
+            }
 
             const km = (route.distance / 1000).toFixed(1);
             const min = Math.round(route.duration / 60);
@@ -5619,6 +5702,7 @@
         // Huỷ mọi lượt tính tuyến đang bay dở: chúng KHÔNG được bật lại dẫn
         // đường sau khi người dùng đã bấm kết thúc.
         nav.gen++;
+        nav.preview = false;
         nav.rerouting = false;
         nav.prefetching = false;
         if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
@@ -5690,6 +5774,12 @@
     const ARRIVE_M = 40;
     const TURN_ANNOUNCE_M = [500, 200, 60];
     const TURN_SPEAK_GAP_MS = 7000;  // hai câu chỉ đường liền nhau nghe rất rối
+    /*
+     * Đọc trước bao nhiêu giây chạy. 3 giây là khoảng thời gian một câu ngắn
+     * nằm chờ trong hàng đợi rồi phát ra, cộng nhịp GPS. Chặn trần 120 m để ở
+     * tốc độ cao không thành ra đọc quá sớm.
+     */
+    const TURN_LEAD_S = 3;
 
     // OSRM maneuver → hướng rẽ dùng trong TURN_TEXT
     function maneuverDir(m) {
@@ -5697,6 +5787,24 @@
         const type = String(m.type || '');
         const mod = String(m.modifier || '');
         if (type === 'arrive') return 'arrive';
+        /*
+         * QUAY ĐẦU nhận theo GÓC, không chỉ theo nhãn.
+         *
+         * Đi quá chỗ rẽ trong ngõ thì máy chủ tính lại một tuyến quay lại
+         * đúng con đường vừa đi — đường hai chiều không có dải phân cách thì
+         * quay đầu được. Nhưng nó gắn nhãn "turn / left" chứ không gắn
+         * "uturn", nên app đọc "rẽ trái" trong khi thực tế phải quay đầu.
+         * Nghe nhầm chỗ này là rẽ vào một con ngõ khác.
+         *
+         * Góc vào và góc ra chênh nhau khoảng 180 độ thì đó là quay đầu, dù
+         * nhãn ghi gì.
+         */
+        const b1 = Number(m.bearing_before), b2 = Number(m.bearing_after);
+        if (Number.isFinite(b1) && Number.isFinite(b2) && type !== 'depart') {
+            // Góc quay chuẩn hoá về [-180, 180); |góc| gần 180 = quay ngược lại
+            const turnAngle = Math.abs(((b2 - b1 + 540) % 360) - 180);
+            if (turnAngle >= 150) return 'uturn';
+        }
         if (type === 'roundabout' || type === 'rotary' || type === 'roundabout turn') return 'roundabout';
         if (type === 'merge') return 'merge';
         if (type === 'fork') return mod.includes('left') ? 'fork-left' : 'fork-right';
@@ -5756,6 +5864,8 @@
     }
 
     function announceRouteStart() {
+        // Xem trước lộ trình thì không đọc gì: người dùng chỉ muốn NHÌN
+        if (nav.preview) return;
         const next = nav.steps[nav.stepIdx + 1];
         if (!next) return;
         const dist = Math.max(0, Math.round(nav.steps[nav.stepIdx].endAlong));
@@ -5873,8 +5983,24 @@
         if (next) {
             // Lấy ngưỡng NHỎ NHẤT mà khoảng cách hiện tại đã lọt vào. GPS có thể nhảy
             // từ 503 m xuống 204 m trong một nhịp, nên không được dò theo thứ tự rồi dừng.
+            /*
+             * ĐỌC SỚM MỘT NHỊP, VÀ ĐỌC ĐÚNG CON SỐ TRÒN.
+             *
+             * Người dùng báo: nghe "còn 500 mét" thì trên màn hình đã là 400.
+             * Hai nguyên nhân cộng lại:
+             *  1. Câu nói phải XẾP HÀNG sau câu đang đọc, mà nội dung thì đã
+             *     đóng băng lúc xếp hàng. Chờ vài giây là xe đã đi thêm cả
+             *     trăm mét.
+             *  2. Nhịp GPS 1 giây: lúc vượt mốc 500 có thể đã là 488.
+             *
+             * Nên: kích hoạt SỚM hơn mốc một quãng bằng vài giây chạy ở tốc
+             * độ hiện tại, để lúc câu thật sự phát ra thì xe đang ở quanh mốc.
+             * Và đọc CON SỐ TRÒN của mốc ("500 mét nữa") chứ không đọc con số
+             * đo được — số lẻ vừa khó nghe vừa sai ngay khi nói xong.
+             */
+            const leadM = Math.min(120, Math.max(0, displayedSpeed() / 3.6 * TURN_LEAD_S));
             let hit = null;
-            for (const th of TURN_ANNOUNCE_M) if (distToManeuver <= th) hit = th;
+            for (const th of TURN_ANNOUNCE_M) if (distToManeuver <= th + leadM) hit = th;
             // Vừa đọc xong thì khoan đọc tiếp: xe đi nhanh hoặc GPS nhiễu có thể
             // vượt hai ngưỡng trong vài giây, nghe thành hai câu chồng nhau.
             const tooSoon = Date.now() - nav.lastSpokeAt < TURN_SPEAK_GAP_MS;
@@ -5886,7 +6012,7 @@
                 nav.lastSpokeAt = Date.now();
                 speak('turn', {
                     dir: navState.turn.dir,
-                    dist: distToManeuver,
+                    dist: hit,                      // con số tròn của mốc
                     street: navState.turn.street,
                     streetEn: navState.turn.streetEn
                 });
@@ -7089,6 +7215,9 @@
         MODALS.forEach((m) => { if (m !== id && m !== 'childWarningModal' && isModalOpen(m)) closeModal(m); });
         $(id).classList.remove('hidden');
         $(id).classList.add('flex');
+        // Nút thoát app chỉ có nghĩa trong APK — quyết định lúc mở bảng, vì
+        // cầu nối Android có thể chưa sẵn sàng lúc trang vừa nạp.
+        if (id === 'settingsModal') showExitSuggest();
     }
     function closeModal(id) {
         $(id).classList.add('hidden');
@@ -7369,7 +7498,18 @@
                 + `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.street}.`
         },
         turn: {
-            'vi-VN': (d) => `${d.dist} mét nữa, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi} vào ${spokenStreet(d.street)}.`,
+            /*
+             * SỐ MÉT ĐỨNG ĐẦU CÂU, rồi mới tới hướng rẽ và tên đường.
+             * Nghe "500 mét nữa" là tay đã biết phải làm gì trước khi câu
+             * đọc xong — ngược lại thì phải nghe hết mới biết còn bao xa.
+             * Không có tên đường thì bỏ hẳn vế đó, đừng đọc "vào đoạn kế tiếp".
+             */
+            'vi-VN': (d) => {
+                const turn = (TURN_TEXT[d.dir] || TURN_TEXT.straight).vi;
+                const st = (d.street || '').trim();
+                const where = st && st !== UNKNOWN_ROAD ? ` vào ${spokenStreet(st)}` : '';
+                return `${d.dist} mét nữa, ${turn}${where}.`;
+            },
             'en-US': (d) => `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.streetEn || d.street}.`
         },
         // Ngắn có chủ đích. Câu dài đọc hết mất 5-6 giây, trong khi thứ cần
@@ -7632,6 +7772,58 @@
     const CHILD_DISMISS_KMH = 20;
     let childWarnShownAt = 0;
 
+    /* =====================================================================
+     * LỌC TỐC ĐỘ BỊA CỦA GPS
+     *
+     * Ngồi yên một chỗ mà đồng hồ nhảy lên 120 km/h. Đây là tật cố hữu của
+     * GPS điện thoại: khi sóng yếu (trong nhà, cạnh toà nhà cao), vị trí
+     * "nhảy" vài trăm mét giữa hai nhịp, và chip tính ra một vận tốc khổng
+     * lồ từ cú nhảy đó rồi đưa thẳng vào trường speed.
+     *
+     * Hai điều kiện để tin con số:
+     *  1. Sai số vị trí phải vừa phải. Báo 120 km/h kèm sai số 80 m là tự
+     *     mâu thuẫn — không biết mình đang ở đâu trong vòng 80 m thì không
+     *     thể biết đang chạy 120.
+     *  2. Phải khớp với QUÃNG ĐƯỜNG THẬT đi được giữa hai nhịp. Đứng yên
+     *     thì quãng đường gần 0, nên dù chip báo bao nhiêu cũng là bịa.
+     *
+     * Không khớp thì BỎ nhịp đó, giữ số cũ — thà chậm một nhịp còn hơn hiện
+     * một con số làm người lái giật mình và làm cảnh báo quá tốc độ kêu oan.
+     * ===================================================================== */
+    const SPEED_MAX_ACC_M = 50;        // sai số lớn hơn mức này thì không tin tốc độ
+    const SPEED_JUMP_RATIO = 2.5;      // chip báo cao hơn quãng đường thật bấy nhiêu lần
+    const SPEED_CHECK_MIN_KMH = 25;    // dưới mức này thì khỏi soi, sai cũng vô hại
+    let lastFix = null;                // { lat, lon, t }
+
+    function plausibleSpeed(rawKmh, c, now) {
+        const kmh = Math.max(0, Number(rawKmh) || 0);
+        if (kmh < SPEED_CHECK_MIN_KMH) return kmh;
+
+        const acc = Number(c && c.accuracy);
+        if (Number.isFinite(acc) && acc > SPEED_MAX_ACC_M) return null;
+
+        if (lastFix) {
+            const dt = (now - lastFix.t) / 1000;
+            if (dt > 0.3 && dt < 30) {
+                const moved = haversine(lastFix.lat, lastFix.lon, c.latitude, c.longitude);
+                // Trừ đi sai số: hai nhịp đều lệch thì quãng đường đo được
+                // có thể lớn hơn quãng đường thật.
+                const realMoved = Math.max(0, moved - (Number.isFinite(acc) ? acc : 0));
+                const fromMove = (realMoved / dt) * 3.6;
+                if (kmh > SPEED_CHECK_MIN_KMH && kmh > fromMove * SPEED_JUMP_RATIO + 10) return null;
+            }
+        }
+        return kmh;
+    }
+
+    /**
+     * Ghi lại nhịp vừa nhận. Tách riêng để chỗ gọi không thể quên: quên ghi
+     * thì phép so quãng đường không bao giờ có mốc, và bộ lọc thành vô dụng.
+     */
+    function noteFix(c, t) {
+        lastFix = { lat: c.latitude, lon: c.longitude, t };
+    }
+
     function onGpsSpeed(rawKmh) {
         speedState.rawGps = Math.max(0, Number(rawKmh) || 0);
         noteMovement(speedState.rawGps);
@@ -7891,7 +8083,7 @@
             // Giả lập vị trí biển phía Bắc xe (1 độ vĩ ≈ 111 km)
             const pos = getCurrentPos();
             const coords = [pos[0] + dist / 111000, pos[1]];
-            const html = `<div class="w-12 h-12 rounded-full border-[5px] border-red-600 bg-white shadow-2xl flex items-center justify-center animate-bounce">
+            const html = `<div class="w-12 h-12 rounded-full border-[5px] border-red-600 bg-white shadow-2xl flex items-center justify-center">
                     <span class="text-xl font-black text-black leading-none">${nextSpeed}</span></div>`;
             const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
             if (nextSpeedMarkerObj) map.removeLayer(nextSpeedMarkerObj);
@@ -8038,6 +8230,9 @@
         const show = canExitApp();
         if (btn) btn.classList.toggle('hidden', !show);
         if (hint) hint.classList.toggle('hidden', !show);
+        // Nút thoát trong cài đặt cũng theo cùng một điều kiện
+        const inSettings = $('exitAppBtn');
+        if (inSettings) inSettings.classList.toggle('hidden', !show);
     }
 
     // Khoảng lặng giữa "Bạn đã đến" và nhắc kiểm tra trẻ em.
@@ -8227,7 +8422,7 @@
         const t = REPORT_TYPES[key];
         const html = `
             <div class="vm-icon relative flex items-center justify-center w-12 h-12">
-                <div class="absolute inset-0 bg-white dark:bg-slate-800 rounded-full shadow-lg border-2 border-slate-200 dark:border-slate-600 flex items-center justify-center animate-bounce">
+                <div class="absolute inset-0 bg-white dark:bg-slate-800 rounded-full shadow-lg border-2 border-slate-200 dark:border-slate-600 flex items-center justify-center">
                     <i class="fa-solid ${t.icon} ${t.color} text-xl"></i>
                 </div>
             </div>`;
@@ -8554,10 +8749,6 @@
         box.classList.toggle('hidden', !api);
         if (!api) return;
         renderUpdateStatus();
-        const el = $('manifestUrl');
-        if (el) {
-            try { el.value = localStorage.getItem(MANIFEST_KEY) || ''; } catch (e) { }
-        }
         // Tự kiểm tra một lần sau khi app đã khởi động xong. Chậm 5 giây để
         // không giành mạng với bản đồ và GPS — hai thứ cần trước.
         if (manifestUrl()) setTimeout(() => checkForUpdate(true), 5000);
@@ -8584,14 +8775,8 @@
         api.pickFile();
     }
 
-    function updateFromUrl() {
-        const api = nativeUpdate();
-        if (!api) { showToast('Chỉ dùng được trong bản APK', 'warn'); return; }
-        const url = ($('updateUrl').value || '').trim();
-        if (!url) { showToast('Chưa nhập địa chỉ', 'warn'); return; }
-        showToast('Đang tải bản mới...');
-        api.fromUrl(url);
-    }
+    /* updateFromUrl() đã BỎ cùng với ô nhập địa chỉ: một hàm đọc phần tử
+       không còn tồn tại là cái bẫy chờ ai đó gọi lại. */
 
     function updateReset() {
         const api = nativeUpdate();
@@ -8623,21 +8808,6 @@
             if (v) return v;
         } catch (e) { }
         return MANIFEST_URL_BUILD;
-    }
-
-    function saveManifestUrl() {
-        const el = $('manifestUrl');
-        if (!el) return;
-        const v = el.value.trim();
-        try {
-            if (v) localStorage.setItem(MANIFEST_KEY, v);
-            else localStorage.removeItem(MANIFEST_KEY);
-        } catch (e) {
-            showToast('Không lưu được địa chỉ trên máy này', 'warn');
-            return;
-        }
-        showToast(v ? 'Đã lưu. Bấm "Kiểm tra bản mới" để thử.' : 'Đã xoá địa chỉ kiểm tra');
-        if (v) checkForUpdate(false);
     }
 
     /**
@@ -8855,17 +9025,6 @@
     }
 
     /** Mở trang so sánh bản đồ vector. Cần khoá Mapbox mới có tile vector. */
-    function openGlMap() {
-        if (!mapboxToken()) {
-            showToast('Cần khoá Mapbox mới mở được bản đồ vector', 'warn');
-            return;
-        }
-        if (nav.active) {
-            showToast('Đang dẫn đường — kết thúc rồi hãy mở trang thử nghiệm', 'warn');
-            return;
-        }
-        location.href = 'gl.html';
-    }
 
     function initMapboxSettings() {
         const el = $('mapboxTokenInput');
