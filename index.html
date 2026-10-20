@@ -1222,7 +1222,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '86e6f9b';
+    const BUILD_TAG = '330e15a';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -5197,7 +5197,20 @@
             return;
         }
         resultsEl.innerHTML = '<p class="p-4 text-slate-400 text-center">Đang tìm...</p>';
-        renderSearchResults(await searchPlace(q));
+        const rows = await searchPlace(q);
+        /*
+         * Kết quả về MUỘN thì không được vẽ đè lên câu mới.
+         *
+         * Cùng một họ với lỗi "kết thúc dẫn đường mà vẫn dẫn": tìm kiếm là
+         * việc bất đồng bộ. Gõ "bệnh viện" (chậm), đổi ý gõ "Đồ Sơn" (nhanh,
+         * hiện xong rồi), vài giây sau lượt "bệnh viện" trả về và đè lên —
+         * người dùng thấy danh sách tự đổi sang thứ mình không hỏi nữa.
+         *
+         * So THẲNG với chữ đang nằm trong ô: cách này không phụ thuộc vào bộ
+         * đếm lượt tìm theo nhóm (bộ đó tự tăng bên trong searchPlace).
+         */
+        if (($('searchInput').value || '').trim() !== q) return;
+        renderSearchResults(rows);
     }
 
     /* =====================================================================
@@ -5385,6 +5398,14 @@
             box.innerHTML = '<div class="text-xs text-slate-400">Không tải được gợi ý</div>';
             return;
         }
+        /*
+         * Trong lúc chờ Overpass, người dùng có thể đã chọn nơi khác. Viết
+         * vào ô của nơi CŨ thì hoặc rơi vào một nút đã bị thay (không ai
+         * thấy), hoặc tệ hơn là dán danh sách của nơi khác vào màn hình
+         * đang mở. Hỏi lại ô hiện tại và đối chiếu đích đang chờ.
+         */
+        if ($('notableBox') !== box || !pendingDest
+            || pendingDest.lat !== dest.lat || pendingDest.lon !== dest.lon) return;
         if (!list.length) { box.innerHTML = ''; return; }
 
         box.innerHTML = `<div class="text-xs font-bold uppercase text-slate-400 mb-2">
@@ -5451,8 +5472,12 @@
         if (!userLatLng) { showToast('Chưa có vị trí hiện tại', 'warn'); return; }
         if (isOffline()) { showToast('Cần mạng để tính tuyến đường', 'warn'); return; }
         const [slat, slon] = userLatLng;
+        const gen = nav.gen;          // phiên dẫn đường lúc bắt đầu hỏi
         try {
             const data = await fetchRoute(slat, slon, destLat, destLon);
+            // Trong lúc chờ mạng, người dùng có thể đã bấm kết thúc. Kết quả
+            // của một chuyến đã huỷ thì vứt: không vẽ, không bật lại dẫn đường.
+            if (gen !== nav.gen) return;
             if (data.code !== 'Ok' || !data.routes?.length) throw new Error('Không có tuyến');
 
             // Chọn phương án theo yêu cầu, vượt quá số tuyến có thì quay về tuyến đầu
@@ -5499,6 +5524,7 @@
             // Tính lại tuyến giữa đường thì không giật khung nhìn ra toàn tuyến
             if (!opts.silent) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
 
+            if (gen !== nav.gen) return;           // kiểm lại lần nữa cho chắc
             beginNavigation(route, [destLat, destLon], opts.name);
 
             const km = (route.distance / 1000).toFixed(1);
@@ -5590,6 +5616,11 @@
     }
 
     function clearRoute() {
+        // Huỷ mọi lượt tính tuyến đang bay dở: chúng KHÔNG được bật lại dẫn
+        // đường sau khi người dùng đã bấm kết thúc.
+        nav.gen++;
+        nav.rerouting = false;
+        nav.prefetching = false;
         if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
         if (altLayer) { map.removeLayer(altLayer); altLayer = null; }
         if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
@@ -5599,6 +5630,11 @@
         nav.steps = [];
         nav.points = [];
         nav.arrived = false;
+        nav.announced = {};
+        nav.offRouteCount = 0;
+        // Câu chỉ đường đang đọc dở và những câu còn xếp hàng cũng phải im:
+        // kết thúc rồi mà loa vẫn đọc "rẽ phải" thì người lái tưởng app hỏng.
+        silenceGuidance();
         // Dọn luôn HUD, nếu không thì mũi tên rẽ và số phút của chuyến vừa
         // kết thúc còn nằm lại trên màn hình.
         resetNavState();
@@ -5612,6 +5648,22 @@
     // và còn bao xa tới đích. Không có bước này thì HUD chỉ là số giả.
     // ---------------------------------------------------------------------
     const nav = {
+        /*
+         * SỐ THỨ TỰ PHIÊN DẪN ĐƯỜNG — thứ chặn "đã kết thúc mà vẫn dẫn".
+         *
+         * Lỗi người dùng gặp: bấm "Kết thúc dẫn đường" xong, xe chưa lăn
+         * bánh mà app vẫn đọc chỉ đường và báo đi chệch tuyến.
+         *
+         * Vì sao: tính tuyến là việc BẤT ĐỒNG BỘ. Lúc bấm kết thúc có thể
+         * đang có một lượt tính tuyến bay dở trên mạng (lượt tự tính lại khi
+         * đi chệch, hoặc lượt "tìm tuyến khác"). clearRoute() hạ cờ active
+         * xuống, nhưng vài giây sau lượt kia trả kết quả về, gọi
+         * beginNavigation() và bật cờ lên lại — dẫn đường TỰ SỐNG DẬY.
+         *
+         * Mỗi lần kết thúc thì tăng số phiên. Lượt nào trả về mang số phiên
+         * cũ là của một chuyến đã bị huỷ: vứt đi.
+         */
+        gen: 0,
         active: false,
         dest: null,
         destName: '',
@@ -7512,6 +7564,20 @@
         { icon: 'fa-bell', color: 'text-orange-500', msg: 'Chỉ đọc cảnh báo (không đọc chỉ đường)' },
         { icon: 'fa-volume-xmark', color: 'text-slate-400', msg: 'Đã tắt âm thanh (vẫn hiện thông báo trên màn hình)' }
     ];
+    /**
+     * Im ngay: bỏ hàng đợi, cắt câu đang đọc, ở CẢ HAI đường phát tiếng.
+     *
+     * Phải gọi cả cầu nối AndroidTTS. Bản APK không dùng speechSynthesis,
+     * nên chỉ gọi mỗi cancel() của trình duyệt thì trong app vẫn đọc tiếp.
+     */
+    function silenceGuidance() {
+        voice.queue = [];
+        voice.current = null;
+        try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch (e) { }
+        const a = nativeTts();
+        try { if (a && typeof a.stop === 'function') a.stop(); } catch (e) { }
+    }
+
     function toggleSoundMode() {
         state.settings.soundMode = (state.settings.soundMode + 1) % 3;
         saveSettings();
