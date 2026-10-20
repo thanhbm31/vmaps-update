@@ -710,15 +710,19 @@
              style="padding-top: calc(var(--sat) + 28px); box-sizing: border-box;
                     flex: 1 1 auto; min-height: 0;">
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
-                <!-- Logo: gõ nhanh 5 lần để mở phần quản trị (kích hoạt kín).
-                     Cách làm lấy theo VFIX: không có nút nào lộ ra, người dùng
-                     thường chạm vào chỉ thấy một cái logo. -->
+                <!-- LOGO: gõ nhanh 5 lần để mở phần quản trị (kích hoạt kín).
+                     Bản đầu chỉ là một ô vuông xanh có icon — anh Thành không
+                     tìm ra nó, và đúng: một ô vuông không chữ thì không ai
+                     biết là bấm được. Nay ghi hẳn chữ "VMaps" vào, vùng chạm
+                     rộng hơn, nhưng vẫn không có dòng nào nói nó mở cái gì. -->
                 <h3 class="text-xl font-bold flex items-center gap-2">
-                    <span id="settingsLogo" onclick="tapAdminLogo()" role="img" aria-label="VMaps"
-                          class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center select-none cursor-pointer">
-                        <i class="fa-solid fa-location-arrow text-sm"></i>
+                    <span id="settingsLogo" onclick="tapAdminLogo()" role="button"
+                          aria-label="VMaps" title="VMaps"
+                          class="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-black
+                                 flex items-center gap-1.5 select-none cursor-pointer active:bg-blue-700">
+                        <i class="fa-solid fa-location-arrow text-[11px]"></i>VMaps
                     </span>
-                    Cài đặt bản đồ
+                    <span class="text-lg">Cài đặt</span>
                 </h3>
                 <button onclick="closeModal('settingsModal')" aria-label="Đóng" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -1429,7 +1433,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'ddf8350';
+    const BUILD_TAG = '5bfaf0f';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -4150,6 +4154,12 @@
     const ADMIN_SESSION_MS = 12 * 60 * 60 * 1000;
     let adminUnlocked = false;         // đã gõ logo 5 lần trong phiên này
     let adminLogoTaps = [];
+    /*
+     * 4 giây, không phải 2,5 như VFIX. Ở VFIX logo nằm trên một trang tĩnh;
+     * ở đây người ta vừa mở bảng cài đặt vừa chạm, và 2,5 giây thì gõ 4 lần
+     * rồi ngập ngừng một nhịp là mất hết.
+     */
+    const ADMIN_TAP_WINDOW_MS = 4000;
 
     function adminScriptUrl() {
         try { return localStorage.getItem(ADMIN_SCRIPT_KEY) || ''; } catch (e) { return ''; }
@@ -4173,8 +4183,21 @@
     /** Gõ nhanh 5 lần vào logo trong Cài đặt thì bày phần quản trị ra. */
     function tapAdminLogo() {
         const now = Date.now();
-        adminLogoTaps = adminLogoTaps.filter((x) => now - x < 2500).concat([now]);
-        if (adminLogoTaps.length < 5) return;
+        adminLogoTaps = adminLogoTaps.filter((x) => now - x < ADMIN_TAP_WINDOW_MS).concat([now]);
+        if (adminLogoTaps.length < 5) {
+            /*
+             * TỪ LẦN THỨ HAI THÌ BÁO CÒN MẤY LẦN NỮA.
+             *
+             * Không báo gì thì "gõ 5 lần trong 2,5 giây" thành đánh đố: gõ 4
+             * lần rồi chậm tay một nhịp là mất hết, mà người gõ không biết
+             * mình đang ở đâu. Chỉ hiện từ lần thứ 2 nên lỡ chạm một lần vẫn
+             * không lộ ra điều gì.
+             */
+            if (adminLogoTaps.length >= 2) {
+                showToast(`Còn ${5 - adminLogoTaps.length} lần`);
+            }
+            return;
+        }
         adminLogoTaps = [];
         adminUnlocked = true;
         showAdminBox();
