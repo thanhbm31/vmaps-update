@@ -247,8 +247,9 @@
         .icon-flip-x { transform: scaleX(-1); }
         /* Nhãn thời gian của tuyến thay thế. Không xoay theo bản đồ nhờ
            --icon-rot, giống các marker khác. */
+        /* Tím nhẹ, cùng gam với nét tuyến thay thế (xem ALT_ROUTE_COLOR) */
         .alt-route-tag {
-            background: #475569; color: #fff; font-size: 11px; font-weight: 800;
+            background: #8b5cf6; color: #fff; font-size: 11px; font-weight: 800;
             padding: 3px 8px; border-radius: 999px; white-space: nowrap;
             box-shadow: 0 2px 6px rgba(0,0,0,.35); border: 1.5px solid #fff;
             text-align: center;
@@ -465,7 +466,7 @@
         .dark .leaflet-control-attribution a { color: #93c5fd; }
     </style>
 </head>
-<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white transition-colors duration-300">
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white duration-300">
 
     <!-- MAP CONTAINER -->
     <div id="map-clip">
@@ -484,7 +485,7 @@
             <div class="hud-cell col-right row-top" style="grid-area: 1 / 3">
                 <!-- Cài đặt + La bàn luôn ở góc phải trên -->
                 <div id="comp-controls" class="pointer-events-auto flex flex-col items-center gap-3">
-                    <button onclick="toggleModal('settingsModal')" aria-label="Cài đặt" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <button onclick="toggleModal('settingsModal')" aria-label="Cài đặt" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
                         <i class="fa-solid fa-gear text-xl"></i>
                     </button>
                     <button onclick="toggleMapRotation()" aria-label="La bàn: đổi giữa hướng Bắc và hướng xe"
@@ -511,10 +512,10 @@
             <div class="hud-cell col-left row-bottom" style="grid-area: 3 / 1">
                 <div id="hud-bottom-left" class="hud-slot"></div>
                 <div class="action-stack items-start">
-                    <button id="mapStyleBtn" onclick="openMapStyle()" aria-label="Kiểu bản đồ" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-indigo-500 hover:scale-105 transition-transform">
+                    <button id="mapStyleBtn" onclick="openMapStyle()" aria-label="Kiểu bản đồ" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-indigo-500 transition-transform">
                         <i id="mapStyleIcon" class="fa-solid fa-route text-lg"></i>
                     </button>
-                    <button onclick="toggleModal('reportModal')" aria-label="Báo cáo cho cộng đồng" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-yellow-500 hover:scale-105 transition-transform border border-yellow-500/30">
+                    <button onclick="toggleModal('reportModal')" aria-label="Báo cáo cho cộng đồng" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-yellow-500 transition-transform border border-yellow-500/30">
                         <i class="fa-solid fa-plus text-2xl"></i>
                     </button>
                 </div>
@@ -523,13 +524,13 @@
             <div class="hud-cell col-right row-bottom" style="grid-area: 3 / 3">
                 <div id="hud-bottom-right" class="hud-slot"></div>
                 <div class="action-stack items-end">
-                    <button id="soundBtn" onclick="toggleSoundMode()" aria-label="Chế độ âm thanh" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:scale-105 transition-transform">
+                    <button id="soundBtn" onclick="toggleSoundMode()" aria-label="Chế độ âm thanh" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 transition-transform">
                         <i id="soundIcon" class="fa-solid fa-volume-high text-lg"></i>
                     </button>
-                    <button onclick="openUtilities()" aria-label="Tiện ích" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-teal-500 hover:scale-105 transition-transform border border-teal-500/30">
+                    <button onclick="openUtilities()" aria-label="Tiện ích" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-teal-500 transition-transform border border-teal-500/30">
                         <i class="fa-solid fa-layer-group text-lg"></i>
                     </button>
-                    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
                         <i class="fa-solid fa-location-crosshairs text-xl"></i>
                     </button>
                 </div>
@@ -573,7 +574,7 @@
             <!-- COMPONENT 2: Tốc độ & giới hạn -->
             <div id="comp-speed" class="pointer-events-auto flex flex-col gap-2 items-center">
                 <div class="flex gap-2 items-center">
-                    <div id="gps-speed-box" onclick="demoGpsSpeed()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[76px] cursor-pointer transition-colors">
+                    <div id="gps-speed-box" onclick="demoGpsSpeed()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[76px] cursor-pointer">
                         <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tốc độ</span>
                         <div class="flex items-baseline mt-1">
                             <span id="gpsSpeedValue" class="text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">0</span>
@@ -650,7 +651,7 @@
                 <!-- JS render các loại báo cáo -->
             </div>
             <div class="px-5">
-                <button onclick="openSpeedFeedback()" class="w-full flex items-center justify-center gap-3 p-3 rounded-2xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors border border-red-200 dark:border-red-800/50">
+                <button onclick="openSpeedFeedback()" class="w-full flex items-center justify-center gap-3 p-3 rounded-2xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 border border-red-200 dark:border-red-800/50">
                     <div class="w-8 h-8 rounded-full border-4 border-red-500 flex items-center justify-center text-black bg-white text-sm font-bold">!</div>
                     <span class="text-sm font-bold text-red-600 dark:text-red-400">Báo sai tốc độ giới hạn</span>
                 </button>
@@ -682,12 +683,12 @@
         <div class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl shadow-2xl flex flex-col modal-animate p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white">Tốc độ đúng là bao nhiêu?</h3>
-                <button onclick="closeModal('speedFeedbackModal')" aria-label="Đóng" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 transition-colors">
+                <button onclick="closeModal('speedFeedbackModal')" aria-label="Đóng" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <div id="speedFeedbackGrid" class="grid grid-cols-4 gap-3 mb-4"></div>
-            <button id="customFeedbackToggle" onclick="showCustomSpeedFeedback()" class="w-full py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors mb-2">Tốc độ khác</button>
+            <button id="customFeedbackToggle" onclick="showCustomSpeedFeedback()" class="w-full py-3 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 mb-2">Tốc độ khác</button>
             <!-- Form nhập tốc độ khác (trước đây chỉ có toast, không có form) -->
             <div id="customFeedbackBox" class="hidden items-center gap-2 mb-2">
                 <input type="number" id="customFeedbackValue" inputmode="numeric" min="5" max="150" step="5" placeholder="VD: 35" class="flex-1 min-w-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-white outline-none focus:border-blue-500 font-medium">
@@ -699,10 +700,26 @@
     </div>
 
     <!-- ================= SETTINGS MODAL ================= -->
-    <div id="settingsModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
-        <div class="bg-white dark:bg-slate-900 w-full h-[85dvh] rounded-t-3xl shadow-2xl flex flex-col modal-animate">
+    <!-- Bảng Cài đặt che KÍN bản đồ, cùng lý do với bảng tìm kiếm: bảng cao
+         85% màn hình để hở một dải bản đồ ĐANG SỐNG ở trên, nên mỗi lần gạt
+         một công tắc là máy vẫn phải vẽ lại dải đó. Nền đục kín thì trình
+         duyệt bỏ qua được phần bản đồ bên dưới. Chừa lề trên cho thanh trạng
+         thái, vì app chạy toàn màn hình (xem chú thích ở bảng tìm kiếm). -->
+    <div id="settingsModal" class="modal fixed inset-0 z-50 hidden flex-col">
+        <div class="bg-white dark:bg-slate-900 w-full shadow-2xl flex flex-col"
+             style="padding-top: calc(var(--sat) + 28px); box-sizing: border-box;
+                    flex: 1 1 auto; min-height: 0;">
             <div class="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
-                <h3 class="text-xl font-bold">Cài đặt bản đồ</h3>
+                <!-- Logo: gõ nhanh 5 lần để mở phần quản trị (kích hoạt kín).
+                     Cách làm lấy theo VFIX: không có nút nào lộ ra, người dùng
+                     thường chạm vào chỉ thấy một cái logo. -->
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    <span id="settingsLogo" onclick="tapAdminLogo()" role="img" aria-label="VMaps"
+                          class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center select-none cursor-pointer">
+                        <i class="fa-solid fa-location-arrow text-sm"></i>
+                    </span>
+                    Cài đặt bản đồ
+                </h3>
                 <button onclick="closeModal('settingsModal')" aria-label="Đóng" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
@@ -714,13 +731,13 @@
                 <div>
                     <h4 class="text-sm font-bold text-slate-400 uppercase mb-3"><i class="fa-solid fa-palette mr-2"></i>Chế độ sáng tối</h4>
                     <div class="grid grid-cols-3 gap-2">
-                        <button onclick="setAppTheme('light')" data-theme="light" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium transition-colors flex flex-col items-center gap-1">
+                        <button onclick="setAppTheme('light')" data-theme="light" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium flex flex-col items-center gap-1">
                             <i class="fa-regular fa-sun"></i> Sáng
                         </button>
-                        <button onclick="setAppTheme('dark')" data-theme="dark" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium transition-colors flex flex-col items-center gap-1">
+                        <button onclick="setAppTheme('dark')" data-theme="dark" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium flex flex-col items-center gap-1">
                             <i class="fa-solid fa-moon"></i> Tối
                         </button>
-                        <button onclick="setAppTheme('auto')" data-theme="auto" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium transition-colors flex flex-col items-center gap-1">
+                        <button onclick="setAppTheme('auto')" data-theme="auto" class="theme-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-sm font-medium flex flex-col items-center gap-1">
                             <i class="fa-solid fa-clock"></i> Tự động
                         </button>
                     </div>
@@ -733,7 +750,7 @@
 
                 <!-- Cập nhật giao diện (chỉ hiện trong bản APK) -->
                 <div id="updateSection" class="hidden bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button onclick="toggleAccordion('updateContent', 'updateChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="toggleAccordion('updateContent', 'updateChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800">
                         <h4 class="text-sm font-bold uppercase"><i class="fa-solid fa-rotate-right mr-2"></i>Cập nhật giao diện</h4>
                         <i id="updateChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300"></i>
                     </button>
@@ -753,19 +770,15 @@
                             </button>
                         </div>
 
-                        <button onclick="updateFromFile()" class="w-full bg-blue-600 text-white rounded-xl px-4 py-3 font-bold text-sm">
-                            <i class="fa-solid fa-folder-open mr-2"></i>Chọn file index.html đã tải về
-                        </button>
+                        <!-- Nút "Chọn file index.html đã tải về" đã BỎ theo yêu cầu.
+                             Cập nhật nay chỉ còn một đường: bấm "Kiểm tra bản mới",
+                             app tự tải từ địa chỉ do bản dựng nhúng sẵn. -->
 
                         <!-- Hai ô nhập địa chỉ (update.json và index.html) đã BỎ
                              theo yêu cầu. Nút "Kiểm tra bản mới" vẫn chạy: địa
                              chỉ kiểm tra phiên bản do bản dựng nhúng sẵn, người
                              dùng không phải tự gõ. Vẫn còn đường chọn file đã
                              tải về cho trường hợp không có mạng. -->
-                        <button onclick="updateReset()" class="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 font-semibold text-sm text-slate-600 dark:text-slate-300">
-                            Quay về bản gốc trong APK
-                        </button>
-
                         <hr class="border-slate-200 dark:border-slate-700">
                         <button onclick="testVoice()" class="w-full bg-slate-700 text-white rounded-xl px-4 py-3 font-bold text-sm">
                             <i class="fa-solid fa-volume-high mr-2"></i>Kiểm tra giọng nói
@@ -780,7 +793,7 @@
 
                 <!-- 2. Tài khoản & Xe -->
                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button onclick="toggleAccordion('accountSettingsContent', 'accountChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="toggleAccordion('accountSettingsContent', 'accountChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800">
                         <h4 class="text-sm font-bold uppercase"><i class="fa-solid fa-user-gear mr-2"></i>Cài đặt tài khoản & Xe</h4>
                         <i id="accountChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300"></i>
                     </button>
@@ -836,7 +849,7 @@
 
                 <!-- 2.2 Bố cục HUD -->
                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button onclick="toggleAccordion('layoutSettingsContent', 'layoutChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="toggleAccordion('layoutSettingsContent', 'layoutChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800">
                         <h4 class="text-sm font-bold uppercase"><i class="fa-solid fa-table-columns mr-2 text-pink-500"></i>Vị trí hiển thị (Bố cục)</h4>
                         <i id="layoutChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300"></i>
                     </button>
@@ -883,7 +896,7 @@
 
                 <!-- 2.5 Tiện ích hiển thị -->
                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button onclick="toggleAccordion('utilitySettingsContent', 'utilityChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="toggleAccordion('utilitySettingsContent', 'utilityChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800">
                         <h4 class="text-sm font-bold uppercase"><i class="fa-solid fa-layer-group mr-2"></i>Tiện ích hiển thị</h4>
                         <i id="utilityChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300"></i>
                     </button>
@@ -896,7 +909,7 @@
 
                 <!-- 2.8 Tránh tuyến đường: thống nhất BẬT = TRÁNH -->
                 <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <button onclick="toggleAccordion('routeAvoidanceContent', 'avoidChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <button onclick="toggleAccordion('routeAvoidanceContent', 'avoidChevron')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800">
                         <h4 class="text-sm font-bold uppercase"><i class="fa-solid fa-route mr-2 text-indigo-500"></i>Tùy chọn tránh đường</h4>
                         <i id="avoidChevron" class="fa-solid fa-chevron-down text-slate-400 transition-transform duration-300"></i>
                     </button>
@@ -970,7 +983,7 @@
                         <div>
                             <label class="block text-sm font-semibold mb-2">Hiệu chỉnh tốc độ GPS</label>
                             <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2">
-                                <button onclick="adjustGpsCalibration(-1)" aria-label="Giảm" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">
+                                <button onclick="adjustGpsCalibration(-1)" aria-label="Giảm" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 shadow-sm">
                                     <i class="fa-solid fa-minus"></i>
                                 </button>
                                 <div class="flex flex-col items-center">
@@ -979,7 +992,7 @@
                                     </span>
                                     <span class="text-[10px] text-slate-500 uppercase font-semibold">km/h (tối đa ±15)</span>
                                 </div>
-                                <button onclick="adjustGpsCalibration(1)" aria-label="Tăng" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors shadow-sm">
+                                <button onclick="adjustGpsCalibration(1)" aria-label="Tăng" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 shadow-sm">
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                             </div>
@@ -1028,10 +1041,198 @@
 
                 <!-- 4. Chia sẻ -->
                 <div class="pb-4">
-                    <button onclick="shareApp()" class="w-full py-4 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-sm transition-colors shadow flex items-center justify-center gap-3 active:scale-95">
+                    <button onclick="shareApp()" class="w-full py-4 rounded-xl bg-blue-600 text-white font-bold text-sm shadow flex items-center justify-center gap-3">
                         <i class="fa-solid fa-share-nodes text-lg"></i> Chia sẻ ứng dụng cho bạn bè
                     </button>
                     <p class="text-[10px] text-center text-slate-400 mt-2">Chia sẻ VietNav qua Zalo, Messenger, SMS...</p>
+
+                    <!-- Địa điểm VMaps chưa có, ghi lại từ link dán vào -->
+                    <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <div class="text-sm font-semibold mb-1">Địa điểm mới ghi nhận được</div>
+                        <p class="text-xs text-slate-500 mb-2">
+                            Dán link Google Maps vào ô tìm kiếm, nếu chỗ đó chưa có trong dữ liệu
+                            VMaps thì app tự ghi lại đây. <b>Chưa gửi đi đâu cả</b> — app chưa có
+                            máy chủ nhận. Xuất ra file rồi gửi cho người làm dữ liệu.
+                        </p>
+                        <div id="contribStatus" class="text-xs font-semibold mb-2">–</div>
+                        <div class="flex gap-2">
+                            <button onclick="exportContrib()" class="flex-1 bg-slate-700 text-white rounded-xl px-3 py-2 font-bold text-xs">
+                                <i class="fa-solid fa-file-export mr-1"></i>Xuất file
+                            </button>
+                            <button onclick="clearContrib()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-500 font-bold text-xs">
+                                Xoá
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KHO DỮ LIỆU CẢNH BÁO (camera phạt nguội, giới hạn tốc độ,
+                         địa điểm mới). Nằm trên Drive, phân theo tỉnh thành, nên
+                         thêm dữ liệu KHÔNG cần dựng lại app. Phần này ai cũng
+                         thấy: đọc dữ liệu là việc của mọi người dùng, chỉ phần
+                         GHI mới cần quản trị. -->
+                    <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
+                        <div class="text-sm font-semibold mb-1">
+                            <i class="fa-solid fa-database mr-1"></i>Kho dữ liệu cảnh báo
+                        </div>
+                        <div id="remoteStatus" class="text-xs mb-2">–</div>
+                        <div class="flex gap-2">
+                            <input id="remoteUrlInput" type="url" placeholder="Địa chỉ kho dữ liệu (https://…)"
+                                   class="flex-1 text-[11px] px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent">
+                            <button onclick="saveRemoteUrl()" class="px-3 py-1.5 rounded-lg bg-slate-700 text-white font-bold text-[11px]">Lưu</button>
+                        </div>
+                        <button onclick="refreshRemoteData(true)" class="w-full mt-2 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-xs">
+                            <i class="fa-solid fa-rotate mr-1"></i>Tải lại dữ liệu ngay
+                        </button>
+                        <p class="text-[10px] text-slate-400 mt-1">
+                            Nhận JSON từ Apps Script, hoặc CSV từ Google Sheet đã publish.
+                            Mất mạng thì dùng bản vừa tải còn lưu trong máy.
+                        </p>
+                    </div>
+
+                    <!-- ===== QUẢN TRỊ: áp giới hạn tốc độ cho cả một tuyến =====
+                         Ẩn hoàn toàn với người dùng thường. Bật bằng
+                         localStorage.setItem('vietnav.admin','1') rồi mở lại app.
+                         Khi có đăng nhập + phân quyền thì chỉ sửa isAdmin(). -->
+                    <div id="adminLimitBox" class="hidden mt-4 rounded-xl border-2 border-amber-400 p-3">
+                        <div class="text-sm font-bold mb-1">
+                            <i class="fa-solid fa-user-shield mr-1 text-amber-500"></i>Quản trị · Áp tốc độ toàn tuyến
+                        </div>
+
+                        <!-- Chưa đăng nhập: chỉ hiện phần này -->
+                        <div id="adminLoginBox">
+                            <p class="text-xs text-slate-500 mb-2">
+                                Phần đóng góp dữ liệu cần <b>đăng nhập Google</b>. Quyền quản trị do
+                                máy chủ quyết định, không phải do app.
+                            </p>
+                            <div id="adminCfgWarn" class="hidden text-[11px] text-amber-600 font-semibold mb-2"></div>
+                            <button id="adminLoginBtn" onclick="adminGoogleLogin()"
+                                    class="w-full py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 font-bold text-xs">
+                                <i class="fa-brands fa-google mr-1 text-red-500"></i>Đăng nhập bằng Google
+                            </button>
+                            <details class="mt-2">
+                                <summary class="text-[11px] text-slate-400 font-semibold cursor-pointer">Cấu hình máy chủ</summary>
+                                <div class="mt-1 space-y-1">
+                                    <input id="adminScriptInput" type="url" placeholder="Địa chỉ Apps Script (https://script.google.com/...)"
+                                           class="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent">
+                                    <input id="adminGcidInput" type="text" placeholder="Google Client ID (web)"
+                                           class="w-full text-[11px] px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent">
+                                    <button onclick="saveAdminConfig()" class="w-full py-1.5 rounded-lg bg-slate-700 text-white font-bold text-[11px]">Lưu cấu hình</button>
+                                    <p class="text-[10px] text-slate-400">
+                                        Hai thứ này KHÔNG nhúng sẵn trong app: Client ID thì lộ ra được,
+                                        nhưng địa chỉ máy chủ ghi dữ liệu thì không nên nằm trong APK của mọi người.
+                                    </p>
+                                </div>
+                            </details>
+                        </div>
+
+                        <!-- Đã đăng nhập: phần làm việc -->
+                        <div id="adminWorkBox" class="hidden">
+                        <div class="flex items-center justify-between text-[11px] mb-2">
+                            <span class="text-slate-500">Đang đăng nhập: <b id="adminWho"></b></span>
+                            <button onclick="adminLogout()" class="text-red-500 font-bold">Đăng xuất</button>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-2">
+                            Điểm đầu lấy theo GPS đang đứng, điểm cuối chạm chọn trên bản đồ.
+                            App vẽ tuyến để xem trước; đúng tuyến thì nhập km/h rồi xác nhận.
+                        </p>
+
+                        <button onclick="startLimitDraw()" id="limitDrawBtn"
+                                class="w-full py-2.5 rounded-xl bg-amber-500 text-white font-bold text-xs">
+                            <i class="fa-solid fa-route mr-1"></i>Vẽ tuyến mới (GPS → chạm bản đồ)
+                        </button>
+
+                        <!-- Nhập nhanh bằng câu lệnh. KHÔNG phải trợ lý AI chạy
+                             trong app: app không có mô hình nào trong máy. Đây là
+                             bộ đọc câu lệnh, hiểu đúng mấy dạng ghi dưới đây. -->
+                        <div class="mt-2">
+                            <div class="flex gap-2">
+                                <input id="limitCmd" type="text"
+                                       placeholder="20.8767,106.5368 - 20.8451,106.6199 : 50 một chiều"
+                                       class="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-transparent">
+                                <button onclick="runLimitCommand()" class="px-3 py-2 rounded-xl bg-slate-700 text-white font-bold text-xs">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">
+                                Hiểu được: toạ độ hoặc tên địa điểm hai đầu, số km/h, và
+                                "một chiều" / "hai chiều". Vẫn vẽ tuyến ra để xem trước rồi
+                                mới xác nhận — số gõ vào không tự áp ngay.
+                            </p>
+                        </div>
+
+                        <!-- Hiện sau khi đã vẽ xong tuyến -->
+                        <div id="limitForm" class="hidden mt-3 space-y-2">
+                            <div id="limitRouteInfo" class="text-xs font-semibold"></div>
+                            <input id="limitName" type="text" placeholder="Tên tuyến (vd: QL.10 đoạn Kim Thành)"
+                                   class="w-full text-sm px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-transparent">
+                            <div class="flex gap-2 items-center">
+                                <input id="limitKmh" type="number" min="5" max="130" step="5" placeholder="km/h"
+                                       class="w-24 text-sm px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-transparent">
+                                <label class="flex items-center gap-2 text-xs font-semibold flex-1">
+                                    <input id="limitBothDir" type="checkbox" checked class="w-4 h-4">
+                                    Áp cả hai chiều
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-slate-400">
+                                Bỏ chọn thì chỉ áp cho chiều vừa dẫn (theo hình tuyến), chiều ngược lại không đổi.
+                            </p>
+
+                            <!-- TUYẾN LÂN CẬN THEO TÊN ĐƯỜNG.
+                                 Gõ tên đường bên cạnh → app quét dữ liệu đường
+                                 trong máy, vẽ ra toàn bộ đường mang tên đó để
+                                 admin xem có đúng hay không, rồi áp cùng một mức
+                                 cho CẢ con đường cho tới khi hết tên đó.
+                                 Tối đa 10 tên đường mỗi lần lưu. -->
+                            <div class="rounded-xl border border-slate-200 dark:border-slate-700 p-2">
+                                <div class="flex items-center justify-between mb-1">
+                                    <div class="text-xs font-bold">Áp cùng mức cho đường lân cận</div>
+                                    <div id="limitNearbyCount" class="text-[10px] text-slate-400">0/10</div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input id="limitRoadName" type="text" placeholder="Tên đường bên cạnh (vd: Phố Hoàng Độ)"
+                                           class="flex-1 text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-transparent">
+                                    <button onclick="scanNearbyRoad()" class="px-3 py-2 rounded-xl bg-slate-700 text-white font-bold text-xs">
+                                        Quét
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-1">
+                                    Quét xong sẽ vẽ màu cam toàn bộ đường mang tên đó. Nhìn đúng thì
+                                    bấm "Thêm" — mức km/h ở trên sẽ áp cho cả con đường, đến hết tên đó.
+                                </p>
+                                <div id="limitScanResult" class="hidden mt-2 text-xs"></div>
+                                <div id="limitNearby" class="space-y-1 mt-2 max-h-40 overflow-y-auto no-scrollbar"></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="confirmLimitDraft()" class="flex-1 py-2 rounded-xl bg-green-600 text-white font-bold text-xs">
+                                    <i class="fa-solid fa-check mr-1"></i>Xác nhận
+                                </button>
+                                <button onclick="saveLimitDraft()" class="flex-1 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-xs">
+                                    Lưu nháp
+                                </button>
+                                <button onclick="cancelLimitDraw()" class="px-3 py-2 rounded-xl text-slate-500 font-bold text-xs">Bỏ</button>
+                            </div>
+                        </div>
+
+                        <!-- Phiên đóng góp: nháp và đã xác nhận -->
+                        <div class="mt-3">
+                            <div id="limitStoreStatus" class="text-xs font-semibold mb-1">–</div>
+                            <div id="limitList" class="space-y-1 max-h-64 overflow-y-auto no-scrollbar"></div>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="exportLimits()" class="flex-1 py-2 rounded-xl bg-slate-700 text-white font-bold text-xs">
+                                    <i class="fa-solid fa-file-export mr-1"></i>Xuất file
+                                </button>
+                                <button onclick="clearLimitDrafts()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-500 font-bold text-xs">
+                                    Xoá hết nháp
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">
+                                Nháp và mục đã xác nhận lưu ngay trong máy này. Xuất file rồi đưa vào
+                                <code>data/speed_limits_manual.json</code> thì mọi máy mới nhận được.
+                                Khi đã nối Apps Script thì gửi thẳng lên Sheet, phân theo tỉnh thành.
+                            </p>
+                        </div>
+                        </div>
+                    </div>
 
                     <!-- Thoát hẳn app. Chỉ hiện trong APK: trang web không tự
                          đóng được, bày nút ra là hứa suông. -->
@@ -1052,11 +1253,11 @@
             </div>
             <h3 class="text-2xl font-black text-slate-800 dark:text-white mb-2 uppercase">Chú ý phía sau!</h3>
             <p id="childWarnText" class="text-slate-600 dark:text-slate-400 mb-6 font-medium">Kiểm tra trẻ em trong xe.</p>
-            <button onclick="closeModal('childWarningModal')" class="w-full py-4 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-lg transition-colors shadow-lg">Đã kiểm tra</button>
+            <button onclick="closeModal('childWarningModal')" class="w-full py-4 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-lg shadow-lg">Đã kiểm tra</button>
             <!-- Xe đã dừng: đây đúng lúc để mời tắt app. Chỉ hiện khi app THẬT SỰ
                  thoát được (có vỏ Android), chứ không hiện một nút bấm vào không
                  làm gì — xem showExitSuggest(). -->
-            <button id="childExitBtn" onclick="exitAppNow()" class="hidden w-full mt-3 py-3.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold transition-colors">
+            <button id="childExitBtn" onclick="exitAppNow()" class="hidden w-full mt-3 py-3.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold">
                 <i class="fa-solid fa-power-off mr-2"></i>Đã kiểm tra & thoát app
             </button>
             <p id="childExitHint" class="hidden text-xs text-slate-400 mt-2 font-medium">Xe đã dừng — tắt app để khỏi tốn pin.</p>
@@ -1228,7 +1429,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '649d991';
+    const BUILD_TAG = 'ddf8350';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1262,6 +1463,13 @@
      * câu hỏi "người ta đã rời xe chưa".
      */
     const STOP_SPEED_KMH = 5;
+    /*
+     * Đi được bấy nhiêu mét thì mới coi là "chuyến đi đã bắt đầu".
+     * 150 m: đủ xa để không phải nhiễu GPS đứng yên, đủ gần để ra khỏi ngõ
+     * là đã tính.
+     */
+    const TRIP_MOVED_M = 150;
+    let tripAnchor = null;           // chỗ đứng yên gần nhất, mốc đo quãng đường
     const OVERSPEED_CONFIRM_MS = 2000;              // Vượt liên tục 2s mới báo (lọc nhiễu)
     // Về dưới giới hạn liên tục bấy nhiêu mới tắt báo. Chống nhấp nháy bằng
     // THỜI GIAN chứ không bằng lề tốc độ — lề tốc độ làm app báo đỏ trong
@@ -1314,6 +1522,11 @@
             soundMode: [0, 1, 2].includes(s.soundMode) ? s.soundMode : 0,
             gpsCalibration: Number.isFinite(s.gpsCalibration) ? clamp(Math.round(s.gpsCalibration), -CALIB_LIMIT, CALIB_LIMIT) : 0,
             rotateMap: s.rotateMap === true,
+            // Người dùng đã TỰ TAY đặt công tắc xoay chưa. Phải nhớ riêng:
+            // chỉ nhớ giá trị thì không phân biệt được "đang tắt vì mặc định"
+            // với "đang tắt vì người ta chủ động tắt" — và app sẽ bật lại sau
+            // lưng người đã tắt nó.
+            rotateMapTouched: s.rotateMapTouched === true,
             utilities: { ...DEFAULT_UTILITIES, ...(s.utilities || {}) },
             fields: { ...(s.fields || {}) }
         };
@@ -1351,9 +1564,19 @@
     let speedCameras = [];          // gộp CẢ dữ liệu riêng, OSM LẪN camera mẫu
     let localCameraCount = 0;       // số camera nạp từ data/speed_cameras.json
     let localCameraIsSample = false;
+    let manualCameraCount = 0;    // số camera nhập tay đã nạp
     let chargingStations = [];
     let routeLayer = null;
     let altLayer = null;          // các tuyến thay thế, vẽ mờ bên dưới
+    /*
+     * Tuyến thay thế vẽ TÍM NHẸ, không vẽ xám.
+     *
+     * Xám (#64748b) trùng gam với nền đường trên bản đồ sáng và gần như lẫn
+     * hẳn vào bản đồ tối, nên tuyến thay thế trông như một con đường bình
+     * thường chứ không như một lựa chọn bấm được. Tím cách xa xanh của tuyến
+     * đang chạy nên không nhầm, mà vẫn nhạt hơn để không giành mắt.
+     */
+    const ALT_ROUTE_COLOR = '#8b5cf6';
     let cameraLayer = null;
     let chargingLayer = null;
     let destMarker = null;
@@ -1669,9 +1892,70 @@
         }
     }
 
+    /*
+     * NEO GHIM XE KHI ĐỨNG YÊN.
+     *
+     * GPS trong nhà trôi vài mét mỗi nhịp. Nếu cứ nhịp nào cũng dời ghim thì
+     * hình xe rung lắc như đang bò tại chỗ — và bản đồ lại bay theo nó.
+     * Đứng yên thì GIỮ NGUYÊN chỗ cũ, chỉ dời khi đã đi xa hơn mức nhiễu.
+     *
+     * Ngưỡng theo sai số máy báo: sai số 30 m thì một bước nhảy 20 m hoàn
+     * toàn có thể chỉ là nhiễu. Chặn trong khoảng 12-40 m để không bao giờ
+     * neo chặt tới mức xe chạy thật mà ghim không đi.
+     */
+    const ANCHOR_MIN_M = 12, ANCHOR_MAX_M = 40;
+
+    function anchorWhenStill(lat, lon, acc) {
+        if (!userLatLng) return [lat, lon];
+        if (displayedSpeed() > 0) return [lat, lon];        // đang chạy thì đi theo
+        const tol = clamp(Number(acc) || ANCHOR_MIN_M, ANCHOR_MIN_M, ANCHOR_MAX_M);
+        const moved = haversine(userLatLng[0], userLatLng[1], lat, lon);
+        return moved < tol ? userLatLng : [lat, lon];
+    }
+
+    /* =====================================================================
+     * VỊ TRÍ NÀY ĐÃ ĐƯỢC XÁC NHẬN CHƯA?
+     *
+     * Nguyên tắc anh đặt khi thử app trong vùng GPS/mạng kém: MỘT NHỊP GPS
+     * ĐƠN LẺ KHÔNG ĐƯỢC QUYỀN RA LỆNH CHO APP LÀM GÌ CẢ. Sóng yếu thì nhịp
+     * nào cũng có thể là một con số bịa, và mọi báo ảo của app — chệch
+     * tuyến, tính lại tuyến, đọc câu rẽ, cảnh báo camera — đều bắt nguồn từ
+     * việc tin ngay nhịp đầu tiên.
+     *
+     * Một nhịp ĐÁNG TIN = sai số đo ≤ 35 m VÀ qua được phép soi tốc độ
+     * (plausibleSpeed không gạt). Phải có BA nhịp đáng tin liên tiếp, cách
+     * nhau không quá 15 giây, thì vị trí mới được coi là XÁC NHẬN. Một nhịp
+     * xấu là đếm lại từ đầu.
+     *
+     * Chưa xác nhận thì app vẫn VẼ xe, vẫn HIỆN tốc độ và biển báo — hiện ra
+     * để người lái tự đọc thì khác với việc tự quyết dựa vào con số đó.
+     * ===================================================================== */
+    const GPS_POOR_ACC_M = 35;        // sai số xấu hơn mức này: không tin nhịp
+    const GPS_CONFIRM_FIXES = 3;      // bấy nhiêu nhịp liên tiếp mới gọi là chắc
+    const GPS_CONFIRM_GAP_MS = 15000; // nhịp cách nhau quá lâu thì đếm lại
+    const gpsTrust = { run: 0, at: 0, confirmed: false };
+
+    function noteGpsTrust(c, now, speedOk) {
+        const acc = Number(c.accuracy);
+        const good = Number.isFinite(acc) && acc <= GPS_POOR_ACC_M && speedOk;
+        if (!good) {
+            gpsTrust.run = 0;
+            gpsTrust.confirmed = false;
+            gpsTrust.at = now;
+            return;
+        }
+        if (gpsTrust.at && now - gpsTrust.at > GPS_CONFIRM_GAP_MS) gpsTrust.run = 0;
+        gpsTrust.run++;
+        gpsTrust.at = now;
+        gpsTrust.confirmed = gpsTrust.run >= GPS_CONFIRM_FIXES;
+    }
+
+    /** Có được phép tự quyết (tính lại tuyến, đọc cảnh báo) từ vị trí này? */
+    function gpsTrusted() { return gpsTrust.confirmed; }
+
     function onGpsPosition(pos) {
         const c = pos.coords;
-        userLatLng = [c.latitude, c.longitude];
+        userLatLng = anchorWhenStill(c.latitude, c.longitude, c.accuracy);
         lastGpsAccuracy = c.accuracy;
 
         /*
@@ -1698,6 +1982,8 @@
         const rawKmh = c.speed != null ? Math.max(0, c.speed * 3.6) : 0;   // m/s → km/h
         const speedKmh = plausibleSpeed(rawKmh, c, now);
         noteFix(c, now);
+        // Phải chấm điểm tin cậy TRƯỚC khi mấy hàm dưới dùng vị trí này
+        noteGpsTrust(c, now, speedKmh !== null);
         // null = nhịp này không đáng tin, giữ nguyên số đang hiện
         if (speedKmh !== null) onGpsSpeed(speedKmh);
         updateHeadingFromGps(c, speedKmh);
@@ -1750,8 +2036,21 @@
     //   3. SAMPLE_CAMERAS           — chỉ hiện khi (1) rỗng, để app có thứ để demo
     // ---------------------------------------------------------------------
     const LOCAL_CAMERA_URL = 'data/speed_cameras.json';
+    /*
+     * Camera NHẬP TAY để riêng một tệp.
+     *
+     * data/speed_cameras.json do tools/build_data.py sinh từ bản trích OSM và
+     * bị GHI ĐÈ mỗi lần dựng lại dữ liệu — thêm điểm vào đó là mất. Mọi điểm
+     * do người dùng quan sát thực địa nằm ở đây, và được ưu tiên cao hơn OSM
+     * vì đó là thứ mắt người nhìn thấy.
+     */
+    const MANUAL_CAMERA_URL = 'data/cameras_manual.json';
     const CAM_DEDUPE_M = 25;            // hai điểm gần hơn mức này coi là một camera
-    const SOURCE_RANK = { local: 3, osm: 2, sample: 1 };
+    /*
+     * 'remote' xếp cao nhất: đó là kho trên Drive anh đang sửa trực tiếp, nên
+     * nó phải thắng cả tệp đóng kèm trong app (vốn chỉ còn là lưới an toàn).
+     */
+    const SOURCE_RANK = { remote: 5, manual: 4, local: 3, osm: 2, sample: 1 };
 
     // Khung Việt Nam — lưới chắn cho lỗi nhập liệu hay gặp nhất: đảo ngược lat/lon
     const VN_BOUNDS = { latMin: 8, latMax: 24, lonMin: 102, lonMax: 110 };
@@ -1812,18 +2111,42 @@
             id: String(raw.id ?? raw.ID ?? (source + ':' + lat.toFixed(5) + ',' + lon.toFixed(5))),
             name: String(raw.name || raw.ten || raw.Ten || raw.title || CAM_KIND_LABEL[kind]).trim(),
             maxspeed: num(raw.maxspeed, raw.speed_limit, raw.toc_do, raw.tocdo),
-            road: String(raw.road || raw.duong || raw.street || '').trim()
+            road: String(raw.road || raw.duong || raw.street || '').trim(),
+            /*
+             * HƯỚNG BỊ BẮN. Camera phạt nguội chỉ bắn một chiều: cùng một
+             * cái cột, đi chiều này thì bị, chiều kia thì không. Không có
+             * trường này (phần lớn dữ liệu OSM) thì cảnh báo cả hai chiều —
+             * thà báo thừa hơn im lặng ở chiều thật.
+             */
+            dir: num(raw.dir, raw.bearing, raw.heading, raw.huong),
+            dirNote: String(raw.dirNote || raw.ghi_chu_huong || '').trim()
         };
     }
 
     // Loại trùng theo KHOẢNG CÁCH, không theo toạ độ khớp tuyệt đối: hai nguồn khác nhau
     // gần như không bao giờ ghi cùng một điểm ra cùng một con số.
     // Trả về: true nếu có thêm/thay camera, false nếu bị bỏ.
+    /** Hai điểm cùng chỗ nhưng KHÁC CHIỀU BẮN là hai camera khác nhau. */
+    function sameCamDir(a, b) {
+        const da = a && a.dir, db = b && b.dir;
+        if (da == null || db == null) return true;     // thiếu hướng thì coi như trùng
+        return dirGap(da, db) <= CAM_DIR_TOL_DEG;
+    }
+
     function mergeCamera(cam) {
         if (!cam) return false;
         for (let i = 0; i < speedCameras.length; i++) {
             const c = speedCameras[i];
-            if (haversine(c.lat, c.lon, cam.lat, cam.lon) <= CAM_DEDUPE_M) {
+            /*
+             * Cùng chỗ VÀ cùng chiều mới là một camera.
+             *
+             * Lỗi bắt được bằng dữ liệu thật của anh: hai điểm phạt nguội ở
+             * ngã tư Nguyễn Trường Tộ × Phan Đăng Lưu cách nhau 23 m nhưng
+             * bắn hai chiều ngược nhau (104° và 284°). Mức loại trùng là 25 m
+             * nên điểm thứ hai bị nuốt — mất hẳn cảnh báo cho một chiều.
+             */
+            if (haversine(c.lat, c.lon, cam.lat, cam.lon) <= CAM_DEDUPE_M
+                && sameCamDir(c, cam)) {
                 // Trùng điểm: nguồn ưu tiên cao hơn thì thay, bằng hoặc thấp hơn thì bỏ
                 if (SOURCE_RANK[cam.source] > SOURCE_RANK[c.source]) {
                     speedCameras[i] = cam;
@@ -1860,9 +2183,34 @@
         return added;
     }
 
+    /**
+     * Camera do người dùng quan sát thực địa. Nguồn 'manual' xếp trên OSM nên
+     * điểm nhập tay thắng khi trùng chỗ.
+     *
+     * Thiếu tệp này KHÔNG phải lỗi: bản cũ chưa có nó, và app vẫn phải chạy.
+     */
+    async function loadManualCameras() {
+        let payload = null;
+        try {
+            const res = await fetch(MANUAL_CAMERA_URL, { cache: 'no-cache' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            payload = await res.json();
+        } catch (e) {
+            console.warn('Không đọc được ' + MANUAL_CAMERA_URL + ':', e.message);
+            return 0;
+        }
+        const rows = Array.isArray(payload) ? payload : (payload.cameras || []);
+        let added = 0;
+        rows.forEach((r) => { if (mergeCamera(normalizeCamera(r, 'manual'))) added++; });
+        manualCameraCount = added;
+        renderCameraMarkers();
+        if (added > 0) console.log(`Đã nạp ${added} camera nhập tay từ ${MANUAL_CAMERA_URL}`);
+        return added;
+    }
+
     // Camera mẫu trong code chỉ là phương án chót, để app không trống trơn khi demo
     function seedSampleCameras() {
-        if (localCameraCount > 0) return;
+        if (localCameraCount > 0 || manualCameraCount > 0) return;
         SAMPLE_CAMERAS.forEach((c) => mergeCamera(normalizeCamera(c, 'sample')));
         renderCameraMarkers();
     }
@@ -1915,6 +2263,8 @@
                 `<b>${escapeHtml(cam.name)}</b>`,
                 CAM_KIND_LABEL[cam.kind] || CAM_KIND_LABEL.other,
                 cam.road ? escapeHtml(cam.road) : '',
+                // Chiều bị bắn: thông tin quan trọng nhất của một điểm phạt nguội
+                cam.dirNote ? escapeHtml(cam.dirNote) : '',
                 cam.maxspeed ? `Giới hạn ${cam.maxspeed} km/h` : '',
                 cam.source === 'osm' ? '<i>nguồn OpenStreetMap</i>' : '',
                 isSample ? '<i>dữ liệu mẫu</i>' : ''
@@ -1922,6 +2272,37 @@
             L.marker([cam.lat, cam.lon], { icon }).addTo(cameraLayer)
                 .bindPopup(rows.join('<br>'));
         });
+    }
+
+    /*
+     * CAMERA PHẠT NGUỘI CHỈ BẮN MỘT CHIỀU.
+     *
+     * Cùng một cái cột ở ngã tư Nguyễn Trường Tộ × Phan Đăng Lưu: đi về phía
+     * sân bay Cát Bi thì bị bắn, đi ngược lại về QL.17B thì không — đó là hai
+     * điểm khác nhau trong dữ liệu, mỗi điểm một góc hướng. Báo cả hai chiều
+     * thì người lái nghe cảnh báo ở chiều không bị bắn, vài lần là mất tin.
+     *
+     * Ba trường hợp KHÔNG xét hướng, cố ý báo thừa hơn im:
+     *  - camera không ghi hướng (phần lớn dữ liệu OSM);
+     *  - xe đang chậm hoặc đứng: hướng GPS lúc đó là số rác;
+     *  - chưa biết hướng.
+     * Biên ±70°: đủ rộng cho đường cong và cho sai số hướng của GPS, vẫn đủ
+     * hẹp để loại chiều ngược (lệch 180°).
+     */
+    const CAM_DIR_TOL_DEG = 70;
+    const CAM_DIR_MIN_KMH = 10;
+
+    function camAppliesToHeading(cam) {
+        /*
+         * cam.dir == null PHẢI xét riêng: Number(null) là 0, mà 0 là một góc
+         * hướng hợp lệ (hướng bắc). Viết Number.isFinite(Number(cam.dir))
+         * suông thì mọi camera KHÔNG ghi hướng — tức gần hết dữ liệu OSM —
+         * bị coi như chỉ bắn chiều bắc, và im lặng ở mọi chiều khác.
+         */
+        if (!cam || cam.dir == null || !Number.isFinite(Number(cam.dir))) return true;
+        if (displayedSpeed() < CAM_DIR_MIN_KMH) return true;
+        if (heading === null || heading === undefined || !Number.isFinite(Number(heading))) return true;
+        return dirGap(heading, cam.dir) <= CAM_DIR_TOL_DEG;
     }
 
     const CAM_WARN_DIST_M = 300;        // vào trong mức này thì đọc cảnh báo
@@ -1936,6 +2317,7 @@
 
         let closest = null, minDist = Infinity;
         speedCameras.forEach((cam) => {
+            if (!camAppliesToHeading(cam)) return;     // chiều ngược lại: không bắn
             const d = haversine(userLatLng[0], userLatLng[1], cam.lat, cam.lon);
             if (d < minDist) { minDist = d; closest = cam; }
         });
@@ -1951,7 +2333,14 @@
         // Mỗi camera được báo một lần khi tới gần; chỉ nhắc lại sau CAM_ALERT_GAP_MS
         const camId = closest.id;
         const isNewCamera = camId !== lastCamAlertId;
-        if (distM <= CAM_WARN_DIST_M && (isNewCamera || Date.now() - lastCamAlertAt > CAM_ALERT_GAP_MS)) {
+        /*
+         * Vị trí chưa xác nhận (sóng kém) thì HIỆN số nhưng KHÔNG ĐỌC. Người
+         * lái vẫn thấy "camera 240m" trên màn hình để tự xử; còn đọc to một
+         * cảnh báo dựng từ một nhịp GPS bịa thì chỉ làm người ta phanh giữa
+         * đường vì một cái camera không có ở đó.
+         */
+        if (distM <= CAM_WARN_DIST_M && gpsTrusted()
+            && (isNewCamera || Date.now() - lastCamAlertAt > CAM_ALERT_GAP_MS)) {
             speak('camera', { dist: distM });
             lastCamAlertAt = Date.now();
             lastCamAlertId = camId;
@@ -2566,9 +2955,19 @@
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
             const where = p.place_formatted || p.full_address || '';
             const nm = p.name_preferred || p.name || '';
+            /*
+             * Không có TÊN thì bỏ dòng đó đi.
+             *
+             * Trước đây dòng không tên được đặt tên bằng chính câu hỏi, nên
+             * danh sách hiện ra một dòng trơ "Bệnh viện" — người dùng không
+             * biết đó là bệnh viện nào, mà nó lại còn khớp "cấp một" nên
+             * chen lên đầu. Một dòng không nói được mình là gì thì không
+             * giúp được ai.
+             */
+            if (!nm && !where) return null;
             return {
                 lat, lon,
-                display_name: nm ? (where ? nm + ', ' + where : nm) : (where || query),
+                display_name: nm ? (where ? nm + ', ' + where : nm) : where,
                 // Loại của dòng này, để phần xếp hạng đưa địa danh lên trước
                 _kind: [p.feature_type, ...(Array.isArray(p.poi_category) ? p.poi_category : [])]
                     .filter(Boolean).join(' ').toLowerCase(),
@@ -2726,8 +3125,19 @@
         'Satrafoods', 'Bách Hóa Xanh', 'Bach Hoa Xanh'];
 
     const PLACE_CATEGORIES = [
-        { mb: 'school', label: 'Trường học', icon: 'fa-school', words: ['truong hoc', 'truong', 'school'],
-          tags: ['amenity=school', 'amenity=college', 'amenity=university'] },
+        /*
+         * TRƯỜNG PHỔ THÔNG — cấp một là tiểu học / THCS / THPT. Mầm non, mẫu
+         * giáo và trung tâm ngoại ngữ là cấp dưới: vẫn hiện, nhưng không được
+         * chen trước một ngôi trường thật.
+         */
+        { mb: 'school', label: 'Trường học', icon: 'fa-school',
+          words: ['truong hoc', 'truong', 'school', 'tieu hoc', 'thcs', 'thpt', 'trung hoc'],
+          tags: ['amenity=school', 'amenity=college', 'amenity=university'],
+          core: ['trường học', 'trường tiểu học', 'trường THCS', 'trường THPT'],
+          coreRe: /^truong |tieu hoc|thcs|thpt|trung hoc|pho thong|school/,
+          prefer: /truong|lien cap|noi tru/,
+          below: /dai hoc|hoc vien|cao dang/,
+          demote: /mam non|mau giao|nha tre|trung tam|ngoai ngu|gia su|day them|ky tuc xa|can tin/ },
         // prefer/demote: xếp hạng theo TÊN trước, rồi mới tới khoảng cách.
         // Gõ "bệnh viện" mà trạm y tế cách 200m đứng trên bệnh viện tỉnh cách
         // 3km thì danh sách vô dụng — OSM ở Việt Nam gắn amenity=hospital cho
@@ -2737,56 +3147,195 @@
           // ở Việt Nam nhiều bệnh viện thật lại bị gắn amenity=clinic trong
           // OSM. Loại theo thẻ thì mất luôn chúng.
           tags: ['amenity=hospital', 'amenity=clinic'],
+          /*
+           * CẤP MỘT — những cách gọi SÁT NGHĨA với "bệnh viện".
+           * Mỗi chữ ở đây là MỘT CÂU HỎI gửi đi, nên bệnh viện ở 14 km hay
+           * 28 km vẫn tìm ra, không phụ thuộc vào việc quanh đây có bao
+           * nhiêu phòng khám chen trước.
+           */
+          core: ['bệnh viện', 'bệnh viện đa khoa', 'trung tâm y tế', 'hospital', 'viện'],
+          coreRe: /benh vien|hospital|trung tam y te|^vien |vien (da khoa|lao|phoi|tim|mat|nhi|huyet hoc|k)\b/,
           prefer: /benh vien|bv |hospital|vien (da khoa|tim|mat|nhi|phoi|e |k$)/,
           demote: /phong kham|tram y te|y te xa|nha thuoc|phong rang|nha khoa|thu y/ },
-        { mb: 'clinic', label: 'Phòng khám', icon: 'fa-stethoscope', words: ['phong kham', 'tram y te', 'clinic'],
-          tags: ['amenity=clinic', 'amenity=doctors'] },
-        { mb: 'pharmacy', label: 'Nhà thuốc', icon: 'fa-prescription-bottle-medical', words: ['nha thuoc', 'hieu thuoc', 'pharmacy'],
-          tags: ['amenity=pharmacy'] },
+        { mb: 'clinic', label: 'Phòng khám', icon: 'fa-stethoscope',
+          words: ['phong kham', 'tram y te', 'clinic', 'phong kham da khoa'],
+          tags: ['amenity=clinic', 'amenity=doctors'],
+          core: ['phòng khám', 'phòng khám đa khoa', 'trạm y tế', 'clinic'],
+          coreRe: /phong kham|clinic|tram y te|y te xa|nha ho sinh|nha khoa|phong rang/,
+          prefer: /da khoa|chuyen khoa|noi|nhi|san/,
+          // Bệnh viện là CẤP TRÊN cùng họ: vẫn hiện, nhưng sau phòng khám
+          below: /benh vien|trung tam y te|\bbv\b/,
+          demote: /nha thuoc|hieu thuoc|quay thuoc|thu y|\bspa\b|tham my|cua hang/ },
+        { mb: 'pharmacy', label: 'Nhà thuốc', icon: 'fa-prescription-bottle-medical',
+          words: ['nha thuoc', 'hieu thuoc', 'pharmacy', 'quay thuoc'],
+          tags: ['amenity=pharmacy'],
+          core: ['nhà thuốc', 'quầy thuốc', 'pharmacy', 'Long Châu', 'Pharmacity', 'An Khang'],
+          coreRe: /nha thuoc|hieu thuoc|quay thuoc|pharmacy|pharmacity|long chau|an khang|trung son/,
+          prefer: /duoc pham|\bduoc\b/,
+          below: /phong kham|benh vien|tram y te/,
+          demote: /thu y|thuc pham|my pham|thiet bi|vat tu|cua hang tien loi|tap hoa/ },
+        /*
+         * BÁN LẺ — BA CẤP, đúng như anh mô tả:
+         *   TTTM  >  Siêu thị  >  Cửa hàng
+         *
+         * Hai luật riêng của họ này:
+         *  - Tìm TTTM thì siêu thị VẪN HIỆN, chỉ tụt xuống bậc dưới. Không
+         *    loại, vì ở Việt Nam nhiều TTTM bị gắn thẻ shop=supermarket.
+         *  - Siêu thị có thương hiệu riêng nằm TRONG một TTTM thì hiện CẢ
+         *    HAI ở cùng một chỗ (WinMart trong Vincom là hai đích khác nhau
+         *    với người lái). Phép bỏ trùng vì vậy phải xét cả tên, không chỉ
+         *    toạ độ — xem dedupeByCoord.
+         */
         { mb: 'shopping_mall', label: 'Trung tâm thương mại', icon: 'fa-bag-shopping',
-          words: ['trung tam thuong mai', 'tttm', 'mall', 'trung tam mua sam', 'thuong mai'],
+          words: ['trung tam thuong mai', 'tttm', 'mall', 'trung tam mua sam', 'thuong mai',
+                  'hypermarket', 'plaza'],
           tags: ['shop=mall', 'shop=department_store'], brands: MALL_BRANDS,
-          strict: true,
-          prefer: /mall|plaza|vincom|aeon|lotte|parkson|trung tam thuong mai|ttm|department store|big ?c|go!|takashimaya|crescent|vivocity/ },
-        { mb: 'supermarket', label: 'Siêu thị', icon: 'fa-cart-shopping', words: ['sieu thi', 'supermarket'],
+          core: ['trung tâm thương mại', 'mall', 'hypermarket', 'trung tâm mua sắm'],
+          coreRe: /trung tam thuong mai|tttm|\bmall\b|hypermarket|trung tam mua sam|plaza|department store/,
+          prefer: /vincom|aeon|lotte|parkson|big ?c|go!|takashimaya|crescent|vivocity|the garden|savico/,
+          // Cấp dưới: vẫn hiện, nhưng sau TTTM
+          below: /sieu thi|supermarket|winmart|vinmart|co.?op|bach hoa xanh|mega market/,
+          demote: /tap hoa|cua hang|tien loi|circle k|gs25|familymart|ministop|shop|store/ },
+        { mb: 'supermarket', label: 'Siêu thị', icon: 'fa-cart-shopping',
+          words: ['sieu thi', 'supermarket'],
           tags: ['shop=supermarket', 'shop=mall', 'shop=department_store'],
           brands: SUPERMARKET_BRANDS,
-          prefer: /sieu thi|supermarket|co.?op|winmart|vinmart|big ?c|go!|lotte|aeon|mega market|bach hoa xanh/,
-          demote: /tap hoa|cua hang tien loi|circle k|gs25|familymart|ministop/ },
+          core: ['siêu thị', 'supermarket', 'WinMart', 'Co.opmart', 'Big C', 'GO!',
+                 'Lotte Mart', 'MM Mega Market', 'Bách Hoá Xanh'],
+          coreRe: /sieu thi|supermarket|co.?opmart|co.?op mart|winmart|vinmart|big ?c|go!|lotte mart|mega market|bach hoa xanh|emart|fujimart|lan ?chi/,
+          prefer: /trung tam thuong mai|mall|plaza|aeon|lotte|department store/,
+          demote: /tap hoa|cua hang tien loi|tien loi|circle k|gs25|familymart|ministop|7.?eleven|cheers|shop|store/ },
+        /*
+         * CỬA HÀNG TIỆN LỢI — THƯƠNG HIỆU LÀ CẤP MỘT.
+         *
+         * Yêu cầu của anh (20/10): bấm nút này thì phải ưu tiên thứ ĐÚNG MỤC
+         * ĐÍCH KINH DOANH — Circle K, 7-Eleven, GS25, WinMart+, Ministop... —
+         * rồi mới tới tạp hoá. Vì trong 30 km có hàng trăm hàng tạp hoá, để
+         * chúng xếp theo khoảng cách thì chuỗi tiện lợi 24/7 không bao giờ
+         * lên được màn hình đầu.
+         *
+         * Tạp hoá / shop / điện máy là CẤP DƯỚI (below): vẫn hiện, xếp sau.
+         */
         { mb: 'convenience_store', label: 'Cửa hàng tiện lợi', icon: 'fa-store',
-          words: ['cua hang tien loi', 'tien loi', 'tap hoa', 'convenience', 'cvs'],
+          words: ['cua hang tien loi', 'tien loi', 'tap hoa', 'convenience', 'cvs',
+                  'cua hang', 'shop', 'store', 'dien may'],
           tags: ['shop=convenience'], brands: CONVENIENCE_BRANDS,
           strict: true,
-          prefer: /circle k|gs25|familymart|family mart|ministop|7.?eleven|b.s mart|winmart\+|vinmart\+|co.?op smile|cheers|tien loi|tap hoa/ },
-        { mb: 'market', label: 'Chợ', icon: 'fa-store', words: ['cho', 'market'],
-          tags: ['amenity=marketplace'] },
-        { mb: 'gas_station', label: 'Cây xăng', icon: 'fa-gas-pump', words: ['cay xang', 'tram xang', 'xang', 'gas'],
-          tags: ['amenity=fuel'] },
+          core: ['cửa hàng tiện lợi', 'Circle K', 'GS25', '7-Eleven', 'FamilyMart',
+                 'Ministop', 'WinMart+', 'Co.op Smile'],
+          coreRe: /tien loi|convenience|circle ?k|gs ?25|familymart|family mart|ministop|7.?eleven|seven eleven|b.s mart|bsmart|winmart\+|vinmart\+|co.?op smile|cheers|satrafoods/,
+          prefer: /24h|24\/7|minimart|mini mart/,
+          // Cấp dưới: tạp hoá, shop, điện máy — "cửa hàng tiện lợi" KHÔNG tính
+          below: /tap hoa|dien may|\bshop\b|\bstore\b|cua hang(?! tien loi)/,
+          demote: /trung tam thuong mai|mall|plaza|\bkho\b|cong ty|dai ly|vat lieu/ },
+        /*
+         * CHỢ — cùng nguyên tắc: chợ đầu mối và chợ là cấp một, chợ cóc /
+         * chợ tạm là cấp dưới, siêu thị và tạp hoá thì khác họ hẳn.
+         */
+        { mb: 'market', label: 'Chợ', icon: 'fa-store',
+          words: ['cho', 'market', 'cho dau moi', 'marketplace'],
+          tags: ['amenity=marketplace'],
+          core: ['chợ', 'chợ đầu mối', 'marketplace'],
+          coreRe: /^cho\b|\bcho /,
+          prefer: /cho dau moi|cho trung tam|marketplace/,
+          demote: /cho coc|cho tam|cho dem|sieu thi|tap hoa|cua hang|quan/ },
+        { mb: 'gas_station', label: 'Cây xăng', icon: 'fa-gas-pump',
+          words: ['cay xang', 'tram xang', 'xang', 'gas', 'cua hang xang dau', 'xang dau', 'petrol'],
+          tags: ['amenity=fuel'],
+          core: ['cây xăng', 'trạm xăng', 'cửa hàng xăng dầu', 'petrol'],
+          coreRe: /cay xang|tram xang|xang dau|petrol|petrolimex|pvoil|\bpv oil\b|\bgas station\b/,
+          prefer: /xang|fuel/,
+          demote: /dau nhot|gara|rua xe|\bgas\b.*(binh|cong nghiep)|khi hoa long/ },
         // local: true → tra trong dữ liệu VFIX đã đóng kèm, KHÔNG gọi mạng.
         // Trước đây mục này đi hỏi Overpass nên mất mạng là báo "không tìm
         // được", dù 19.000 trạm đang nằm ngay trong máy.
-        { mb: 'charging_station', label: 'Trạm sạc', icon: 'fa-charging-station', words: ['tram sac', 'sac dien', 'charging'],
-          tags: ['amenity=charging_station'], local: true },
-        { mb: 'parking_lot', label: 'Bãi đỗ xe', icon: 'fa-square-parking', words: ['bai do xe', 'bai xe', 'do xe', 'parking'],
-          tags: ['amenity=parking'] },
-        { mb: 'coffee', label: 'Quán cà phê', icon: 'fa-mug-saucer', words: ['ca phe', 'cafe', 'coffee'],
-          tags: ['amenity=cafe'] },
-        { mb: 'restaurant', label: 'Nhà hàng', icon: 'fa-utensils', words: ['nha hang', 'quan an', 'restaurant'],
-          tags: ['amenity=restaurant', 'amenity=fast_food'] },
-        { mb: 'hotel', label: 'Khách sạn', icon: 'fa-bed', words: ['khach san', 'nha nghi', 'hotel'],
-          tags: ['tourism=hotel', 'tourism=motel', 'tourism=guest_house'] },
-        { mb: 'bank', label: 'Ngân hàng', icon: 'fa-building-columns', words: ['ngan hang', 'bank'],
-          tags: ['amenity=bank'] },
-        { mb: 'atm', label: 'ATM', icon: 'fa-money-bill-transfer', words: ['atm', 'rut tien'],
-          tags: ['amenity=atm'] },
-        { mb: 'park', label: 'Công viên', icon: 'fa-tree', words: ['cong vien', 'park'],
-          tags: ['leisure=park'] },
-        { mb: 'toilet', label: 'Nhà vệ sinh', icon: 'fa-restroom', words: ['nha ve sinh', 've sinh', 'toilet', 'wc'],
-          tags: ['amenity=toilets'] },
-        { mb: 'auto_repair', label: 'Sửa xe', icon: 'fa-screwdriver-wrench', words: ['sua xe', 'gara', 'garage'],
-          tags: ['shop=car_repair'] },
-        { mb: 'car_wash', label: 'Rửa xe', icon: 'fa-shower', words: ['rua xe', 'car wash'],
-          tags: ['amenity=car_wash'] },
+        { mb: 'charging_station', label: 'Trạm sạc', icon: 'fa-charging-station',
+          words: ['tram sac', 'sac dien', 'charging', 'tru sac'],
+          tags: ['amenity=charging_station'], local: true,
+          core: ['trạm sạc', 'trụ sạc', 'sạc điện', 'VinFast'],
+          coreRe: /tram sac|tru sac|sac dien|charging|vinfast|v-?green|evn/,
+          prefer: /nhanh|dc|cong cong/,
+          demote: /cua hang|sua xe|ban xe|dai ly|tap hoa/ },
+        { mb: 'parking_lot', label: 'Bãi đỗ xe', icon: 'fa-square-parking',
+          words: ['bai do xe', 'bai xe', 'do xe', 'parking', 'diem do xe', 'nha xe'],
+          tags: ['amenity=parking'],
+          core: ['bãi đỗ xe', 'bãi xe', 'điểm đỗ xe', 'parking'],
+          coreRe: /bai do xe|bai xe|diem do xe|parking|nha xe|ham do xe|bai gui xe/,
+          prefer: /o ?to|xe may|cong cong|thu phi/,
+          demote: /rua xe|sua xe|gara|cho thue|ban xe|cua hang/ },
+        { mb: 'coffee', label: 'Quán cà phê', icon: 'fa-mug-saucer',
+          words: ['ca phe', 'cafe', 'coffee', 'quan ca phe'],
+          tags: ['amenity=cafe'],
+          core: ['cà phê', 'cafe', 'coffee', 'Highlands', 'Starbucks', 'Phúc Long',
+                 'Trung Nguyên', 'The Coffee House'],
+          coreRe: /ca phe|cafe|coffee|highlands|starbucks|phuc long|trung nguyen|cong ca phe|katinat|aha/,
+          prefer: /\bquan\b|rang xay|take ?away/,
+          // Trà sữa, trà chanh: cùng họ đồ uống, nhưng không phải cà phê
+          below: /tra sua|tra chanh|nuoc ep|sinh to|\bbubble\b/,
+          demote: /nha hang|quan an|karaoke|tap hoa|cua hang|khach san/ },
+        { mb: 'restaurant', label: 'Nhà hàng', icon: 'fa-utensils',
+          words: ['nha hang', 'quan an', 'restaurant'],
+          tags: ['amenity=restaurant', 'amenity=fast_food'],
+          core: ['nhà hàng', 'restaurant'],
+          coreRe: /nha hang|restaurant|buffet|lau |nuong/,
+          prefer: /quan an|quan com|com binh dan|bun |pho |banh/,
+          demote: /ca phe|cafe|coffee|tra sua|tap hoa|cua hang|karaoke/ },
+        { mb: 'hotel', label: 'Khách sạn', icon: 'fa-bed',
+          words: ['khach san', 'nha nghi', 'hotel', 'resort'],
+          tags: ['tourism=hotel', 'tourism=motel', 'tourism=guest_house'],
+          core: ['khách sạn', 'hotel', 'resort'],
+          coreRe: /khach san|hotel|resort/,
+          prefer: /nha khach|muong thanh|vinpearl|melia|sheraton/,
+          below: /nha nghi|homestay|guest house/,
+          demote: /nha tro|phong tro|cho thue|can ho/ },
+        { mb: 'bank', label: 'Ngân hàng', icon: 'fa-building-columns',
+          words: ['ngan hang', 'bank', 'phong giao dich', 'chi nhanh ngan hang'],
+          tags: ['amenity=bank'],
+          core: ['ngân hàng', 'bank', 'phòng giao dịch'],
+          coreRe: /ngan hang|\bbank\b|vietcombank|vietinbank|bidv|agribank|techcombank|mbbank|mb bank|vpbank|acb|sacombank|tpbank|vib|shb|hdbank|ocb|seabank|msb|eximbank/,
+          prefer: /phong giao dich|chi nhanh|pgd/,
+          below: /\batm\b|cay rut tien/,
+          demote: /hieu vang|tiem vang|cam do|bao hiem|chung khoan/ },
+        { mb: 'atm', label: 'ATM', icon: 'fa-money-bill-transfer',
+          words: ['atm', 'rut tien', 'cay rut tien', 'may rut tien'],
+          tags: ['amenity=atm'],
+          core: ['ATM', 'cây rút tiền', 'máy rút tiền'],
+          coreRe: /\batm\b|cay rut tien|may rut tien|rut tien tu dong/,
+          prefer: /24|tu dong/,
+          // Phòng giao dịch ngân hàng: cấp trên, hầu hết đều có ATM ngoài cửa
+          below: /ngan hang|phong giao dich|chi nhanh|\bpgd\b/,
+          demote: /hieu vang|cam do|chuyen tien|doi tien|bao hiem/ },
+        { mb: 'park', label: 'Công viên', icon: 'fa-tree',
+          words: ['cong vien', 'park', 'vuon hoa', 'quang truong'],
+          tags: ['leisure=park'],
+          core: ['công viên', 'vườn hoa', 'quảng trường', 'park'],
+          coreRe: /cong vien|vuon hoa|quang truong|\bpark\b|lam vien/,
+          prefer: /trung tam|sinh thai|cay xanh/,
+          below: /san choi|vuon uom|ho dieu hoa|bo ho/,
+          demote: /bai do|quan|cafe|khu do thi|chung cu|cong ty/ },
+        { mb: 'toilet', label: 'Nhà vệ sinh', icon: 'fa-restroom',
+          words: ['nha ve sinh', 've sinh', 'toilet', 'wc', 've sinh cong cong'],
+          tags: ['amenity=toilets'],
+          core: ['nhà vệ sinh', 'vệ sinh công cộng', 'toilet', 'WC'],
+          coreRe: /nha ve sinh|ve sinh cong cong|toilet|\bwc\b|restroom/,
+          prefer: /cong cong|mien phi/,
+          demote: /thiet bi ve sinh|cua hang|sua chua|thi cong|vat lieu/ },
+        { mb: 'auto_repair', label: 'Sửa xe', icon: 'fa-screwdriver-wrench',
+          words: ['sua xe', 'gara', 'garage', 'trung tam bao duong', 'bao duong'],
+          tags: ['shop=car_repair'],
+          core: ['gara', 'garage', 'sửa xe', 'trung tâm bảo dưỡng'],
+          coreRe: /gara|garage|sua chua|bao duong|dich vu o ?to|sua xe/,
+          prefer: /o ?to|xuong|dai ly|3s|4s/,
+          below: /sua xe may|tiem sua/,
+          demote: /rua xe|va xe|phu tung|do choi xe|dan keo|son xe/ },
+        { mb: 'car_wash', label: 'Rửa xe', icon: 'fa-shower',
+          words: ['rua xe', 'car wash', 'rua o to'],
+          tags: ['amenity=car_wash'],
+          core: ['rửa xe', 'car wash'],
+          coreRe: /rua xe|car ?wash|rua o ?to|rua - ?sua/,
+          prefer: /tu dong|cham soc xe|detailing/,
+          below: /sua xe|gara|bao duong/,
+          demote: /phu tung|do choi xe|ban xe|cua hang|tap hoa/ },
         /*
          * CƠ QUAN NHÀ NƯỚC — tiếng Việt gọi một chỗ bằng nhiều cách.
          *
@@ -2802,15 +3351,32 @@
                   'don cong an', 'cong an xa', 'cong an phuong', 'cong an huyen',
                   'cong an quan', 'cong an tinh', 'tru so canh sat'],
           tags: ['amenity=police'],
-          prefer: /cong an|canh sat|police/,
-          demote: /truong|hoc vien|benh vien|cua hang|cong ty/ },
+          core: ['công an', 'trụ sở công an', 'cảnh sát', 'đồn công an'],
+          coreRe: /cong an|canh sat|police|don bien phong/,
+          prefer: /tru so|\bdon\b|doi\b/,
+          // Cùng họ cơ quan cưỡng chế: quân đội, toà án, kiểm sát
+          below: /quan doi|bo chi huy|ban chi huy|toa an|vien kiem sat|thi hanh an/,
+          demote: /truong|hoc vien|benh vien|cua hang|cong ty|can tin/ },
+        /*
+         * "TRỤ SỞ CHÍNH QUYỀN" là từ chung của bốn thứ: UBND, công an, quân
+         * đội, toà án. Gõ cụm chung thì phải ra cả bốn, UBND lên trước vì đó
+         * là nghĩa hẹp nhất của chữ "chính quyền" trong cách nói hằng ngày.
+         * Gõ đúng loại ("trụ sở công an") thì nhóm Công an ở trên nhận trước,
+         * nên không sợ lẫn.
+         */
         { label: 'UBND', icon: 'fa-landmark-flag',
           words: ['ubnd', 'uy ban nhan dan', 'uy ban', 'tru so ubnd', 'tru so uy ban',
                   'uy ban xa', 'uy ban phuong', 'uy ban huyen', 'tru so hanh chinh',
-                  'co quan hanh chinh'],
-          tags: ['amenity=townhall', 'office=government'],
-          prefer: /ubnd|uy ban nhan dan|uy ban|hanh chinh cong|tru so/,
-          demote: /cua hang|cong ty|quan an/ },
+                  'co quan hanh chinh', 'tru so chinh quyen', 'chinh quyen',
+                  'co quan nha nuoc', 'tru so quan doi', 'toa an', 'tru so toa an'],
+          tags: ['amenity=townhall', 'office=government', 'amenity=courthouse',
+                 'amenity=police', 'military=office'],
+          core: ['UBND', 'uỷ ban nhân dân', 'trụ sở chính quyền'],
+          coreRe: /ubnd|uy ban nhan dan|^uy ban|hanh chinh cong/,
+          prefer: /tru so|hoi dong nhan dan|hdnd|dang uy|chi cuc|so [a-z]/,
+          // Cấp cùng họ: công an, quân đội, toà án — hiện sau UBND
+          below: /cong an|canh sat|police|quan doi|bo chi huy|ban chi huy|toa an|vien kiem sat|doi bien phong/,
+          demote: /cua hang|cong ty|quan an|truong|benh vien/ },
         /*
          * TRƯỜNG ĐẠI HỌC — phải tách khỏi trường phổ thông và ký túc xá.
          *
@@ -2821,10 +3387,30 @@
         { mb: 'college', label: 'Trường đại học', icon: 'fa-graduation-cap',
           words: ['truong dai hoc', 'dai hoc', 'cao dang', 'hoc vien', 'university', 'college'],
           tags: ['amenity=university', 'amenity=college'],
-          prefer: /^(truong )?(dai hoc|hoc vien|cao dang)|dai hoc quoc gia/,
+          core: ['đại học', 'học viện', 'cao đẳng', 'university'],
+          coreRe: /^(truong )?(dai hoc|hoc vien|cao dang)|dai hoc quoc gia|university|\bhvan\b/,
+          prefer: /phan hieu|co so \d|khoa |vien /,
+          below: /trung cap|truong nghe|day nghe|cao dang nghe/,
           demote: /ky tuc xa|tieu hoc|thcs|thpt|trung hoc|mam non|mau giao|trung tam|cua hang|can tin/ },
-        { mb: 'bus_station', label: 'Bến xe', icon: 'fa-bus', words: ['ben xe', 'bus station'],
-          tags: ['amenity=bus_station'] }
+        { mb: 'bus_station', label: 'Bến xe', icon: 'fa-bus',
+          words: ['ben xe', 'bus station', 'ben xe khach'],
+          tags: ['amenity=bus_station'],
+          core: ['bến xe', 'bến xe khách', 'bus station'],
+          coreRe: /ben xe|bus station|ben tau|ben pha/,
+          prefer: /trung tam|lien tinh|phia (bac|nam|dong|tay)/,
+          below: /diem dung|nha cho|tram xe bus|tram buyt/,
+          demote: /bai do|gui xe|cho thue xe|van tai|taxi/ },
+        /*
+         * SÂN BAY — nhiều cách gọi, và ở Việt Nam tên chính thức thường là
+         * "Cảng hàng không quốc tế ...", không có chữ "sân bay" nào.
+         */
+        { mb: 'airport', label: 'Sân bay', icon: 'fa-plane',
+          words: ['san bay', 'phi truong', 'airport', 'cang hang khong'],
+          tags: ['aeroway=aerodrome', 'aeroway=terminal'],
+          core: ['sân bay', 'cảng hàng không', 'airport', 'phi trường'],
+          coreRe: /san bay|cang hang khong|airport|phi truong|aerodrome/,
+          prefer: /san bay|cang hang khong|airport|phi truong/,
+          demote: /dai ly|ve may bay|phong ve|khach san|taxi|bai do/ }
     ];
 
     /** Bỏ dấu để so khớp: "Bệnh Viện" và "benh vien" phải cùng một thứ. */
@@ -3006,15 +3592,58 @@
         return kept.length ? kept : rows;
     }
 
+    /*
+     * Bốn bậc, không phải ba:
+     *   0 — CẤP MỘT, sát nghĩa với thứ người ta bấm (bệnh viện, cảng hàng không)
+     *   1 — gần nghĩa (prefer)
+     *   2 — cùng nhóm nhưng loại khác
+     *   3 — loại thấp hơn hẳn (phòng khám, trạm y tế, đại lý vé máy bay)
+     *
+     * Và khi đã có đủ CẤP MỘT thì cắt bớt bậc thấp: danh sách 25 dòng mà 20
+     * dòng là trạm y tế thì người ta phải cuộn qua chúng để tìm cái mình cần,
+     * đúng chỗ người dùng than "hiển thị quá nhiều mục tiêu ở phân loại thấp".
+     */
+    const CAT_CORE_ENOUGH = 6;      // có bấy nhiêu cấp một thì bắt đầu cắt
+    const CAT_LOW_KEEP = 4;         // giữ lại tối đa bấy nhiêu dòng bậc thấp
+
     function rankCategoryRows(rows, cat) {
         rows.forEach((r) => {
             const nm = noAccent(r.display_name || '');
-            let tier = 1;
-            if (cat.demote && cat.demote.test(nm)) tier = 2;
-            if (cat.prefer && cat.prefer.test(nm)) tier = 0;
+            /*
+             * THỨ TỰ XÉT RẤT QUAN TRỌNG — luật sau đè luật trước:
+             *
+             *   prefer  → gần nghĩa (bậc 1)
+             *   coreRe  → sát nghĩa, đúng mục đích kinh doanh (bậc 0)
+             *   below   → CẤP DƯỚI CÙNG HỌ (bậc 2), đè cả core: "ATM
+             *             Vietcombank" có đủ chữ của một ngân hàng nhưng nó
+             *             vẫn là cái máy rút tiền, không phải phòng giao dịch
+             *   demote  → PHỦ QUYẾT (bậc 4): "Trường Đại học Công an" dù có
+             *             chữ "công an" cũng không phải trụ sở công an
+             *
+             * below là luật anh đặt cho bán lẻ ("tìm TTTM thì vẫn hiển thị
+             * siêu thị nhưng cho tụt xuống cấp dưới ưu tiên sau"), dùng lại
+             * cho các họ khác: trụ sở chính quyền → công an / quân đội / toà
+             * án, trường phổ thông → đại học, ngân hàng → ATM.
+             */
+            let tier = 3;                                  // cùng nhóm, loại khác
+            if (cat.prefer && cat.prefer.test(nm)) tier = 1;
+            if (cat.coreRe && cat.coreRe.test(nm)) tier = 0;
+            if (cat.below && cat.below.test(nm)) tier = 2;
+            if (cat.demote && cat.demote.test(nm)) tier = 4;
             r._tier = tier;
         });
         rows.sort((a, b) => (a._tier - b._tier) || (a._dist - b._dist));
+
+        const core = rows.filter((r) => r._tier === 0).length;
+        if (core >= CAT_CORE_ENOUGH) {
+            let low = 0;
+            for (let i = rows.length - 1; i >= 0; i--) {
+                if (rows[i]._tier < 4) continue;
+                low++;
+                if (low > CAT_LOW_KEEP) rows.splice(i, 1);
+            }
+        }
+        return rows;
     }
 
     // Số thứ tự lượt tìm. Tìm theo nhóm nới bán kính nhiều lượt nên có thể
@@ -3051,8 +3680,11 @@
             const pr = f?.properties || {};
             const lat = Number(c[1]), lon = Number(c[0]);
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-            const nm = pr.name || cat.label;
+            // Không có tên thì bỏ: một dòng trơ "Bệnh viện" không nói được
+            // nó là bệnh viện nào, mà lại chen lên đầu vì khớp "cấp một".
+            const nm = pr.name || '';
             const addr = pr.full_address || pr.place_formatted || '';
+            if (!nm) return null;
             return {
                 lat, lon,
                 display_name: addr ? `${nm}, ${addr}` : nm,
@@ -3079,10 +3711,24 @@
             const v = String(t || '').trim();
             if (v.length >= 3 && !qs.some((x) => x.toLowerCase() === v.toLowerCase())) qs.push(v);
         };
+        /*
+         * Hỏi theo TỪNG CÁCH GỌI CẤP MỘT, không chỉ theo nhãn nhóm.
+         *
+         * Lỗi người dùng gặp: bấm nút "Bệnh viện" thì Bệnh viện Việt Tiệp cơ
+         * sở 2 ngay gần lại không ra, Bệnh viện Kim Thành 14 km cũng không,
+         * mà danh sách thì đầy trạm y tế với phòng khám. Lý do: lượt hỏi
+         * theo thẻ chỉ trả về 25 chỗ GẦN NHẤT (toàn cơ sở nhỏ), còn lượt hỏi
+         * theo tên thì chỉ hỏi đúng một câu "Bệnh viện".
+         *
+         * Mỗi cách gọi là một câu hỏi riêng, nên một bệnh viện mang tên
+         * "Trung tâm y tế huyện ..." hay "Cảng hàng không quốc tế ..." vẫn
+         * tìm ra, không phụ thuộc vào việc quanh đây có bao nhiêu chỗ nhỏ.
+         */
+        (cat.core || []).forEach(add);
         add(cat.label);
         (cat.brands || []).slice(0, 1).forEach(add);
         let out = [];
-        for (const q of qs.slice(0, 2)) {
+        for (const q of qs.slice(0, 5)) {
             out = out.concat(await searchMapboxPoi(q, here, km));
         }
         out.forEach((r) => { r._cat = cat.label; });
@@ -3198,7 +3844,9 @@
                 const lat = el.lat ?? el.center?.lat;
                 const lon = el.lon ?? el.center?.lon;
                 if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-                const name = el.tags?.name || el.tags?.['name:vi'] || cat.label;
+                // Không tên thì bỏ hẳn dòng — xem lý do ở searchMapboxCategory
+                const name = el.tags?.name || el.tags?.['name:vi'] || '';
+                if (!name) return null;
                 const where = el.tags?.['addr:street'] || el.tags?.['addr:city'] || '';
                 return {
                     lat, lon,
@@ -3244,6 +3892,56 @@
         const t = String(text || '').trim();
         if (!/^https?:\/\//i.test(t)) return false;
         try { return GMAP_HOST.test(new URL(t).hostname); } catch (e) { return false; }
+    }
+
+    /* =====================================================================
+     * MỞ LINK RÚT GỌN QUA VỎ ANDROID
+     *
+     * Trang web không đọc được kết quả chuyển hướng sang tên miền khác — đó
+     * là luật CORS của trình duyệt. Nhưng đó là luật của TRÌNH DUYỆT, không
+     * phải của mạng: phía Java gọi HTTP thẳng thì không vướng gì. Nên trong
+     * APK, link rút gọn mở được; ngoài trình duyệt thì vẫn phải nhờ người
+     * dùng chép link đầy đủ, và app nói thẳng như vậy.
+     *
+     * Vỏ Android trả kết quả về bằng cách gọi onLinkResolved(). Mỗi lần hỏi
+     * mang một mã riêng để hai lần hỏi chồng nhau không lẫn kết quả.
+     */
+    const linkWaiters = new Map();
+    let linkReqSeq = 0;
+    const LINK_TIMEOUT_MS = 10000;
+
+    function onLinkResolved(reqId, url, err) {
+        const w = linkWaiters.get(reqId);
+        if (!w) return;                       // đã quá hạn, hoặc kết quả lạc
+        linkWaiters.delete(reqId);
+        clearTimeout(w.timer);
+        w.resolve(err ? null : (url || null));
+    }
+
+    function canResolveLink() {
+        const a = nativeApp();
+        if (!a || typeof a.resolveLink !== 'function') return false;
+        try { return a.canResolveLink ? !!a.canResolveLink() : true; }
+        catch (e) { return false; }
+    }
+
+    function resolveShortLink(url) {
+        if (!canResolveLink()) return Promise.resolve(null);
+        const id = 'lk' + (++linkReqSeq);
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                linkWaiters.delete(id);
+                resolve(null);                // quá hạn thì coi như không mở được
+            }, LINK_TIMEOUT_MS);
+            linkWaiters.set(id, { resolve, timer });
+            try {
+                nativeApp().resolveLink(String(url), id);
+            } catch (e) {
+                clearTimeout(timer);
+                linkWaiters.delete(id);
+                resolve(null);
+            }
+        });
     }
 
     function isShortMapLink(text) {
@@ -3309,6 +4007,1299 @@
         return name ? { lat: null, lon: null, name } : null;
     }
 
+    /* =====================================================================
+     * GHI NHẬN ĐỊA ĐIỂM VMAPS CHƯA CÓ
+     *
+     * Dán một link Google Maps trỏ tới số nhà hay một toạ độ mà dữ liệu của
+     * VMaps không có gì ở đó — đó chính là một chỗ trống trong dữ liệu, và
+     * là lúc duy nhất ta biết chắc nó trống. Ghi lại để về sau bổ sung.
+     *
+     * NÓI RÕ GIỚI HẠN: app CHƯA gửi được lên máy chủ, vì chưa có máy chủ nào
+     * (phần tài khoản/admin đang hoãn). Nên ở đây làm phần CHẮC CHẮN đúng:
+     * cất vào máy, đánh dấu "chưa gửi", và cho xuất ra file JSON để gửi đi.
+     * Khi có máy chủ thì chỉ cần thêm một hàm đẩy lên — dữ liệu đã nằm sẵn,
+     * không mất gì trong thời gian chờ.
+     *
+     * KHÔNG nhét sẵn khoá ghi của một kho GitHub vào app để "có chỗ lưu":
+     * khoá nằm trong APK là khoá công khai, ai cũng rút ra được và ghi đè
+     * dữ liệu của người khác.
+     * ===================================================================== */
+    const CONTRIB_KEY = 'vietnav.contrib.v1';
+    const CONTRIB_MAX = 300;
+    const CONTRIB_SAME_M = 60;       // trong bán kính này coi như đã có, không ghi
+
+    function loadContrib() {
+        try {
+            const v = JSON.parse(localStorage.getItem(CONTRIB_KEY));
+            return Array.isArray(v) ? v : [];
+        } catch (e) { return []; }
+    }
+
+    function saveContrib(list) {
+        try { localStorage.setItem(CONTRIB_KEY, JSON.stringify(list.slice(-CONTRIB_MAX))); }
+        catch (e) { }
+    }
+
+    /** VMaps đã biết chỗ này chưa? Xét dữ liệu CỦA MÌNH, không hỏi mạng. */
+    function knownPlace(lat, lon) {
+        const near = (a, b) => haversine(lat, lon, a, b) <= CONTRIB_SAME_M;
+        if (PINNED_PLACES.some((pl) => near(pl.at[0], pl.at[1]))) return true;
+        if (Object.values(loadPlaces()).some((pl) =>
+            Number.isFinite(pl.lat) && near(pl.lat, pl.lon))) return true;
+        if (VN_CITIES.some(([, la, lo]) => near(la, lo))) return true;
+        if (VN_LANDMARKS.some(([, la, lo]) => near(la, lo))) return true;
+        if (chargingStations.some((st) => near(st.lat, st.lon))) return true;
+        if (loadContrib().some((c) => near(c.lat, c.lon))) return true;   // đã ghi rồi
+        return false;
+    }
+
+    /**
+     * Ghi nhận một chỗ lấy từ link mà dữ liệu của mình không có.
+     * Trả về true nếu vừa ghi thêm.
+     */
+    function noteUnknownPlace(row, src) {
+        if (!row || !Number.isFinite(row.lat) || !Number.isFinite(row.lon)) return false;
+        if (knownPlace(row.lat, row.lon)) return false;
+        const list = loadContrib();
+        list.push({
+            lat: Number(row.lat.toFixed(6)), lon: Number(row.lon.toFixed(6)),
+            name: String(row.display_name || '').slice(0, 160),
+            src: src || 'link',
+            at: new Date().toISOString(),
+            sent: false
+        });
+        saveContrib(list);
+        renderContribStatus();
+        return true;
+    }
+
+    function renderContribStatus() {
+        const el = $('contribStatus');
+        if (!el) return;
+        const list = loadContrib();
+        const chuaGui = list.filter((c) => !c.sent).length;
+        el.textContent = list.length
+            ? `Đã ghi nhận ${list.length} địa điểm (${chuaGui} chưa gửi đi).`
+            : 'Chưa ghi nhận địa điểm nào.';
+    }
+
+    /** Xuất ra file JSON để gửi đi — cách duy nhất đang có, nói thẳng là vậy. */
+    function exportContrib() {
+        const list = loadContrib();
+        if (!list.length) { showToast('Chưa có địa điểm nào để xuất', 'warn'); return; }
+        try {
+            const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'vmaps-diadiem-moi.json';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            showToast(`Đã xuất ${list.length} địa điểm ra file`);
+        } catch (e) {
+            showToast('Không xuất được file trên máy này', 'warn');
+        }
+    }
+
+    function clearContrib() {
+        saveContrib([]);
+        renderContribStatus();
+        showToast('Đã xoá danh sách địa điểm đã ghi nhận');
+    }
+
+    /* =====================================================================
+     * QUẢN TRỊ — ÁP GIỚI HẠN TỐC ĐỘ CHO CẢ MỘT TUYẾN
+     *
+     * Luồng anh đặt: điểm đầu lấy theo GPS đang đứng, điểm cuối chạm chọn
+     * trên bản đồ, app vẽ tuyến bằng CHÍNH chế độ xem trước của dẫn đường
+     * (nét xanh, có số km và số phút) để xem có đúng tuyến mình muốn áp; đúng
+     * thì nhập km/h, chọn một hay hai chiều, rồi xác nhận.
+     *
+     * VÌ SAO LƯU HÌNH TUYẾN, KHÔNG LƯU MÃ ĐƯỜNG:
+     * yêu cầu "áp dụng cho mọi API sau này nếu thay đổi api bản đồ" quyết
+     * định cách lưu. Mã đường là của riêng từng nhà cung cấp — đổi nhà cung
+     * cấp là mất hết, mà ngay cả cùng OSM thì một lần cập nhật cũng có thể
+     * chẻ một đường thành hai mã mới. Toạ độ thì không thuộc về ai.
+     *
+     * Chỉ admin thấy. Chưa có module đăng nhập nên cổng tạm là một khoá trong
+     * máy; khi có phân quyền thật thì chỉ sửa isAdmin(), phần còn lại y nguyên.
+     * ===================================================================== */
+    /*
+     * CỔNG QUẢN TRỊ — ĐĂNG NHẬP GOOGLE, MỞ BẰNG CÁCH GÕ LOGO 5 LẦN.
+     *
+     * Hai lớp, mỗi lớp lo một việc khác nhau, đừng lẫn:
+     *
+     *  1. GÕ LOGO 5 LẦN chỉ để BÀY phần quản trị ra. Nó không phải bảo mật —
+     *     ai đọc mã nguồn trang cũng biết, mà app là một tệp HTML thì mã
+     *     nguồn nằm ngay trong máy người dùng. Nó chỉ giữ cho người dùng
+     *     thường không chạm vào.
+     *
+     *  2. ĐĂNG NHẬP GOOGLE mới là cái quyết định được phép sửa dữ liệu hay
+     *     không. Và chỗ quyết định PHẢI là máy chủ: idToken của Google được
+     *     gửi lên Apps Script để kiểm, danh sách admin nằm ở đó. Nếu để trang
+     *     web tự kết luận "email này là admin" thì chỉ cần sửa một dòng trong
+     *     công cụ nhà phát triển là ai cũng thành admin.
+     *
+     * Cách này sao theo VFIX (src/Admin.jsx + src/sheet.js): phiên đăng nhập
+     * giữ trong máy, mật khẩu và quyền kiểm ở Apps Script, dữ liệu nằm trong
+     * Google Sheet.
+     */
+    const ADMIN_SESSION_KEY = 'vietnav.admin.session.v1';
+    const ADMIN_SCRIPT_KEY = 'vietnav.admin.script';     // địa chỉ Apps Script
+    const ADMIN_GCID_KEY = 'vietnav.admin.gcid';         // Google Client ID (web)
+    const ADMIN_SESSION_MS = 12 * 60 * 60 * 1000;
+    let adminUnlocked = false;         // đã gõ logo 5 lần trong phiên này
+    let adminLogoTaps = [];
+
+    function adminScriptUrl() {
+        try { return localStorage.getItem(ADMIN_SCRIPT_KEY) || ''; } catch (e) { return ''; }
+    }
+    function adminClientId() {
+        try { return localStorage.getItem(ADMIN_GCID_KEY) || ''; } catch (e) { return ''; }
+    }
+    function loadAdminSession() {
+        try {
+            const s = JSON.parse(localStorage.getItem(ADMIN_SESSION_KEY) || 'null');
+            return s && s.exp > Date.now() ? s : null;
+        } catch (e) { return null; }
+    }
+    function saveAdminSession(s) {
+        try {
+            if (s) localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(s));
+            else localStorage.removeItem(ADMIN_SESSION_KEY);
+        } catch (e) { }
+    }
+
+    /** Gõ nhanh 5 lần vào logo trong Cài đặt thì bày phần quản trị ra. */
+    function tapAdminLogo() {
+        const now = Date.now();
+        adminLogoTaps = adminLogoTaps.filter((x) => now - x < 2500).concat([now]);
+        if (adminLogoTaps.length < 5) return;
+        adminLogoTaps = [];
+        adminUnlocked = true;
+        showAdminBox();
+        showToast('Đã mở phần quản trị');
+    }
+
+    /*
+     * isAdmin() = ĐANG CÓ PHIÊN ĐĂNG NHẬP CÒN HẠN do máy chủ cấp.
+     * Chỉ dùng để quyết định có cho sửa dữ liệu hay không.
+     */
+    function isAdmin() { return !!loadAdminSession(); }
+    const LIMITS_KEY = 'vietnav.limits.v1';
+    const LIMITS_URL = 'data/speed_limits_manual.json';
+    const LIMIT_MATCH_M = 25;      // xe cách hình tuyến dưới mức này thì coi là đang trên tuyến
+    const LIMIT_DIR_TOL = 70;      // biên khớp hướng khi áp MỘT chiều
+    const LIMIT_THIN_M = 25;       // làm thưa hình tuyến trước khi lưu
+    const LIMIT_MAX = 300;
+
+    let fileLimits = [];           // từ data/speed_limits_manual.json (mọi máy đều có)
+    let localLimits = [];          // nháp + đã xác nhận, chỉ trong máy này
+    let limitDraw = null;          // phiên vẽ đang dở
+
+    function loadLimitStore() {
+        try {
+            const raw = JSON.parse(localStorage.getItem(LIMITS_KEY) || '[]');
+            localLimits = Array.isArray(raw) ? raw : [];
+        } catch (e) { localLimits = []; }
+        return localLimits;
+    }
+
+    function saveLimitStore(rows) {
+        localLimits = (rows || []).slice(-LIMIT_MAX);
+        try { localStorage.setItem(LIMITS_KEY, JSON.stringify(localLimits)); } catch (e) { }
+        return localLimits;
+    }
+
+    /** Tệp trong repo là tuỳ chọn: bản cũ chưa có nó, app vẫn phải chạy. */
+    async function loadFileLimits() {
+        try {
+            const res = await fetch(LIMITS_URL, { cache: 'no-cache' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            const rows = Array.isArray(data) ? data : (data.routes || []);
+            fileLimits = rows.filter((r) => Array.isArray(r.pts) && r.pts.length > 1
+                && Number.isFinite(Number(r.limit)));
+        } catch (e) {
+            fileLimits = [];
+        }
+        return fileLimits.length;
+    }
+
+    /*
+     * CHỈ MỤC ĐÃ XÁC NHẬN MỚI ÁP VÀO SỐ TRÊN MÀN HÌNH.
+     * Nháp là nháp: vẽ ra để xem lại, không được quyền đổi biển báo của ai.
+     */
+    function activeLimits() {
+        return fileLimits.concat(localLimits.filter((r) => r.status === 'confirmed'));
+    }
+
+    /** Làm thưa hình tuyến: giữ điểm cách nhau ít nhất `m` mét, luôn giữ hai đầu. */
+    function thinPts(pts, m) {
+        if (!Array.isArray(pts) || pts.length < 3) return (pts || []).slice();
+        const out = [pts[0]];
+        for (let i = 1; i < pts.length - 1; i++) {
+            const last = out[out.length - 1];
+            if (haversine(last[0], last[1], pts[i][0], pts[i][1]) >= m) out.push(pts[i]);
+        }
+        out.push(pts[pts.length - 1]);
+        return out;
+    }
+
+    /**
+     * Giới hạn do admin áp, tại vị trí này. null = không có.
+     *
+     * Áp MỘT chiều thì ngoài khoảng cách còn phải khớp hướng xe với hướng
+     * tuyến tại chỗ đó — dùng dirGap (có chiều), KHÔNG dùng headingGap (coi
+     * hai chiều ngược nhau là một, xem phần camera một chiều).
+     */
+    function limitAt(lat, lon, hdg) {
+        let best = null;
+        for (const r of activeLimits()) {
+            const pts = r.pts;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const p = projectOnSegment(lat, lon, pts[i][0], pts[i][1],
+                    pts[i + 1][0], pts[i + 1][1]);
+                if (p.dist > LIMIT_MATCH_M) continue;
+                if (!r.both) {
+                    // Chưa biết hướng, hoặc xe gần như đứng: không dám áp một
+                    // chiều, vì hướng GPS lúc đó là số rác.
+                    if (hdg == null || !Number.isFinite(Number(hdg))) continue;
+                    const segB = bearingOf(pts[i], pts[i + 1]);
+                    if (dirGap(hdg, segB) > LIMIT_DIR_TOL) continue;
+                }
+                if (!best || p.dist < best.dist) {
+                    best = { dist: p.dist, limit: Number(r.limit), name: r.name || '', id: r.id };
+                }
+            }
+        }
+        return best;
+    }
+
+    function bearingOf(a, b) {
+        const p1 = a[0] * Math.PI / 180, p2 = b[0] * Math.PI / 180;
+        const dl = (b[1] - a[1]) * Math.PI / 180;
+        const y = Math.sin(dl) * Math.cos(p2);
+        const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    // ---- Vẽ tuyến: GPS → chạm bản đồ ----
+    function startLimitDraw() {
+        if (!isAdmin()) return;
+        if (!userLatLng) { showToast('Chưa có vị trí GPS để làm điểm đầu', 'warn'); return; }
+        limitDraw = { from: userLatLng.slice(), picking: true, pts: null, to: null };
+        startPickOnMap('__limit');
+        const t = $('pickTarget');
+        if (t) t.textContent = 'Chọn điểm CUỐI của tuyến áp tốc độ';
+        showToast('Kéo bản đồ cho tâm ngắm vào điểm cuối rồi bấm xác nhận');
+    }
+
+    function cancelLimitDraw() {
+        limitDraw = null;
+        clearRoute();
+        $('limitForm').classList.add('hidden');
+        renderLimitList();
+    }
+
+    /** Bản đồ được chạm trong lúc đang chọn điểm cuối. true = đã xử lý. */
+    function limitPickAt(lat, lon) {
+        if (!limitDraw || !limitDraw.picking) return false;
+        limitDraw.picking = false;
+        limitDraw.to = [lat, lon];
+        limitPickAtForce(lat, lon);
+        return true;
+    }
+
+    /** Vẽ tuyến tới điểm cuối rồi mở form. Dùng cho cả chạm bản đồ và câu lệnh. */
+    function limitPickAtForce(lat, lon) {
+        showToast('Đang tính tuyến để xem trước…');
+        calculateRoute(lat, lon, {
+            preview: true,
+            name: 'Tuyến áp tốc độ',
+            // Lấy hình tuyến từ CHÍNH kết quả tính tuyến, không đọc ké biến
+            // trạng thái của phần dẫn đường — chế độ xem trước có dọn bớt
+            // trạng thái, đọc ké là lúc được lúc không.
+            onRoute: (route) => {
+                const cs = (route.geometry && route.geometry.coordinates) || [];
+                limitDraw.pts = thinPts(cs.map((c) => [c[1], c[0]]), LIMIT_THIN_M);
+                limitDraw.km = route.distance / 1000;
+                openModal('settingsModal');
+                const info = $('limitRouteInfo');
+                if (info) {
+                    info.textContent = `Tuyến đã vẽ: ${limitDraw.km.toFixed(1).replace('.', ',')} km`
+                        + ` · ${limitDraw.pts.length} điểm hình tuyến`;
+                }
+                $('limitForm').classList.remove('hidden');
+                renderNearbyList();
+            }
+        });
+    }
+
+    function limitDraftFromForm(status) {
+        if (!limitDraw || !limitDraw.pts || limitDraw.pts.length < 2) {
+            showToast('Chưa có tuyến nào được vẽ', 'warn');
+            return null;
+        }
+        const kmh = Number($('limitKmh').value);
+        // Xác nhận thì PHẢI có số; lưu nháp thì chưa cần, đó là nghĩa của nháp.
+        if (status === 'confirmed' && !(kmh >= 5 && kmh <= 130)) {
+            showToast('Nhập giới hạn từ 5 đến 130 km/h rồi hãy xác nhận', 'warn');
+            return null;
+        }
+        return {
+            id: 'lim:' + Date.now().toString(36),
+            name: ($('limitName').value || '').trim()
+                || `Tuyến ${limitDraw.km ? limitDraw.km.toFixed(1) + ' km' : ''}`.trim(),
+            limit: kmh >= 5 ? kmh : null,
+            both: !!$('limitBothDir').checked,
+            pts: limitDraw.pts,
+            km: limitDraw.km || null,
+            status,
+            at: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Mỗi đường lân cận thành MỘT MỤC CHO MỖI ĐOẠN rời của nó.
+     *
+     * Vì sao không gộp cả con đường vào một chuỗi toạ độ: các đoạn mang cùng
+     * tên thường KHÔNG liền nhau (bị ngã tư chẻ ra, hoặc dữ liệu thiếu khúc
+     * giữa). Nối chúng thành một chuỗi là tự vẽ thêm những đoạn thẳng không
+     * tồn tại — rồi app sẽ áp giới hạn cho cả những chỗ đó.
+     */
+    function nearbyRows(mau) {
+        const ra = [];
+        limitNearby.forEach((r, i) => {
+            r.lines.forEach((ln, j) => {
+                ra.push(Object.assign({}, mau, {
+                    id: `${mau.id}-ln${i}-${j}`,
+                    name: `${r.name} (áp theo ${mau.name})`,
+                    road: r.name,
+                    group: mau.id,
+                    pts: thinPts(ln, LIMIT_THIN_M),
+                    km: null
+                }));
+            });
+        });
+        return ra;
+    }
+
+    function saveLimitDraft() {
+        const row = limitDraftFromForm('draft');
+        if (!row) return;
+        saveLimitStore(loadLimitStore().concat([row], nearbyRows(row)));
+        limitNearby = [];
+        if (limitScanLayer && map) { map.removeLayer(limitScanLayer); limitScanLayer = null; }
+        limitDraw = null;
+        $('limitForm').classList.add('hidden');
+        clearRoute();
+        renderLimitList();
+        showToast('Đã lưu nháp — mở lại trong Cài đặt để xem và xác nhận sau');
+    }
+
+    function confirmLimitDraft() {
+        const row = limitDraftFromForm('confirmed');
+        if (!row) return;
+        const kem = nearbyRows(row);
+        saveLimitStore(loadLimitStore().concat([row], kem));
+        limitNearby = [];
+        if (limitScanLayer && map) { map.removeLayer(limitScanLayer); limitScanLayer = null; }
+        limitDraw = null;
+        $('limitForm').classList.add('hidden');
+        clearRoute();
+        msLastCheckPos = null;             // tra lại giới hạn ngay, khỏi đợi đi 25 m
+        updateSpeedLimitFromRoad();
+        renderLimitList();
+        showToast(`Đã áp ${row.limit} km/h cho tuyến này`
+            + (row.both ? ' (hai chiều)' : ' (một chiều)')
+            + (kem.length ? ` và ${kem.length} đoạn đường lân cận` : ''));
+    }
+
+    function limitRowById(id) { return loadLimitStore().find((r) => r.id === id) || null; }
+
+    /** Xem lại: vẽ đúng hình tuyến đã lưu lên bản đồ, không gọi mạng. */
+    function reviewLimit(id) {
+        const row = limitRowById(id);
+        if (!row || !map) return;
+        clearRoute();
+        routeLayer = L.polyline(row.pts, { color: '#f59e0b', weight: 6, opacity: 0.9 }).addTo(map);
+        map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+        closeModal('settingsModal');
+        showToast(`${row.name} · ${row.limit ? row.limit + ' km/h' : 'chưa nhập km/h'}`
+            + (row.both ? ' · hai chiều' : ' · một chiều'));
+    }
+
+    function confirmLimitRow(id) {
+        const rows = loadLimitStore();
+        const row = rows.find((r) => r.id === id);
+        if (!row) return;
+        if (!(Number(row.limit) >= 5 && Number(row.limit) <= 130)) {
+            showToast('Nháp này chưa có km/h — mở Xem lại rồi vẽ lại để nhập', 'warn');
+            return;
+        }
+        row.status = 'confirmed';
+        row.at = new Date().toISOString();
+        saveLimitStore(rows);
+        msLastCheckPos = null;
+        updateSpeedLimitFromRoad();
+        renderLimitList();
+        showToast(`Đã xác nhận ${row.limit} km/h`);
+    }
+
+    function deleteLimitRow(id) {
+        saveLimitStore(loadLimitStore().filter((r) => r.id !== id));
+        msLastCheckPos = null;
+        updateSpeedLimitFromRoad();
+        renderLimitList();
+        showToast('Đã xoá mục này');
+    }
+
+    function clearLimitDrafts() {
+        saveLimitStore(loadLimitStore().filter((r) => r.status === 'confirmed'));
+        renderLimitList();
+        showToast('Đã xoá các mục nháp');
+    }
+
+    function renderLimitList() {
+        const box = $('limitList');
+        const st = $('limitStoreStatus');
+        if (!box || !st) return;
+        const rows = loadLimitStore();
+        const nhap = rows.filter((r) => r.status !== 'confirmed').length;
+        const xong = rows.filter((r) => r.status === 'confirmed').length;
+        st.textContent = `${nhap} nháp · ${xong} đã xác nhận trong máy`
+            + (fileLimits.length ? ` · ${fileLimits.length} từ dữ liệu app` : '');
+        box.innerHTML = '';
+        rows.slice().reverse().forEach((r) => {
+            const d = document.createElement('div');
+            d.className = 'rounded-lg border border-slate-200 dark:border-slate-700 p-2 text-xs';
+            const nhan = r.status === 'confirmed'
+                ? '<span class="text-green-600 font-bold">đã xác nhận</span>'
+                : '<span class="text-amber-600 font-bold">nháp</span>';
+            d.innerHTML =
+                `<div class="font-semibold">${escapeHtml(r.name || r.id)}</div>`
+                + `<div class="text-slate-500">${r.limit ? r.limit + ' km/h' : 'chưa nhập km/h'}`
+                + ` · ${r.both ? 'hai chiều' : 'một chiều'} · ${nhan}</div>`
+                + `<div class="flex gap-1 mt-1">`
+                + `<button class="px-2 py-1 rounded border border-slate-300 dark:border-slate-600 font-bold" data-act="xem">Xem lại</button>`
+                + (r.status === 'confirmed' ? ''
+                    : `<button class="px-2 py-1 rounded bg-green-600 text-white font-bold" data-act="ok">Xác nhận</button>`)
+                + `<button class="px-2 py-1 rounded text-red-500 font-bold" data-act="xoa">Xoá</button>`
+                + `</div>`;
+            d.querySelectorAll('button').forEach((b) => {
+                b.addEventListener('click', () => {
+                    const a = b.getAttribute('data-act');
+                    if (a === 'xem') reviewLimit(r.id);
+                    else if (a === 'ok') confirmLimitRow(r.id);
+                    else deleteLimitRow(r.id);
+                });
+            });
+            box.appendChild(d);
+        });
+    }
+
+    function exportLimits() {
+        const rows = loadLimitStore();
+        if (!rows.length) { showToast('Chưa có mục nào để xuất', 'warn'); return; }
+        const payload = {
+            version: 1,
+            updated: new Date().toISOString().slice(0, 10),
+            note: 'Giới hạn tốc độ toàn tuyến do admin áp. pts = hình tuyến '
+                + '[[lat,lon],...]; both=false thì chỉ áp theo chiều của hình tuyến.',
+            routes: rows
+        };
+        try {
+            const blob = new Blob([JSON.stringify(payload, null, 1)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'vmaps-gioi-han.json';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+            showToast(`Đã xuất ${rows.length} mục ra file`);
+        } catch (e) {
+            showToast('Không xuất được file trên máy này', 'warn');
+        }
+    }
+
+    function showAdminBox() {
+        const box = $('adminLimitBox');
+        if (!box) return;
+        // Chưa gõ logo thì ẩn hẳn. Gõ rồi mà chưa đăng nhập thì hiện phần
+        // đăng nhập, KHÔNG hiện phần sửa dữ liệu.
+        box.classList.toggle('hidden', !adminUnlocked);
+        if (!adminUnlocked) return;
+        const s = loadAdminSession();
+        $('adminLoginBox').classList.toggle('hidden', !!s);
+        $('adminWorkBox').classList.toggle('hidden', !s);
+        const who = $('adminWho');
+        if (who && s) who.textContent = s.email || 'đã đăng nhập';
+        if (s) renderLimitList();
+        const warn = $('adminCfgWarn');
+        if (warn) {
+            const thieu = [];
+            if (!adminClientId()) thieu.push('Google Client ID');
+            if (!adminScriptUrl()) thieu.push('địa chỉ Apps Script');
+            warn.classList.toggle('hidden', thieu.length === 0);
+            if (thieu.length) {
+                warn.textContent = 'Chưa cấu hình: ' + thieu.join(' và ')
+                    + '. Chưa có thì không đăng nhập được, nên chỉ lưu nháp trong máy.';
+            }
+        }
+    }
+
+    /* ---- Đăng nhập Google ----
+     * Trong APK phải đi qua cầu nối Java: Google CHẶN luồng đăng nhập của họ
+     * khi thấy đang chạy trong WebView nhúng (lỗi disallowed_useragent), nên
+     * nút web của Google không dùng được ở đây. VFIX né bằng plugin
+     * Capacitor; VMaps không có Capacitor nên tự viết cầu nối.
+     */
+    function nativeGoogle() {
+        try { return window.AndroidGoogle || null; } catch (e) { return null; }
+    }
+
+    const googleWaiters = new Map();
+    let googleReq = 0;
+
+    function onGoogleToken(reqId, idToken, err) {
+        const w = googleWaiters.get(String(reqId));
+        if (!w) return;
+        googleWaiters.delete(String(reqId));
+        clearTimeout(w.timer);
+        if (err || !idToken) w.reject(new Error(err || 'Không lấy được tài khoản Google'));
+        else w.resolve(idToken);
+    }
+
+    function googleSignIn() {
+        const g = nativeGoogle();
+        const cid = adminClientId();
+        if (!cid) return Promise.reject(new Error('Chưa cấu hình Google Client ID'));
+        if (!g || typeof g.signIn !== 'function') {
+            return Promise.reject(new Error('Bản này không có cầu nối đăng nhập Google '
+                + '(chỉ APK mới có)'));
+        }
+        return new Promise((resolve, reject) => {
+            const id = String(++googleReq);
+            const timer = setTimeout(() => {
+                googleWaiters.delete(id);
+                reject(new Error('Đăng nhập Google quá lâu, thử lại'));
+            }, 60000);
+            googleWaiters.set(id, { resolve, reject, timer });
+            try { g.signIn(cid, id); } catch (e) {
+                googleWaiters.delete(id);
+                clearTimeout(timer);
+                reject(e);
+            }
+        });
+    }
+
+    /** Gọi Apps Script, cùng dạng gói tin với VFIX để dùng lại được script đó. */
+    async function callAdminScript(action, payload, timeout) {
+        const url = adminScriptUrl();
+        if (!url) throw new Error('Chưa cấu hình địa chỉ Apps Script');
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), timeout || 45000);
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(Object.assign({ action }, payload || {})),
+                signal: ctrl.signal
+            });
+            if (!res.ok) throw new Error('Máy chủ trả lỗi ' + res.status);
+            const data = await res.json();
+            if (!data || !data.ok) throw new Error(data && data.error ? data.error : 'Máy chủ từ chối');
+            return data;
+        } finally {
+            clearTimeout(to);
+        }
+    }
+
+    async function adminGoogleLogin() {
+        const btn = $('adminLoginBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Đang đăng nhập…'; }
+        try {
+            const idToken = await googleSignIn();
+            /*
+             * Máy chủ mới là chỗ quyết định ai là admin. Trang web chỉ chuyển
+             * idToken đi và nhận lại mã phiên — nó KHÔNG tự đọc email trong
+             * token rồi tự phong quyền.
+             */
+            const r = await callAdminScript('admin_google', { idToken });
+            saveAdminSession({ token: r.token, email: r.email || '',
+                exp: Date.now() + (Number(r.ttlMs) || ADMIN_SESSION_MS) });
+            showToast('Đăng nhập quản trị thành công');
+        } catch (e) {
+            showToast(e.message || 'Không đăng nhập được', 'warn');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Đăng nhập bằng Google'; }
+            showAdminBox();
+        }
+    }
+
+    function adminLogout() {
+        const s = loadAdminSession();
+        if (s && adminScriptUrl()) {
+            callAdminScript('admin_logout', { token: s.token }, 15000).catch(() => { });
+        }
+        saveAdminSession(null);
+        showAdminBox();
+        showToast('Đã đăng xuất quản trị');
+    }
+
+    function saveAdminConfig() {
+        const url = ($('adminScriptInput').value || '').trim();
+        const cid = ($('adminGcidInput').value || '').trim();
+        try {
+            if (url) {
+                if (!/^https:\/\//i.test(url)) {
+                    showToast('Địa chỉ Apps Script phải là https', 'warn');
+                    return;
+                }
+                localStorage.setItem(ADMIN_SCRIPT_KEY, url);
+            } else localStorage.removeItem(ADMIN_SCRIPT_KEY);
+            if (cid) localStorage.setItem(ADMIN_GCID_KEY, cid);
+            else localStorage.removeItem(ADMIN_GCID_KEY);
+            showToast('Đã lưu cấu hình quản trị');
+        } catch (e) {
+            showToast('Không lưu được cấu hình', 'warn');
+        }
+        showAdminBox();
+    }
+
+    /* =====================================================================
+     * KHO DỮ LIỆU TỪ DRIVE — CAMERA, ĐỊA ĐIỂM, GIỚI HẠN TỐC ĐỘ
+     *
+     * Quyết định của anh 20/10: ba loại dữ liệu này nằm trên Drive/Sheet,
+     * phân theo tỉnh thành, KHÔNG build vào app nữa. Thêm một điểm phạt nguội
+     * không được phép đòi dựng lại APK.
+     *
+     * THỨ TỰ LẤY, đúng như VFIX:
+     *   1. tải mới từ Drive
+     *   2. bản đã lưu trong máy   (dùng NGAY lúc mở app, và khi mất mạng)
+     *   3. bản đóng kèm trong APK (chỉ còn là lưới an toàn cho lần chạy đầu)
+     *
+     * Vì sao vẫn phải giữ mục 3: máy mới cài, chưa có mạng lần nào, mà không
+     * đóng kèm gì thì màn hình trống trơn — người dùng tưởng app hỏng. Nó
+     * không còn là nguồn dữ liệu, chỉ là thứ hiện ra lần đầu.
+     *
+     * Vì sao đọc được mà không cần khoá: Sheet/Apps Script chia sẻ dạng "bất
+     * kỳ ai có đường liên kết" thì chỉ cần gọi một địa chỉ https. Phần GHI
+     * mới cần đăng nhập, và quyền kiểm ở máy chủ.
+     * ===================================================================== */
+    const REMOTE_URL_KEY = 'vietnav.data.url';
+    const REMOTE_CACHE_KEY = 'vietnav.data.cache.v1';
+    const REMOTE_TIMEOUT_MS = 30000;
+    let remoteInfo = { updated: '', nguon: '', cam: 0, lim: 0 };
+
+    function remoteDataUrl() {
+        try { return localStorage.getItem(REMOTE_URL_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    function readRemoteCache() {
+        try { return JSON.parse(localStorage.getItem(REMOTE_CACHE_KEY) || 'null'); }
+        catch (e) { return null; }
+    }
+
+    function writeRemoteCache(data) {
+        try { localStorage.setItem(REMOTE_CACHE_KEY, JSON.stringify(data)); } catch (e) { }
+    }
+
+    /**
+     * Nhận cả hai dạng: JSON từ Apps Script, hoặc CSV từ Sheet đã publish.
+     * Hai dạng vì hai cách chia sẻ khác nhau, và không bắt anh phải dùng một
+     * cách duy nhất.
+     */
+    function parseRemotePayload(text) {
+        const t = String(text || '').trim();
+        if (!t) return null;
+        if (t[0] === '{' || t[0] === '[') {
+            const j = JSON.parse(t);
+            return Array.isArray(j) ? { cameras: j } : j;
+        }
+        // CSV: cột đầu là tên cột. Phân loại dòng theo cột "loai_du_lieu".
+        const rows = parseCsv(t);
+        if (!rows.length) return null;
+        const head = rows[0].map((h) => noAccent(h).replace(/\s+/g, '_'));
+        const out = { cameras: [], places: [], limits: [] };
+        for (let i = 1; i < rows.length; i++) {
+            const o = {};
+            head.forEach((h, j) => { o[h] = rows[i][j]; });
+            const loai = noAccent(o.loai_du_lieu || o.loai || '');
+            if (/gioi_han|speed|toc_do/.test(loai)) out.limits.push(o);
+            else if (/dia_diem|place/.test(loai)) out.places.push(o);
+            else out.cameras.push(o);
+        }
+        return out;
+    }
+
+    /** CSV tối giản nhưng ĐÚNG: có ô bọc nháy kép và dấu phẩy bên trong. */
+    function parseCsv(text) {
+        const rows = [];
+        let row = [], cell = '', q = false;
+        const t = String(text).replace(/\r\n/g, '\n');
+        for (let i = 0; i < t.length; i++) {
+            const c = t[i];
+            if (q) {
+                if (c === '"') {
+                    if (t[i + 1] === '"') { cell += '"'; i++; } else q = false;
+                } else cell += c;
+            } else if (c === '"') q = true;
+            else if (c === ',') { row.push(cell); cell = ''; }
+            else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+            else cell += c;
+        }
+        if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+        return rows.filter((r) => r.some((x) => String(x).trim() !== ''));
+    }
+
+    /** Đưa dữ liệu (từ Drive hoặc từ bản đã lưu) vào các kho đang chạy. */
+    function applyRemoteData(data, nguon) {
+        if (!data) return 0;
+        let n = 0;
+        (data.cameras || []).forEach((r) => {
+            if (mergeCamera(normalizeCamera(r, 'remote'))) n++;
+        });
+        const lim = (data.limits || []).map(normalizeRemoteLimit).filter(Boolean);
+        if (lim.length) fileLimits = lim;
+        remoteInfo = {
+            updated: data.updated || '',
+            nguon,
+            cam: (data.cameras || []).length,
+            lim: lim.length
+        };
+        renderCameraMarkers();
+        msLastCheckPos = null;          // tra lại giới hạn ngay
+        if (userLatLng) updateSpeedLimitFromRoad();
+        return n;
+    }
+
+    /**
+     * Một dòng giới hạn từ Sheet. Hình tuyến ghi dạng "lat,lon lat,lon ..."
+     * trong một ô — Sheet không có kiểu mảng, mà hình tuyến thì phải đi cùng
+     * dòng chứ không tách bảng khác được.
+     */
+    function normalizeRemoteLimit(r) {
+        if (!r) return null;
+        const kmh = Number(r.limit != null ? r.limit : (r.km_h || r.kmh || r.gioi_han));
+        if (!Number.isFinite(kmh)) return null;
+        let pts = r.pts;
+        if (typeof pts === 'string' || (!pts && (r.hinh_tuyen || r.toa_do))) {
+            const raw = String(pts || r.hinh_tuyen || r.toa_do || '');
+            pts = raw.split(/[;\n|]+|\s{2,}|\s(?=-?\d{1,2}\.\d)/)
+                .map((x) => x.trim().split(/\s*,\s*/).map(Number))
+                .filter((a) => a.length === 2 && Number.isFinite(a[0]) && Number.isFinite(a[1]));
+        }
+        if (!Array.isArray(pts) || pts.length < 2) return null;
+        const both = r.both != null ? !!r.both
+            : !/mot chieu|1 chieu|one ?way/.test(noAccent(r.chieu || ''));
+        return {
+            id: r.id || ('rem:' + pts[0].join(',')),
+            name: r.name || r.ten || '',
+            tinh: r.tinh || r.tinh_thanh || '',
+            limit: kmh, both, pts, status: 'confirmed'
+        };
+    }
+
+    /**
+     * Mở app là dùng NGAY bản đã lưu, rồi mới tải mới ở phía sau.
+     *
+     * Không làm ngược: chờ mạng xong mới hiện gì cả thì vùng sóng yếu phải
+     * đợi hàng chục giây mới thấy camera — mà dữ liệu cũ trong máy đã đủ dùng.
+     */
+    function applyCachedData() {
+        const c = readRemoteCache();
+        if (c) applyRemoteData(c.data || c, 'bản lưu trong máy');
+        return !!c;
+    }
+
+    async function refreshRemoteData(nói) {
+        const url = remoteDataUrl();
+        if (!url) {
+            if (nói) showToast('Chưa cấu hình địa chỉ kho dữ liệu', 'warn');
+            return 0;
+        }
+        if (isOffline()) {
+            if (nói) showToast('Không có mạng — đang dùng bản lưu trong máy', 'warn');
+            return 0;
+        }
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), REMOTE_TIMEOUT_MS);
+        try {
+            const res = await fetch(url, { signal: ctrl.signal, cache: 'no-cache' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = parseRemotePayload(await res.text());
+            if (!data) throw new Error('Dữ liệu rỗng');
+            writeRemoteCache({ at: Date.now(), data });
+            const n = applyRemoteData(data, 'Drive');
+            if (nói) {
+                showToast(`Đã cập nhật kho dữ liệu: ${remoteInfo.cam} camera, `
+                    + `${remoteInfo.lim} tuyến giới hạn`);
+            }
+            return n;
+        } catch (e) {
+            console.warn('Kho dữ liệu:', e);
+            if (nói) showToast('Không tải được kho dữ liệu: ' + e.message, 'warn');
+            return 0;
+        } finally {
+            clearTimeout(to);
+        }
+    }
+
+    function saveRemoteUrl() {
+        const url = ($('remoteUrlInput').value || '').trim();
+        try {
+            if (!url) { localStorage.removeItem(REMOTE_URL_KEY); showToast('Đã bỏ địa chỉ kho dữ liệu'); }
+            else if (!/^https:\/\//i.test(url)) { showToast('Địa chỉ phải là https', 'warn'); return; }
+            else { localStorage.setItem(REMOTE_URL_KEY, url); refreshRemoteData(true); }
+        } catch (e) { showToast('Không lưu được địa chỉ', 'warn'); }
+        renderRemoteStatus();
+    }
+
+    function renderRemoteStatus() {
+        const el = $('remoteStatus');
+        if (!el) return;
+        const url = remoteDataUrl();
+        const c = readRemoteCache();
+        if (!url) {
+            el.innerHTML = '<span class="text-amber-600 font-semibold">Chưa nối kho dữ liệu'
+                + '</span> — đang dùng dữ liệu đóng kèm trong app.';
+        } else {
+            el.textContent = `Nguồn: ${remoteInfo.nguon || 'chưa tải'}`
+                + (remoteInfo.cam ? ` · ${remoteInfo.cam} camera · ${remoteInfo.lim} tuyến` : '')
+                + (c && c.at ? ` · lưu lúc ${new Date(c.at).toLocaleString('vi-VN')}` : '');
+        }
+        const inp = $('remoteUrlInput');
+        if (inp && !inp.value) inp.value = url;
+    }
+
+    /* =====================================================================
+     * ÁP CÙNG MỘT MỨC CHO CẢ MỘT CON ĐƯỜNG, THEO TÊN
+     *
+     * Anh gõ tên đường bên cạnh; app quét dữ liệu đường trong máy, vẽ ra TOÀN
+     * BỘ đường mang tên đó để xem có đúng không, rồi áp cùng mức cho cả con
+     * đường — "đến khi kết thúc đường có tên đó".
+     *
+     * Quét lan dần từng vòng ô dữ liệu và DỪNG khi một vòng không còn đoạn
+     * nào mang tên đó: đó chính là chỗ con đường hết. Có chặn trần 6 vòng
+     * (~33 km) để một cái tên phổ biến như "Phố Chùa Hàng" không kéo app đi
+     * quét nửa thành phố.
+     * ===================================================================== */
+    const LIMIT_NEARBY_MAX = 10;        // tối đa 10 tên đường mỗi lần lưu
+    const LIMIT_SCAN_RINGS = 6;
+    const LIMIT_SCAN_SEGS = 400;
+    let limitScan = null;               // kết quả quét đang chờ bấm "Thêm"
+    let limitNearby = [];               // các đường đã thêm
+    let limitScanLayer = null;
+
+    async function scanRoadLines(name, here) {
+        const want = normRoadKey(name);
+        if (!want || want.length < 3) return null;
+        const li = Math.floor(here[0] / MS_GRID), lo = Math.floor(here[1] / MS_GRID);
+        const lines = [];
+        let trong = 0;
+        for (let r = 0; r <= LIMIT_SCAN_RINGS; r++) {
+            const keys = [];
+            for (let di = -r; di <= r; di++) {
+                for (let dj = -r; dj <= r; dj++) {
+                    if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+                    keys.push((li + di) + '/' + (lo + dj));
+                }
+            }
+            await Promise.all(keys.filter((k) => !msTiles.has(k)).map(loadMaxspeedTile));
+            let themVong = 0;
+            for (const key of keys) {
+                for (const seg of (msTiles.get(key) || [])) {
+                    if (!seg.n || normRoadKey(seg.n) !== want) continue;
+                    if (!Array.isArray(seg.g) || seg.g.length < 2) continue;
+                    lines.push(seg.g.map((q) => [q[0], q[1]]));
+                    themVong++;
+                    if (lines.length >= LIMIT_SCAN_SEGS) break;
+                }
+                if (lines.length >= LIMIT_SCAN_SEGS) break;
+            }
+            if (lines.length >= LIMIT_SCAN_SEGS) break;
+            // Vòng này không thêm được gì: đường đã hết ở phía đó. Cho thêm
+            // MỘT vòng trống nữa rồi mới dừng — ô dữ liệu có thể trống ở giữa.
+            if (themVong === 0) {
+                trong++;
+                if (trong >= 2 && lines.length) break;
+            } else {
+                trong = 0;
+            }
+        }
+        if (!lines.length) return null;
+        let m = 0;
+        for (const ln of lines) {
+            for (let i = 0; i < ln.length - 1; i++) {
+                m += haversine(ln[i][0], ln[i][1], ln[i + 1][0], ln[i + 1][1]);
+            }
+        }
+        return { key: want, name: name.trim(), lines, doan: lines.length, km: m / 1000 };
+    }
+
+    /*
+     * Vẽ kết quả quét, VÀ cho bấm loại trừ từng đoạn.
+     *
+     * Một con đường dài hiếm khi cùng một giới hạn suốt: qua khu dân cư thì
+     * hạ, ra ngoại thành thì nâng. Anh yêu cầu bấm loại riêng lẻ đoạn nào
+     * thấy không giống — nên mỗi đoạn vẽ ra là một nét BẤM ĐƯỢC: cam đậm là
+     * sẽ áp, xám vạch đứt là đã loại.
+     */
+    function drawScanLines(scan, fit) {
+        if (!map || !scan) return;
+        if (limitScanLayer) { map.removeLayer(limitScanLayer); limitScanLayer = null; }
+        limitScanLayer = L.layerGroup();
+        scan.bo = scan.bo || {};
+        scan.lines.forEach((ln, i) => {
+            const bo = !!scan.bo[i];
+            const pl = L.polyline(ln, bo
+                ? { color: '#94a3b8', weight: 3, opacity: 0.8, dashArray: '6 6' }
+                : { color: '#f59e0b', weight: 5, opacity: 0.9 }).addTo(limitScanLayer);
+            pl.on('click', (ev) => {
+                if (ev && ev.originalEvent) L.DomEvent.stopPropagation(ev);
+                scan.bo[i] = !scan.bo[i];
+                drawScanLines(scan, false);
+                renderScanSummary();
+                showToast(scan.bo[i] ? 'Đã loại đoạn này' : 'Đã đưa đoạn này trở lại');
+            });
+        });
+        limitScanLayer.addTo(map);
+        if (fit) {
+            try { map.fitBounds(L.latLngBounds(scan.lines.flat()), { padding: [40, 40] }); }
+            catch (e) { }
+        }
+    }
+
+    function scanGiuLai(scan) {
+        return scan.lines.filter((ln, i) => !(scan.bo || {})[i]);
+    }
+
+    function renderScanSummary() {
+        const box = $('limitScanResult');
+        if (!box || !limitScan) return;
+        const giu = scanGiuLai(limitScan);
+        const bo = limitScan.lines.length - giu.length;
+        let m = 0;
+        giu.forEach((ln) => {
+            for (let i = 0; i < ln.length - 1; i++) {
+                m += haversine(ln[i][0], ln[i][1], ln[i + 1][0], ln[i + 1][1]);
+            }
+        });
+        box.innerHTML = `<b>${escapeHtml(limitScan.name)}</b> — sẽ áp ${giu.length} đoạn · `
+            + `${(m / 1000).toFixed(1).replace('.', ',')} km`
+            + (bo ? ` <span class="text-slate-400">(đã loại ${bo})</span>` : '')
+            + `<div class="text-[10px] text-slate-400 mt-0.5">Chạm vào một nét trên bản đồ `
+            + `để loại hoặc lấy lại đoạn đó.</div>`
+            + `<div class="flex gap-2 mt-1">`
+            + `<button id="limitScanAdd" class="px-3 py-1.5 rounded-lg bg-green-600 text-white font-bold text-xs">Thêm vào danh sách áp</button>`
+            + `<button id="limitScanDrop" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 font-bold text-xs">Bỏ</button>`
+            + `</div>`;
+        $('limitScanAdd').addEventListener('click', addScannedRoad);
+        $('limitScanDrop').addEventListener('click', () => {
+            limitScan = null;
+            if (limitScanLayer && map) { map.removeLayer(limitScanLayer); limitScanLayer = null; }
+            box.classList.add('hidden');
+        });
+    }
+
+    async function scanNearbyRoad() {
+        const ten = ($('limitRoadName').value || '').trim();
+        if (!ten) { showToast('Gõ tên đường bên cạnh rồi bấm Quét', 'warn'); return; }
+        const here = (limitDraw && limitDraw.pts && limitDraw.pts[0]) || userLatLng;
+        if (!here) { showToast('Chưa có vị trí để quét quanh đó', 'warn'); return; }
+        const box = $('limitScanResult');
+        box.classList.remove('hidden');
+        box.textContent = 'Đang quét dữ liệu đường trong máy…';
+        const kq = await scanRoadLines(ten, here);
+        if (!kq) {
+            box.innerHTML = `<span class="text-red-500 font-semibold">Không thấy đường nào `
+                + `tên "${escapeHtml(ten)}" quanh đây trong dữ liệu đường của app.</span>`
+                + `<div class="text-[10px] text-slate-400 mt-1">Dữ liệu đường lấy từ `
+                + `OpenStreetMap và còn thiếu nhiều đường nhỏ ở Việt Nam. Tên viết khác `
+                + `("QL.10" ↔ "Quốc lộ 10") thì vẫn khớp được.</div>`;
+            return;
+        }
+        limitScan = kq;
+        kq.bo = {};
+        drawScanLines(kq, true);
+        showToast(`Đã vẽ "${kq.name}": ${kq.doan} đoạn · `
+            + `${kq.km.toFixed(1).replace('.', ',')} km — chạm nét để loại đoạn không giống`);
+        renderScanSummary();
+    }
+
+    function addScannedRoad() {
+        if (!limitScan) return;
+        if (limitNearby.length >= LIMIT_NEARBY_MAX) {
+            showToast(`Mỗi lần lưu tối đa ${LIMIT_NEARBY_MAX} đường lân cận`, 'warn');
+            return;
+        }
+        if (limitNearby.some((r) => r.key === limitScan.key)) {
+            showToast('Đường này đã có trong danh sách', 'warn');
+            return;
+        }
+        const giu = scanGiuLai(limitScan);
+        if (!giu.length) { showToast('Đã loại hết các đoạn của đường này', 'warn'); return; }
+        let m = 0;
+        giu.forEach((ln) => {
+            for (let i = 0; i < ln.length - 1; i++) {
+                m += haversine(ln[i][0], ln[i][1], ln[i + 1][0], ln[i + 1][1]);
+            }
+        });
+        limitNearby.push({ key: limitScan.key, name: limitScan.name, lines: giu,
+            doan: giu.length, km: m / 1000, daBo: limitScan.lines.length - giu.length });
+        limitScan = null;
+        if (limitScanLayer && map) { map.removeLayer(limitScanLayer); limitScanLayer = null; }
+        $('limitScanResult').classList.add('hidden');
+        $('limitRoadName').value = '';
+        renderNearbyList();
+    }
+
+    function renderNearbyList() {
+        const box = $('limitNearby');
+        const dem = $('limitNearbyCount');
+        if (!box) return;
+        if (dem) dem.textContent = `${limitNearby.length}/${LIMIT_NEARBY_MAX}`;
+        box.innerHTML = '';
+        limitNearby.forEach((r, i) => {
+            const d = document.createElement('div');
+            d.className = 'flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-2 py-1 text-xs';
+            d.innerHTML = `<span><b>${escapeHtml(r.name)}</b> · ${r.doan} đoạn · `
+                + `${r.km.toFixed(1).replace('.', ',')} km`
+                + (r.daBo ? ` <span class="text-slate-400">(đã loại ${r.daBo})</span>` : '')
+                + `</span>`
+                + `<span class="flex gap-1">`
+                + `<button data-act="xem" class="text-slate-500 font-bold px-2">Xem</button>`
+                + `<button data-act="bo" class="text-red-500 font-bold px-2">Loại</button>`
+                + `</span>`;
+            d.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+                if (b.getAttribute('data-act') === 'xem') {
+                    // Mở lại để xem và loại tiếp từng đoạn
+                    limitScan = Object.assign({}, r, { bo: {} });
+                    limitNearby.splice(i, 1);
+                    $('limitScanResult').classList.remove('hidden');
+                    drawScanLines(limitScan, true);
+                    renderScanSummary();
+                    renderNearbyList();
+                    return;
+                }
+                limitNearby.splice(i, 1);
+                renderNearbyList();
+            }));
+            box.appendChild(d);
+        });
+    }
+
+    /* =====================================================================
+     * NHẬP NHANH BẰNG CÂU LỆNH
+     *
+     * KHÔNG phải trợ lý AI chạy trong app — app không có mô hình nào trong
+     * máy, nói là AI thì là nói quá. Đây là bộ đọc câu lệnh, hiểu mấy dạng:
+     *
+     *   20.8767,106.5368 - 20.8451,106.6199 : 50
+     *   từ 20.8767,106.5368 đến 20.8451,106.6199 speed limit 50 một chiều
+     *   từ Chợ Sắt đến Cầu Rào 60 km/h
+     *
+     * Vẫn VẼ TUYẾN RA rồi mới xác nhận: số gõ vào không tự áp ngay. Gõ nhầm
+     * một chữ số mà áp thẳng vào dữ liệu thì cả tuyến đường sai giới hạn.
+     * ===================================================================== */
+    function parseLimitCommand(text) {
+        const t = String(text || '').trim();
+        if (!t) return null;
+        const out = { both: true };
+        // Chiều: mặc định hai chiều, chỉ hạ xuống khi nói rõ
+        if (/\b(mot chieu|một chiều|1 chiều|one ?way)\b/i.test(noAccent(t)) ||
+            /một chiều|1 chiều/i.test(t)) out.both = false;
+
+        // Toạ độ: hai cặp đầu tiên là A và B
+        const toado = [];
+        const re = /(-?\d{1,2}[.,]\d{3,})\s*[,;]\s*(\d{2,3}[.,]\d{3,})/g;
+        let m;
+        while ((m = re.exec(t)) && toado.length < 2) {
+            toado.push([Number(m[1].replace(',', '.')), Number(m[2].replace(',', '.'))]);
+        }
+
+        /*
+         * Số km/h phải tìm SAU KHI đã bóc toạ độ ra khỏi câu, không thì
+         * "106.6199" cũng là một dãy số và bị lấy làm giới hạn.
+         */
+        const conLai = t.replace(re, ' ');
+        const sKmh = conLai.match(/(\d{2,3})\s*(km\/?h|kmh)?/);
+        if (sKmh) out.limit = Number(sKmh[1]);
+
+        if (toado.length === 2) {
+            out.from = toado[0];
+            out.to = toado[1];
+            return out;
+        }
+        // Không đủ toạ độ: tách tên hai đầu
+        const cut = t.split(/\s+(?:đến|den|->|–|—|to)\s+|\s+-\s+/i);
+        if (cut.length >= 2) {
+            out.tenA = cut[0].replace(/^\s*(từ|tu|from)\s+/i, '').trim();
+            out.tenB = cut[1].replace(/[:,].*$/, '')
+                .replace(/\b\d{2,3}\s*(km\/?h|kmh)?\b.*$/i, '')
+                .replace(/(một|hai|1|2)\s*chiều.*$/i, '').trim();
+            if (out.tenA && out.tenB) return out;
+        }
+        return null;
+    }
+
+    async function runLimitCommand() {
+        if (!isAdmin()) return;
+        const cmd = parseLimitCommand($('limitCmd').value);
+        if (!cmd) {
+            showToast('Chưa hiểu câu này. Dạng: "20.87,106.53 - 20.84,106.61 : 50"', 'warn');
+            return;
+        }
+        if (!(cmd.limit >= 5 && cmd.limit <= 130)) {
+            showToast('Thiếu số km/h, hoặc số nằm ngoài 5-130', 'warn');
+            return;
+        }
+        // Tên địa điểm thì tra bằng chính phần tìm kiếm của app
+        if (!cmd.from) {
+            showToast(`Đang tra "${cmd.tenA}" và "${cmd.tenB}"…`);
+            const [a, b] = await Promise.all([searchPlace(cmd.tenA), searchPlace(cmd.tenB)]);
+            if (!a?.length || !b?.length) { showToast('Không tra được một trong hai đầu', 'warn'); return; }
+            cmd.from = [Number(a[0].lat), Number(a[0].lon)];
+            cmd.to = [Number(b[0].lat), Number(b[0].lon)];
+        }
+        /*
+         * Điểm đầu của tuyến là nơi XE ĐANG ĐỨNG trong calculateRoute, nên
+         * câu lệnh có điểm A riêng thì phải nói rõ: app chỉ tính được tuyến
+         * từ vị trí hiện tại. Thay vì giả vờ làm được, nói thẳng.
+         */
+        if (userLatLng && haversine(userLatLng[0], userLatLng[1], cmd.from[0], cmd.from[1]) > 200) {
+            showToast('Điểm đầu của câu lệnh cách chỗ đang đứng hơn 200 m — '
+                + 'app chỉ tính tuyến từ vị trí hiện tại', 'warn');
+            return;
+        }
+        limitDraw = { from: cmd.from.slice(), picking: false, pts: null, to: cmd.to.slice() };
+        $('limitKmh').value = cmd.limit;
+        $('limitBothDir').checked = !!cmd.both;
+        if (!$('limitName').value) {
+            $('limitName').value = cmd.tenA && cmd.tenB ? `${cmd.tenA} → ${cmd.tenB}` : '';
+        }
+        limitPickAtForce(cmd.to[0], cmd.to[1]);
+    }
+
+    /* =====================================================================
+     * TÌM TÊN ĐƯỜNG TRONG DỮ LIỆU ĐƯỜNG CỦA CHÍNH APP
+     *
+     * Ngồi cách Quốc lộ 10 đúng 200 m mà gõ "Quốc lộ 10" lại ra một địa chỉ
+     * trên quốc lộ đó cách 10 km. Máy tìm kiếm trả về "một chỗ nằm trên
+     * đường ấy" — mà con đường dài trăm cây số thì chỗ nào cũng đúng theo
+     * nghĩa của nó, chỉ là vô dụng với người đang đứng đây.
+     *
+     * Tên đường TRƠ (không kèm số nhà, không kèm địa danh) thì câu trả lời
+     * đúng chỉ có một: ĐIỂM GẦN NHẤT trên con đường đó. Và app đã có sẵn
+     * hình học của mọi con đường trong máy — chính dữ liệu đang vẽ bản đồ —
+     * nên không cần hỏi ai, cũng không cần mạng.
+     *
+     * Tên đường ở Việt Nam viết nhiều kiểu: "Quốc lộ 10", "QL10", "QL.10",
+     * "ĐT390", "Đường tỉnh 390". Quy tất cả về một khoá rồi mới so.
+     * ===================================================================== */
+    function normRoadKey(name) {
+        let t = noAccent(name).toLowerCase();
+        t = t.replace(/[.\-–—]/g, ' ');
+        /*
+         * NHÓM TỪ SÁT NGHĨA CHO HẠNG ĐƯỜNG (anh giao 20/10):
+         *   Quốc lộ ≡ QL. ≡ đường quốc lộ          → ql
+         *   Cao tốc ≡ CT. ≡ đường cao tốc          → ct
+         *   Tỉnh lộ ≡ TL. ≡ ĐT. ≡ đường tỉnh (lộ)  → dt
+         * Bỏ chữ "duong" đứng trước TRƯỚC, không thì "đường quốc lộ 10" còn
+         * sót chữ đầu và không khớp với "QL.10".
+         */
+        t = t.replace(/^duong\s+(?=(quoc lo|cao toc|tinh lo|ql|ct|tl|dt)\b)/, '');
+        t = t.replace(/\bquoc lo\s*/g, 'ql');
+        t = t.replace(/\b(duong tinh lo|duong tinh|tinh lo)\s*/g, 'dt');
+        t = t.replace(/\bcao toc\s*/g, 'ct');
+        /*
+         * Dạng VIẾT TẮT chỉ quy đổi khi liền sau là SỐ. Không có điều kiện đó
+         * thì một cái tên bình thường bắt đầu bằng "tl" cũng bị đổi thành
+         * "dt" — đổi tên đường của người ta chỉ để cho khớp.
+         */
+        t = t.replace(/\b(ql|tl|dt|ct)\s*(?=\d)/g, (m, g) => (g === 'tl' ? 'dt' : g));
+        t = t.replace(/\b(duong|pho|dai lo)\s+/g, '');
+        return t.replace(/\s+/g, ' ').trim();
+    }
+
+    /** Câu gõ có vẻ là TÊN ĐƯỜNG TRƠ (không kèm số nhà hay địa danh)? */
+    function bareRoadQuery(q) {
+        const t = normRoadKey(q);
+        if (!t || t.split(' ').length > 4) return false;
+        return /^(ql|dt|ct)\s*\d+[a-z]?$/.test(t)
+            || /^(ql|dt|ct)\s/.test(t)                  // "ct ha noi hai phong"
+            || STREET_PREFIX.test(String(q).trim());
+    }
+
+    /**
+     * Điểm GẦN NHẤT trên con đường mang tên này, lấy từ dữ liệu đường trong
+     * máy. Quét lan dần từ ô đang đứng ra ngoài, thấy là dừng.
+     */
+    async function findRoadByName(query, here, maxKm) {
+        if (!here) return [];
+        const want = normRoadKey(query);
+        if (!want || want.length < 3) return [];
+        const km = Math.max(1, maxKm || 15);
+        const rings = Math.min(4, Math.ceil(km / (MS_GRID * 110)));   // ô 0,05° ≈ 5,5 km
+        const li = Math.floor(here[0] / MS_GRID), lo = Math.floor(here[1] / MS_GRID);
+
+        let best = null, foundAt = -1;
+        for (let r = 0; r <= rings; r++) {
+            /*
+             * Thấy ở vòng r thì vẫn quét thêm MỘT vòng nữa rồi mới dừng: khi
+             * người dùng đứng sát mép ô, điểm gần nhất thật có thể nằm ngay
+             * bên kia mép, tức ở vòng ngoài. Xa hơn một vòng (5,5 km) thì
+             * không thể gần hơn được nữa.
+             */
+            if (foundAt >= 0 && r > foundAt + 1) break;
+            const keys = [];
+            for (let di = -r; di <= r; di++) {
+                for (let dj = -r; dj <= r; dj++) {
+                    if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;   // chỉ viền ngoài
+                    keys.push((li + di) + '/' + (lo + dj));
+                }
+            }
+            /*
+             * PHẢI CHỜ NẠP XONG, KHÔNG ĐỌC CHAY.
+             *
+             * Lỗi thật: ngồi cách Quốc lộ 10 bốn ki-lô-mét mà app trả về đoạn
+             * cách 6,9 km. Vì bản cũ chỉ gọi nạp rồi đọc msTiles ngay: ô gần
+             * chưa về kịp nên bị coi là "không có đường tên đó", còn ô xa thì
+             * tình cờ đã nằm trong bộ nhớ từ trước. Kết quả phụ thuộc vào thứ
+             * tự mạng trả lời — đúng loại lỗi khó lần nhất.
+             */
+            await Promise.all(keys.filter((k) => !msTiles.has(k)).map(loadMaxspeedTile));
+            for (const key of keys) {
+                const segs = msTiles.get(key);
+                if (!segs || !segs.length) continue;
+                for (const seg of segs) {
+                    if (!seg.n || normRoadKey(seg.n) !== want) continue;
+                    const hit = nearestOnPolyline(here[0], here[1], seg.g);
+                    if (!best || hit.dist < best.dist) {
+                        // Điểm gần nhất THẬT SỰ trên đoạn: lấy đỉnh gần nhất
+                        let p = seg.g[0], d = Infinity;
+                        for (const q of seg.g) {
+                            const dd = haversine(here[0], here[1], q[0], q[1]);
+                            if (dd < d) { d = dd; p = q; }
+                        }
+                        best = { dist: hit.dist, at: p, name: seg.n };
+                    }
+                }
+            }
+            if (best && foundAt < 0) foundAt = r;
+        }
+        if (!best || best.dist > km * 1000) return [];
+        return [{
+            lat: best.at[0], lon: best.at[1],
+            display_name: best.name,
+            _dist: haversine(here[0], here[1], best.at[0], best.at[1]),
+            _score: 280,                 // dưới địa danh toàn quốc, trên mọi kết quả online
+            _kind: 'street', _fromRoadData: true
+        }];
+    }
+
     async function searchPlace(query) {
         /*
          * Bỏ câu lệnh NGAY TỪ ĐẦU, trước cả phần nhận nhóm và phần khoanh
@@ -3322,18 +5313,46 @@
         const link = parseMapLink(query);
         if (link) {
             if (link.lat != null) {
-                return [{
+                const row = {
                     lat: link.lat, lon: link.lon,
                     display_name: link.name || `Vị trí từ link (${link.lat.toFixed(5)}, ${link.lon.toFixed(5)})`,
                     _dist: userLatLng ? haversine(userLatLng[0], userLatLng[1], link.lat, link.lon) : 0,
                     _score: 300, _fromLink: true
-                }];
+                };
+                if (noteUnknownPlace(row, 'gmap-link')) {
+                    showToast('Chỗ này chưa có trong dữ liệu VMaps — đã ghi lại để bổ sung');
+                }
+                return [row];
             }
             // Link chỉ có tên: tìm tiếp theo tên đó
             query = link.name;
         } else if (isShortMapLink(query)) {
-            showToast('Link rút gọn chưa mở được. Hãy mở link đó rồi chép lại địa chỉ đầy đủ trên thanh trình duyệt.', 'warn');
-            return [];
+            // Trong APK thì mở được; ngoài trình duyệt thì nói thẳng là không.
+            if (canResolveLink()) {
+                showToast('Đang mở link rút gọn...');
+                const full = await resolveShortLink(query);
+                const got = full ? parseMapLink(full) : null;
+                if (got && got.lat != null) {
+                    const row = {
+                        lat: got.lat, lon: got.lon,
+                        display_name: got.name || `Vị trí từ link (${got.lat.toFixed(5)}, ${got.lon.toFixed(5)})`,
+                        _dist: userLatLng ? haversine(userLatLng[0], userLatLng[1], got.lat, got.lon) : 0,
+                        _score: 300, _fromLink: true
+                    };
+                    if (noteUnknownPlace(row, 'gmap-short-link')) {
+                        showToast('Chỗ này chưa có trong dữ liệu VMaps — đã ghi lại để bổ sung');
+                    }
+                    return [row];
+                }
+                if (got && got.name) { query = got.name; }
+                else {
+                    showToast('Không mở được link rút gọn. Hãy mở link rồi chép địa chỉ đầy đủ.', 'warn');
+                    return [];
+                }
+            } else {
+                showToast('Link rút gọn chỉ mở được trong bản APK. Hãy mở link đó rồi chép lại địa chỉ đầy đủ.', 'warn');
+                return [];
+            }
         }
 
         const raw = stripCommandWords((query || '').trim());
@@ -4515,11 +6534,20 @@
         return rows;
     }
 
-    /** Bỏ trùng theo toạ độ làm tròn (nhiều lượt hỏi hay trả về cùng một nơi). */
+    /**
+     * Bỏ trùng theo toạ độ VÀ TÊN (nhiều lượt hỏi hay trả về cùng một nơi).
+     *
+     * VÌ SAO PHẢI XÉT CẢ TÊN: toạ độ làm tròn 4 chữ số là khoảng 11 m, nên
+     * bản cũ coi mọi thứ trong cùng một toà nhà là MỘT chỗ. Nhưng "Vincom
+     * Plaza" và "WinMart" trong đó là hai đích đến khác nhau với người lái —
+     * đúng yêu cầu của anh: siêu thị có thương hiệu riêng nằm trong TTTM thì
+     * hiện cả hai ở cùng vị trí. Chỉ bỏ khi trùng cả chỗ lẫn tên.
+     */
     function dedupeByCoord(rows) {
         const seen = new Set();
         return rows.filter((r) => {
-            const k = Number(r.lat).toFixed(4) + ',' + Number(r.lon).toFixed(4);
+            const k = Number(r.lat).toFixed(4) + ',' + Number(r.lon).toFixed(4)
+                + '|' + noAccent((r.display_name || '').split(',')[0]);
             return !seen.has(k) && seen.add(k);
         });
     }
@@ -4743,7 +6771,13 @@
         const anchor = scope ? scope.g : here;
 
         const local = localPlaces(base, here);   // danh bạ trong máy: luôn có, không cần mạng
-        let rows = scope ? [] : local.slice();
+        /*
+         * Tên đường trơ thì điểm gần nhất trên chính con đường đó mới là câu
+         * trả lời. Lấy từ dữ liệu đường trong máy, không cần mạng.
+         */
+        const roadHit = bareRoadQuery(base)
+            ? await findRoadByName(base, here, NEAR_PASS_KM) : [];
+        let rows = (scope ? [] : local.slice()).concat(roadHit);
 
         const nearKm = scope ? SCOPE_KM : NEAR_PASS_KM;
 
@@ -5233,6 +7267,13 @@
         const c = map.getCenter();
         const id = pickTargetId;
         cancelPick();
+        /*
+         * Chọn điểm cuối cho phần áp tốc độ toàn tuyến đi qua CHÍNH cơ chế
+         * ngắm này, không gắn thêm một sự kiện chạm bản đồ riêng: thêm một
+         * đường vào bản đồ là thêm một chỗ xung đột với kéo, phóng, và với
+         * cả nét bấm-để-loại-đoạn của phần quét theo tên đường.
+         */
+        if (id === '__limit') { limitPickAt(c.lat, c.lng); return; }
         savePlaceAt(id, [c.lat, c.lng]);
     }
 
@@ -5427,7 +7468,7 @@
         resultsEl.innerHTML = results.map((r) => bandHeader(r) + `
             <button type="button" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${escapeHtml(r.display_name)}"
                     data-kind="${escapeHtml(r.addresstype || r.type || '')}"
-                    class="search-hit w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    class="search-hit w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
                 <div class="flex items-baseline gap-2">
                     <span class="text-sm font-semibold text-slate-800 dark:text-white truncate">${escapeHtml(hitTitle(r))}</span>
                     <span class="ml-auto shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400">${fmtDist(r._dist)}</span>
@@ -5694,7 +7735,7 @@
                 altLayer = L.layerGroup();
                 for (const { r, i } of alts) {
                     L.geoJSON(r.geometry, {
-                        style: { color: '#64748b', weight: 5, opacity: 0.55, dashArray: '8 6' }
+                        style: { color: ALT_ROUTE_COLOR, weight: 5, opacity: 0.6, dashArray: '8 6' }
                     }).addTo(altLayer);
                     // Nhãn thời gian đặt ở giữa tuyến, bấm vào thì đổi sang tuyến đó
                     const c = r.geometry?.coordinates || [];
@@ -5718,6 +7759,16 @@
             }).addTo(map);
             // Tính lại tuyến giữa đường thì không giật khung nhìn ra toàn tuyến
             if (!opts.silent) map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+
+            /*
+             * Trao hình tuyến cho chỗ gọi, nếu nó cần. Phần áp tốc độ toàn
+             * tuyến cần CHÍNH hình tuyến này; đọc ké biến trạng thái của phần
+             * dẫn đường thì lúc được lúc không, vì chế độ xem trước có dọn
+             * bớt trạng thái ngay sau đây.
+             */
+            if (typeof opts.onRoute === 'function') {
+                try { opts.onRoute(route); } catch (e) { console.warn('onRoute:', e); }
+            }
 
             if (gen !== nav.gen) return;           // kiểm lại lần nữa cho chắc
             // Đặt cờ TRƯỚC khi dựng: phần dựng có đọc câu mở đầu, mà xem
@@ -5822,6 +7873,17 @@
     function endNavigation() {
         closeModal('navActionsModal');
         clearRoute();
+        // Xoay bản đồ là do app tự bật lúc bắt đầu dẫn thì trả về như cũ
+        if (navTurnedRotation) {
+            navTurnedRotation = false;
+            if (rotateMap) {
+                try {
+                    toggleMapRotation();
+                    state.settings.rotateMapTouched = false;
+                    saveSettings();
+                } catch (e) { console.warn('Không tắt được xoay bản đồ:', e); }
+            }
+        }
         renderNav();
         showToast('Đã kết thúc dẫn đường');
     }
@@ -5858,6 +7920,10 @@
         nav.arrived = false;
         nav.announced = {};
         nav.offRouteCount = 0;
+        nav.offRouteFrom = null;
+        nav.offRouteRun = 0;
+        nav.offRouteLast = null;
+        nav.arriveHits = 0;
         // Câu chỉ đường đang đọc dở và những câu còn xếp hàng cũng phải im:
         // kết thúc rồi mà loa vẫn đọc "rẽ phải" thì người lái tưởng app hỏng.
         silenceGuidance();
@@ -5905,14 +7971,39 @@
         lastIdx: 0,
         stepIdx: 0,
         offRouteCount: 0,
+        offRouteFrom: null,     // chỗ bắt đầu lệch
+        offRouteRun: 0,         // đã đi THẬT bao nhiêu mét kể từ lúc lệch
+        offRouteLast: null,
         announced: {},      // { "<stepIdx>:<ngưỡng>": true }
         lastSpokeAt: 0,
         rerouting: false,
-        arrived: false
+        arrived: false,
+        arriveHits: 0       // số nhịp liên tiếp đã nằm trong bán kính tới đích
     };
 
     const OFF_ROUTE_M = 60;          // lệch quá mức này coi là đi chệch
     const OFF_ROUTE_FIXES = 3;       // phải lệch liên tiếp mấy lần mới tính lại tuyến
+    /*
+     * TÍNH LẠI TUYẾN PHẢI CHỜ XE ĐI THẬT MỘT QUÃNG.
+     *
+     * Lỗi thật: đứng im chưa đi mà app báo đi chệch tuyến rồi tính lại. Ba
+     * nhịp GPS nhiễu liên tiếp là đủ — mà đứng yên trong sóng yếu thì nhiễu
+     * đến hàng chục mét, không hiếm.
+     *
+     * Luật anh đặt: phải qua khoảng HAI GIAO LỘ (nội thị thường 300-500 m)
+     * mới được tính lại. App không có dữ liệu giao lộ đủ tin để đếm đầu
+     * đường, nên lấy QUÃNG ĐƯỜNG ĐI THẬT 350 m làm thước — quãng đường thì
+     * nhiễu GPS không tạo ra được, vì mỗi nhịp chỉ cộng đoạn vừa dịch chuyển
+     * và chỉ cộng khi xe đang chạy.
+     *
+     * Hai cửa phải qua, không phải một:
+     *   - xe đang chạy (≥ 5 km/h): đứng im thì KHÔNG BAO GIỜ tính lại
+     *   - đã đi 350 m kể từ lúc lệch, HOẶC đã lệch quá 300 m (rẽ hẳn sang
+     *     đường khác thì không có lý gì bắt chờ thêm)
+     */
+    const OFF_ROUTE_RUN_M = 350;     // ≈ hai giao lộ nội thị
+    const OFF_ROUTE_FAR_M = 300;     // lệch xa đến mức này thì khỏi chờ quãng đường
+    const OFF_ROUTE_MOVE_KMH = 5;    // dưới mức này coi là đứng, không tính lại
     const ARRIVE_M = 40;
     const TURN_ANNOUNCE_M = [500, 200, 60];
     const TURN_SPEAK_GAP_MS = 7000;  // hai câu chỉ đường liền nhau nghe rất rối
@@ -5987,6 +8078,34 @@
         nav.dest = dest;
         if (destName) nav.destName = destName;
         nav.active = nav.points.length > 1 && nav.steps.length > 0;
+
+        /*
+         * DẪN ĐƯỜNG THÌ MẶC ĐỊNH XOAY BẢN ĐỒ THEO HƯỚNG XE.
+         *
+         * Lúc đang lái, bản đồ xoay theo hướng xe mới khớp với cái người lái
+         * nhìn thấy qua kính; hướng Bắc cố định thì phải tự quay trong đầu.
+         *
+         * Nhưng chỉ tự bật khi người dùng CHƯA tự tay đặt công tắc đó. Ai đã
+         * chủ động tắt thì app không được bật lại sau lưng — và khi kết thúc
+         * thì trả về đúng trạng thái cũ, vì chính app là bên đã bật.
+         */
+        /*
+         * BỌC try/catch: xoay bản đồ là tiện nghi, dẫn đường là việc chính.
+         * Bắt được bằng bộ kiểm thử: một lỗi trong phần xoay làm cả
+         * beginNavigation dừng giữa đường, hậu quả là app KHÔNG đọc câu mở
+         * đầu và không bật dẫn đường — mất thứ quan trọng vì thứ phụ.
+         */
+        if (nav.active && !nav.preview && !rotateMap && !state.settings.rotateMapTouched) {
+            try {
+                toggleMapRotation();
+                navTurnedRotation = true;
+                state.settings.rotateMapTouched = false;   // vẫn coi là chưa ai tự đặt
+                saveSettings();
+            } catch (e) {
+                console.warn('Không bật được xoay bản đồ:', e);
+                navTurnedRotation = false;
+            }
+        }
         nav.lastIdx = 0;
         nav.stepIdx = 0;
         nav.offRouteCount = 0;
@@ -5996,6 +8115,16 @@
         nav.prefetchedTo = 0;
 
         if (!nav.active) return;
+        /*
+         * Bắt đầu dẫn đường thì BÁM XE trở lại và cân ngay lần đầu.
+         *
+         * Người dùng có thể vừa kéo bản đồ đi xem chỗ khác trước khi bấm
+         * bắt đầu — lúc đó chế độ bám đang tắt, và nếu không bật lại thì
+         * suốt chuyến bản đồ không đi theo xe.
+         */
+        setFollowCar(true);
+        forceRecenter = true;
+        maybeRecenter();
         updateNavigationProgress();
         prefetchAlongRoute(0);          // nạp sẵn 10 km đầu ngay khi có tuyến
 
@@ -6022,6 +8151,14 @@
             total: navState.remainingKm,
             min: navState.etaMin
         });
+        /*
+         * Bắt đầu dẫn lúc vị trí CHƯA xác nhận thì vẫn dẫn — chặn hẳn thì
+         * trong vùng sóng kém app thành vô dụng. Nhưng phải nói rõ một câu
+         * để người lái biết mà không tin vội vào mấy chặng đầu.
+         */
+        if (!gpsTrusted()) {
+            showToast('GPS đang yếu — vị trí chưa chắc, hãy tự xem đường ở mấy chặng đầu', 'warn');
+        }
     }
 
     // Chiếu một điểm lên đoạn thẳng, trả về tham số t trong [0,1] và khoảng cách
@@ -6076,7 +8213,27 @@
         // --- Đi chệch tuyến ---
         if (proj.dist > OFF_ROUTE_M) {
             nav.offRouteCount++;
-            if (nav.offRouteCount >= OFF_ROUTE_FIXES && !nav.rerouting && nav.dest && !isOffline()) {
+            // Đứng im thì không cộng quãng đường nào, nên không bao giờ đủ
+            // điều kiện tính lại — dù GPS có nhiễu bao nhiêu nhịp.
+            const moving = displayedSpeed() >= OFF_ROUTE_MOVE_KMH;
+            if (moving) {
+                if (!nav.offRouteLast) {
+                    nav.offRouteFrom = userLatLng.slice();
+                    nav.offRouteRun = 0;
+                } else {
+                    nav.offRouteRun += haversine(nav.offRouteLast[0], nav.offRouteLast[1],
+                        userLatLng[0], userLatLng[1]);
+                }
+                nav.offRouteLast = userLatLng.slice();
+            }
+            const diXa = nav.offRouteRun >= OFF_ROUTE_RUN_M || proj.dist > OFF_ROUTE_FAR_M;
+            /*
+             * gpsTrusted(): sóng kém thì KHÔNG TÍNH LẠI GÌ. Mạng kém nữa thì
+             * lượt tính lại cũng chỉ treo rồi thất bại, mà trong lúc treo
+             * app lại không đọc chỉ đường — mất cả đôi.
+             */
+            if (moving && diXa && gpsTrusted() && nav.offRouteCount >= OFF_ROUTE_FIXES
+                && !nav.rerouting && nav.dest && !isOffline()) {
                 nav.rerouting = true;
                 showToast('Đi chệch tuyến — đang tính lại', 'warn');
                 calculateRoute(nav.dest[0], nav.dest[1], { silent: true })
@@ -6085,19 +8242,32 @@
             return;
         }
         nav.offRouteCount = 0;
+        nav.offRouteFrom = null;
+        nav.offRouteRun = 0;
+        nav.offRouteLast = null;
 
         maybePrefetchMore(proj.along);
         const remaining = Math.max(0, nav.total - proj.along);
 
         // --- Tới đích ---
         if (remaining <= ARRIVE_M) {
-            if (!nav.arrived) {
+            /*
+             * "Đã tới đích" cũng phải xác nhận vài nhịp. Sóng kém mà tuyên bố
+             * tới đích theo một nhịp nhảy là tắt dẫn đường giữa đường, người
+             * lái còn cách cả trăm mét. Nhưng cũng KHÔNG được đòi gpsTrusted()
+             * suông: đích nằm trong vùng sóng kém thì chuyến đi sẽ không bao
+             * giờ kết thúc. Nên: tin ngay nếu vị trí đã xác nhận, còn không
+             * thì chờ đủ 3 nhịp liên tiếp đều nằm trong bán kính tới đích.
+             */
+            nav.arriveHits = (nav.arriveHits || 0) + 1;
+            if (!nav.arrived && (gpsTrusted() || nav.arriveHits >= GPS_CONFIRM_FIXES)) {
                 nav.arrived = true;
                 nav.active = false;
                 if (typeof onArrived === 'function') onArrived();
             }
             return;
         }
+        nav.arriveHits = 0;
 
         // --- Chặng hiện tại & ngã rẽ kế tiếp ---
         let i = nav.stepIdx;
@@ -6147,7 +8317,13 @@
             // Vừa đọc xong thì khoan đọc tiếp: xe đi nhanh hoặc GPS nhiễu có thể
             // vượt hai ngưỡng trong vài giây, nghe thành hai câu chồng nhau.
             const tooSoon = Date.now() - nav.lastSpokeAt < TURN_SPEAK_GAP_MS;
-            if (hit !== null && !nav.announced[i + ':' + hit] && !tooSoon) {
+            /*
+             * Vị trí chưa xác nhận thì KHÔNG ĐỌC, và cũng không đánh dấu ngưỡng
+             * là đã đọc — để khi sóng khá lên, câu đó vẫn còn cơ hội phát ra.
+             * Đọc "200 m nữa rẽ phải" theo một nhịp GPS bịa còn tệ hơn im lặng:
+             * người lái rẽ thật vào một con đường không có trong tuyến.
+             */
+            if (hit !== null && !nav.announced[i + ':' + hit] && !tooSoon && gpsTrusted()) {
                 // Ngưỡng lớn hơn coi như đã qua, tránh đọc dồn mấy câu liền nhau
                 TURN_ANNOUNCE_M.forEach((th) => {
                     if (th >= hit) nav.announced[i + ':' + th] = true;
@@ -6431,9 +8607,29 @@
     }
 
     // Lệch hướng giữa hai góc, bỏ qua chiều đi (đi xuôi hay ngược đều tính là khớp)
+    /*
+     * Lệch giữa hai góc khi CHIỀU KHÔNG QUAN TRỌNG — dùng để khớp hướng xe
+     * với trục một con đường: đi xuôi hay đi ngược thì vẫn là đường đó. Nên
+     * hàm này gập mọi lệch quá 90° về phía dưới, và 180° trả về 0.
+     *
+     * ĐỪNG dùng cho camera phạt nguội: ở đó chiều là toàn bộ vấn đề. Dùng
+     * dirGap().
+     */
     function headingGap(a, b) {
         let d = Math.abs(((a - b + 180) % 360 + 360) % 360 - 180);
         return d > 90 ? 180 - d : d;
+    }
+
+    /**
+     * Lệch giữa hai HƯỚNG DI CHUYỂN, 0-180°. Ngược chiều hẳn = 180.
+     *
+     * Tách riêng vì đã mắc đúng cái bẫy này: dùng headingGap cho camera một
+     * chiều thì 104° và 284° ra lệch 0 — hai camera ngược chiều bị gộp làm
+     * một, và đi ngược chiều vẫn nghe cảnh báo. Luật thành vô nghĩa mà không
+     * báo lỗi ở đâu cả.
+     */
+    function dirGap(a, b) {
+        return Math.abs(((Number(a) - Number(b) + 540) % 360) - 180);
     }
 
     /*
@@ -6628,6 +8824,31 @@
         msLastCheckPos = userLatLng;
 
         const road = findRoadAt(userLatLng[0], userLatLng[1]);
+
+        /*
+         * GIỚI HẠN DO ADMIN ÁP ĐỨNG TRÊN DỮ LIỆU ĐƯỜNG.
+         *
+         * Đó là lý do tồn tại của tính năng: dữ liệu OSM ở Việt Nam thiếu và
+         * sai nhiều chỗ, nên số do người đi thật áp vào phải thắng. Tra theo
+         * HÌNH TUYẾN nên không phụ thuộc nhà cung cấp bản đồ nào.
+         */
+        const apTay = limitAt(userLatLng[0], userLatLng[1], heading);
+        if (apTay) {
+            if (speedState.limit !== apTay.limit) {
+                setSpeedLimit(apTay.limit);
+                showToast(`Giới hạn ${apTay.limit} km/h`
+                    + (apTay.name ? ' · ' + apTay.name : '') + ' (dữ liệu VMaps)');
+            }
+            currentRoad = road || { speed: apTay.limit, name: apTay.name, highway: '', dist: 0 };
+            if (!nav.active) {
+                const label = (road && road.name) || apTay.name || UNKNOWN_ROAD;
+                if (navState.currentStreet !== label) {
+                    navState.currentStreet = label;
+                    renderNav();
+                }
+            }
+            return;
+        }
 
         // Không khớp đoạn nào (ngõ nhỏ, đường chưa có trong dữ liệu): đừng giữ
         // tên đường cũ — người lái sẽ tưởng vẫn đang ở đó. Thử tra tên khu dân
@@ -6984,12 +9205,26 @@
         return (RECENTER_STEPS.find((s) => kmh <= s.upTo) || RECENTER_STEPS[0]).everyMs;
     }
 
+    /*
+     * Cờ "lần này phải cân ngay".
+     *
+     * Vừa bấm bắt đầu dẫn đường thì bản đồ đang ở khung nhìn TOÀN TUYẾN (vừa
+     * fitBounds để nhìn cả đường đi). Xe lăn bánh mà nhịp cân về giữa chưa
+     * tới hạn thì màn hình cứ đứng nguyên ở khung rộng đó — chạy chậm thì
+     * phải đợi tới 17 giây mới được kéo về. Người lái tưởng app treo.
+     *
+     * Bắt đầu dẫn đường là một mốc rõ ràng: cân ngay nhịp GPS đầu tiên, rồi
+     * mới vào nhịp theo tốc độ như thường.
+     */
+    let forceRecenter = false;
+
     function maybeRecenter() {
         if (!map || !followCar || !userLatLng) return;
         const now = Date.now();
         const outOfView = !map.getBounds().contains(userLatLng) || map.getZoom() < 14;
-        const due = now - lastRecenterAt >= recenterEveryMs(displayedSpeed());
+        const due = forceRecenter || now - lastRecenterAt >= recenterEveryMs(displayedSpeed());
         if (!outOfView && !due) return;
+        forceRecenter = false;
         lastRecenterAt = now;
         map.flyTo(userLatLng, Math.max(map.getZoom(), 16), { duration: 0.8 });
     }
@@ -7089,6 +9324,7 @@
     let heading = 0;                     // độ, 0 = Bắc
     let headingFromSensor = null;
     let rotateMap = false;
+    let navTurnedRotation = false;   // app tự bật xoay khi bắt đầu dẫn đường?
     let compassListening = false;
 
     // Trung bình có trọng số theo vòng tròn: 350° và 10° phải ra 0°, không phải 180°
@@ -7181,6 +9417,7 @@
         document.body.classList.toggle('map-rotating', rotationActive());
         sizeRotator();
         state.settings.rotateMap = rotateMap;
+        state.settings.rotateMapTouched = true;
         saveSettings();
         applyRotation();
         // Lớp bản đồ vừa đổi kích thước (#map-rotator phình ra 152% để xoay
@@ -7360,7 +9597,10 @@
         $(id).classList.add('flex');
         // Nút thoát app chỉ có nghĩa trong APK — quyết định lúc mở bảng, vì
         // cầu nối Android có thể chưa sẵn sàng lúc trang vừa nạp.
-        if (id === 'settingsModal') showExitSuggest();
+        if (id === 'settingsModal') {
+            showExitSuggest(); renderContribStatus();
+            renderRemoteStatus(); showAdminBox();
+        }
     }
     function closeModal(id) {
         $(id).classList.add('hidden');
@@ -7465,7 +9705,7 @@
             const on = !!state.settings.utilities[key];
             return `
                 <button type="button" data-util="${key}"
-                    class="util-cell flex flex-col items-center gap-2 p-2 rounded-2xl transition-colors
+                    class="util-cell flex flex-col items-center gap-2 p-2 rounded-2xl
                            ${on ? 'bg-slate-50 dark:bg-slate-800' : 'opacity-40'}">
                     <div class="w-12 h-12 rounded-full ${on ? d.bg : 'bg-slate-200 dark:bg-slate-700'} flex items-center justify-center ${on ? d.color : 'text-slate-400'}">
                         <i class="fa-solid ${d.icon} text-xl"></i>
@@ -7531,7 +9771,7 @@
             const on = evOn && t.id === cur;
             return `
             <button type="button" data-ctype="${t.id}" ${evOn ? '' : 'disabled'}
-                class="charge-type flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-bold transition-colors
+                class="charge-type flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-bold
                        ${on ? 'bg-green-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}
                        ${evOn ? '' : 'opacity-40'}">
                 <i class="fa-solid ${t.icon}"></i><span>${t.label}</span>
@@ -7621,6 +9861,19 @@
      * cũng lệch nhau. Không có tên, hoặc tên là "không rõ", thì BỎ HẲN vế
      * này — đọc "vào đoạn kế tiếp" nghe như máy hỏng mà chẳng thêm tin gì.
      */
+    /**
+     * Vế "vào <tên>" của câu chỉ đường.
+     *
+     * Hướng `arrive` là trường hợp riêng: chặng cuối thì "đường kế tiếp"
+     * chính là con đường đang đi, nên ghép vào thành "tới đích vào Quốc lộ
+     * 17B" — sai hẳn nghĩa, người lái tưởng phải rẽ vào quốc lộ. Tới đích
+     * thì tên duy nhất đúng là TÊN CHỖ CẦN ĐẾN.
+     */
+    function arriveName() {
+        const d = String(nav.destName || '').split(',')[0].trim();
+        return d && d !== UNKNOWN_ROAD ? ' ' + d : '';
+    }
+
     function streetPhrase(street) {
         const st = String(street || '').trim();
         if (!st || st === UNKNOWN_ROAD || /^đoạn kế tiếp$/i.test(st)) return '';
@@ -7661,7 +9914,8 @@
                 + `Tổng quãng đường ${String(d.total).replace('.', ',')} ki lô mét, khoảng ${d.min} phút. `
                 + (d.dist >= 1000
                     ? `Đi thẳng ${(d.dist / 1000).toFixed(1).replace('.', ',')} ki lô mét rồi ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi}${streetPhrase(d.street)}.`
-                    : `Sau ${d.dist} mét, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi}${streetPhrase(d.street)}.`),
+                    : `Sau ${d.dist} mét, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).vi}`
+                    + `${d.dir === 'arrive' ? arriveName() : streetPhrase(d.street)}.`),
             'en-US': (d) => `Starting navigation. ${d.total} kilometers, about ${d.min} minutes. `
                 + `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.street}.`
         },
@@ -7674,9 +9928,15 @@
              */
             'vi-VN': (d) => {
                 const turn = (TURN_TEXT[d.dir] || TURN_TEXT.straight).vi;
-                return `${d.dist} mét nữa, ${turn}${streetPhrase(d.street)}.`;
+                // Tới đích: đọc tên ĐÍCH, không đọc tên đường của chặng cuối
+                const ten = d.dir === 'arrive' ? arriveName() : streetPhrase(d.street);
+                return `${d.dist} mét nữa, ${turn}${ten}.`;
             },
-            'en-US': (d) => `In ${d.dist} meters, ${(TURN_TEXT[d.dir] || TURN_TEXT.straight).en} onto ${d.streetEn || d.street}.`
+            'en-US': (d) => {
+                const turn = (TURN_TEXT[d.dir] || TURN_TEXT.straight).en;
+                if (d.dir === 'arrive') return `In ${d.dist} meters, ${turn}${arriveName()}.`;
+                return `In ${d.dist} meters, ${turn} onto ${d.streetEn || d.street}.`;
+            }
         },
         // Ngắn có chủ đích. Câu dài đọc hết mất 5-6 giây, trong khi thứ cần
         // là biết NGAY mình đang vượt và ngưỡng là bao nhiêu.
@@ -7898,7 +10158,7 @@
     function renderSoundButton() {
         const m = SOUND_MODES[state.settings.soundMode];
         $('soundIcon').className = `fa-solid ${m.icon} text-lg`;
-        $('soundBtn').className = `fab glass-panel rounded-full shadow-lg flex items-center justify-center ${m.color} hover:scale-105 transition-transform`;
+        $('soundBtn').className = `fab glass-panel rounded-full shadow-lg flex items-center justify-center ${m.color} transition-transform`;
     }
 
     // =====================================================================
@@ -7958,7 +10218,24 @@
      * ===================================================================== */
     const SPEED_MAX_ACC_M = 50;        // sai số lớn hơn mức này thì không tin tốc độ
     const SPEED_JUMP_RATIO = 2.5;      // chip báo cao hơn quãng đường thật bấy nhiêu lần
-    const SPEED_CHECK_MIN_KMH = 25;    // dưới mức này thì khỏi soi, sai cũng vô hại
+    /*
+     * 6 km/h, không phải 25.
+     *
+     * Người dùng báo: đứng yên trong phòng mà đồng hồ vẫn nhảy 10-20 km/h và
+     * ghim xe rung lắc chạy tại chỗ. Mốc 25 cũ để lọt hết dải đó — mà 10-20
+     * km/h lại là dải khó chịu nhất: đủ cao để app coi là "đang chạy" (mốc
+     * dừng là 5), nên số cứ nhảy và ghim cứ giật, trong khi xe không hề nhúc
+     * nhích.
+     *
+     * Dưới 6 km/h thì khỏi soi: đằng nào displayedSpeed() cũng trả 0.
+     */
+    const SPEED_CHECK_MIN_KMH = 6;
+    /*
+     * Nhịp ĐẦU TIÊN (chưa có mốc để đối chiếu quãng đường) thì tin tới mức
+     * này thôi. 10 km/h sai cũng chẳng hại gì; 60 km/h sai là bật cờ "đã đi"
+     * rồi 90 giây sau nhắc kiểm tra trẻ em trong khi xe chưa lăn bánh.
+     */
+    const SPEED_TRUST_FIRST_KMH = 25;
     let lastFix = null;                // { lat, lon, t }
 
     function plausibleSpeed(rawKmh, c, now) {
@@ -7967,6 +10244,14 @@
 
         const acc = Number(c && c.accuracy);
         if (Number.isFinite(acc) && acc > SPEED_MAX_ACC_M) return null;
+
+        /*
+         * Nhịp ĐẦU TIÊN mà đã báo tốc độ cao thì chưa tin được: không có
+         * nhịp trước để đối chiếu quãng đường, nên không có cách nào biết
+         * đó là xe đang chạy hay chip bịa ra. Bỏ nhịp đó, nhịp sau có mốc
+         * so thì tin. Chậm một giây, đổi lấy việc không bịa.
+         */
+        if (!lastFix) return kmh < SPEED_TRUST_FIRST_KMH ? kmh : null;
 
         if (lastFix) {
             const dt = (now - lastFix.t) / 1000;
@@ -8277,7 +10562,25 @@
     function handleStopDetection() {
         // Chưa có định vị thì chưa biết gì về chuyến đi, đừng suy diễn
         if (!userLatLng) return;
-        if (speedState.rawGps >= TRIP_START_KMH) speedState.hasMoved = true;
+        /*
+         * "ĐÃ ĐI" PHẢI DỰA VÀO QUÃNG ĐƯỜNG THẬT, KHÔNG DỰA VÀO SỐ CHIP BÁO.
+         *
+         * Lỗi gặp thật: máy mới cài, chưa dẫn đường lần nào, đứng yên trong
+         * nhà mà app báo kiểm tra trẻ em. Vì nhịp GPS đầu tiên lúc sóng yếu
+         * có thể mang một tốc độ bịa (60, 120 km/h). Chỉ cần MỘT nhịp như
+         * vậy là cờ "đã đi" bật lên, rồi 90 giây sau là lời nhắc hiện ra.
+         *
+         * Quãng đường thì không bịa được: muốn đi 150 m thì phải thật sự
+         * rời khỏi chỗ cũ. Mốc này đo từ chỗ đứng yên gần nhất.
+         */
+        if (speedState.rawGps < STOP_SPEED_KMH) {
+            if (!tripAnchor) tripAnchor = userLatLng.slice();
+        } else if (tripAnchor) {
+            const moved = haversine(tripAnchor[0], tripAnchor[1], userLatLng[0], userLatLng[1]);
+            if (moved >= TRIP_MOVED_M) speedState.hasMoved = true;
+        } else {
+            tripAnchor = userLatLng.slice();
+        }
 
         if (speedState.rawGps < STOP_SPEED_KMH) {
             if (speedState.stoppedSince === null) {
@@ -8287,6 +10590,11 @@
         } else {
             speedState.stoppedSince = null;
             speedState.childShown = false;
+        }
+        // Đứng yên đủ lâu thì lấy chỗ đang đứng làm mốc mới cho chuyến sau
+        if (speedState.rawGps < STOP_SPEED_KMH && speedState.stoppedSince
+            && Date.now() - speedState.stoppedSince > CHILD_STOP_MS) {
+            tripAnchor = userLatLng.slice();
         }
     }
 
@@ -8546,13 +10854,13 @@
 
     function initReportGrid() {
         $('reportGrid').innerHTML = Object.entries(REPORT_TYPES).map(([key, t]) => `
-            <button onclick="submitReport('${key}')" class="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 ${t.hover} transition-colors">
+            <button onclick="submitReport('${key}')" class="flex flex-col items-center gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800 ${t.hover}">
                 <div class="w-12 h-12 rounded-full ${t.bg} flex items-center justify-center ${t.color}"><i class="fa-solid ${t.icon} text-2xl"></i></div>
                 <span class="text-xs font-semibold text-center text-slate-700 dark:text-slate-300">${t.short}</span>
             </button>`).join('');
 
         $('speedFeedbackGrid').innerHTML = [40, 50, 60, 70, 80, 90, 100, 120].map((v) => `
-            <button onclick="submitSpeedFeedback(${v})" class="w-full aspect-square rounded-full border-[4px] border-red-600 bg-white flex items-center justify-center text-xl font-black text-black hover:scale-105 transition-transform shadow-md">${v}</button>`).join('');
+            <button onclick="submitSpeedFeedback(${v})" class="w-full aspect-square rounded-full border-[4px] border-red-600 bg-white flex items-center justify-center text-xl font-black text-black transition-transform shadow-md">${v}</button>`).join('');
     }
 
     function submitReport(key) {
@@ -8935,20 +11243,11 @@
             + ` · đang chạy ${BUILD_TAG}`;
     }
 
-    function updateFromFile() {
-        const api = nativeUpdate();
-        if (!api) { showToast('Chỉ dùng được trong bản APK', 'warn'); return; }
-        api.pickFile();
-    }
+    /* updateFromFile() đã BỎ cùng với nút của nó: giữ lại một hàm không ai
+       gọi thì lần sau đọc mã sẽ tưởng đường đó còn dùng. */
 
     /* updateFromUrl() đã BỎ cùng với ô nhập địa chỉ: một hàm đọc phần tử
        không còn tồn tại là cái bẫy chờ ai đó gọi lại. */
-
-    function updateReset() {
-        const api = nativeUpdate();
-        if (!api) return;
-        api.reset();
-    }
 
     // ---------------------------------------------------------------------
     // TỰ KIỂM TRA BẢN MỚI
@@ -9265,6 +11564,15 @@
         // Camera mẫu chỉ hiện nếu file dữ liệu riêng không có điểm nào dùng được.
         safe('cameras', async () => {
             await loadLocalCameras();
+            await loadManualCameras();
+            await loadFileLimits();
+            loadLimitStore();
+            /*
+             * Kho dữ liệu trên Drive. Bản lưu trong máy dùng NGAY, rồi mới
+             * tải mới ở phía sau — không chặn màn hình chờ mạng.
+             */
+            applyCachedData();
+            refreshRemoteData(false);
             seedSampleCameras();
             const [lat, lon] = getCurrentPos();
             loadOsmPois(lat, lon);   // khi GPS đưa xe đi xa, maybeReloadOsmData() tự tải lại
