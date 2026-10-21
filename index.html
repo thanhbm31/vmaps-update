@@ -227,9 +227,16 @@
         body.picking #curStreet,
         body.picking #bottom-hud { display: none !important; }
         #toastNotification {
-            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: max-content; max-width: min(420px, calc(100vw - 32px));
-            white-space: normal; text-align: center;
+            position: fixed;
+            top: calc(var(--sat, 0px) + 68px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: min(420px, calc(100vw - 32px));
+            white-space: normal;
+            text-align: center;
+            z-index: 1200;
+            pointer-events: none;
         }
         #toastNotification.toast-warn { background: rgba(220, 38, 38, 0.95) !important; color: #fff !important; }
 
@@ -583,12 +590,12 @@
             
             <div class="hud-cell col-center row-bottom" style="grid-area: 3 / 2">
                 <div id="hud-bottom-center" class="hud-slot"></div>
-                <!-- Viên thuốc cảnh báo 26 báo cáo quanh bạn -->
-                <button id="hazardPillBtn" onclick="toggleModal('reportModal')" class="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-black/90 dark:bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-white active:scale-95 transition">
+                <!-- Viên thuốc cảnh báo báo cáo quanh bạn (mặc định ẩn) -->
+                <button id="hazardPillBtn" onclick="toggleModal('reportModal')" class="pointer-events-auto hidden items-center gap-2 px-4 py-2 rounded-full bg-black/90 dark:bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-white active:scale-95 transition">
                     <div class="w-6 h-4.5 rounded bg-blue-900 border border-blue-400 flex items-center justify-center text-[10px]">
                         🚗
                     </div>
-                    <span class="text-xs font-extrabold tracking-wide text-white">26 báo cáo Xung quanh bạn</span>
+                    <span id="hazardPillText" class="text-xs font-extrabold tracking-wide text-white">Báo cáo quanh bạn</span>
                 </button>
             </div>
             
@@ -644,21 +651,8 @@
             </div>
             </div>
 
-            <!-- CỤM NÚT TEST MÔ PHỎNG VỊ TRÍ BẢNG TÌM KIẾM (MỞ APP, ĐANG DẪN ĐƯỜNG, DỪNG DẪN ĐƯỜNG) -->
-            <div id="test-nav-state-bar" class="fixed top-2.5 left-1/2 -translate-x-1/2 z-[1100] flex items-center gap-1.5 p-1 rounded-full bg-slate-900/90 dark:bg-slate-800/95 border border-sky-500/40 shadow-2xl backdrop-blur-md select-none">
-                <button type="button" onclick="testSimulateState('init')" id="btn-test-init" class="px-3 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 transition flex items-center gap-1 active:scale-95 shadow-sm">
-                    <span>🚀 Mở app</span>
-                </button>
-                <button type="button" onclick="testSimulateState('nav')" id="btn-test-nav" class="px-3 py-1.5 rounded-full text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 active:scale-95">
-                    <span>🧭 Đang dẫn</span>
-                </button>
-                <button type="button" onclick="testSimulateState('stop')" id="btn-test-stop" class="px-3 py-1.5 rounded-full text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 active:scale-95">
-                    <span>⏹️ Dừng dẫn</span>
-                </button>
-            </div>
-
             <!-- Toast: phủ cả hàng giữa, bám ngay dưới hàng trên -->
-            <div id="toast-host" style="grid-area: 2 / 1 / 3 / 4; display: flex; flex-direction: column; align-items: center;">
+            <div id="toast-host" style="grid-area: 2 / 1 / 3 / 4; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 1200;">
                 <div id="offlineBadge" role="status" aria-live="polite"
                      class="hidden items-center gap-2 bg-amber-500 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold mb-2">
                     <i class="fa-solid fa-plug-circle-xmark"></i>
@@ -722,9 +716,13 @@
             <!-- HOME BOTTOM SHEET: Kéo co lên xuống, mặc định ở vị trí cao (~340px) để không bị bấm nhầm vào thanh Home ảo -->
             <div id="home-bottom-sheet" class="w-full bg-white dark:bg-[#1e232f] rounded-t-[28px] border-t border-slate-200 dark:border-white/15 shadow-[0_-10px_35px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden transition-[height] duration-200" style="height: 340px;">
                 
-                <!-- Thanh kéo Handle -->
-                <div id="sheet-drag-handle" class="w-full pt-2.5 pb-1 flex justify-center cursor-grab active:cursor-grabbing select-none touch-none">
+                <!-- Thanh kéo Handle & Nút đóng/mở nhanh ở mép -->
+                <div id="sheet-drag-handle" class="w-full pt-2 pb-1.5 px-4 flex items-center justify-between cursor-pointer select-none touch-none">
+                    <div class="w-7 h-7"></div>
                     <div class="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                    <button type="button" id="sheetToggleBtn" onclick="event.stopPropagation(); toggleBottomSheet();" aria-label="Thu gọn hoặc mở rộng" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white active:scale-90 transition">
+                        <i id="sheetToggleIcon" class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
                 </div>
 
                 <!-- Ô tìm kiếm ngoài trang chủ: Nút Micro to gấp đôi đè lên mép khung -->
@@ -743,18 +741,30 @@
                     </div>
                 </div>
 
-                <!-- Hàng chip lối tắt nhanh (Nhà riêng, Cơ quan, Đã lưu) -->
+                <!-- Hàng chip lối tắt nhanh (Nhà riêng, Cơ quan, Trạm sạc, Cây xăng, ATM, Đã lưu) -->
                 <div id="home-chips-row" class="px-4 pb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
-                    <button type="button" onclick="startNavigationHome()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
-                        <div class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-500 flex items-center justify-center text-xs">🏠</div>
+                    <button type="button" onclick="startNavigationHome()" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <span class="text-xs">🏠</span>
                         <span class="text-xs font-bold text-slate-800 dark:text-white">Nhà riêng</span>
                     </button>
-                    <button type="button" onclick="startNavigationWork()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
-                        <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">💼</div>
+                    <button type="button" onclick="startNavigationWork()" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <span class="text-xs">💼</span>
                         <span class="text-xs font-bold text-slate-800 dark:text-white">Cơ quan</span>
                     </button>
-                    <button type="button" onclick="openSearchModal()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
-                        <div class="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-500 flex items-center justify-center text-xs">🔖</div>
+                    <button type="button" onclick="selectQuickCategory('Trạm sạc')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/50 text-emerald-700 dark:text-emerald-300 active:scale-95 transition">
+                        <i class="fa-solid fa-charging-station text-xs"></i>
+                        <span class="text-xs font-bold">Trạm sạc</span>
+                    </button>
+                    <button type="button" onclick="selectQuickCategory('Trạm xăng')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/50 text-amber-700 dark:text-amber-300 active:scale-95 transition">
+                        <i class="fa-solid fa-gas-pump text-xs"></i>
+                        <span class="text-xs font-bold">Cây xăng</span>
+                    </button>
+                    <button type="button" onclick="selectQuickCategory('ATM')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-300 dark:border-cyan-700/50 text-cyan-700 dark:text-cyan-300 active:scale-95 transition">
+                        <i class="fa-solid fa-money-bill-transfer text-xs"></i>
+                        <span class="text-xs font-bold">ATM</span>
+                    </button>
+                    <button type="button" onclick="openSearchModal()" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <span class="text-xs">🔖</span>
                         <span class="text-xs font-bold text-slate-800 dark:text-white">Đã lưu</span>
                     </button>
                 </div>
@@ -1679,7 +1689,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '63461a4';
+    const BUILD_TAG = '8fafb2b';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -8620,6 +8630,49 @@
      */
     let activeCategory = '';
 
+    async function selectQuickCategory(catName) {
+        try { closeModal('moreCategoriesModal'); } catch (e) { }
+        const aliasMap = {
+            'ATM': 'ATM',
+            'Ẩm thực': 'Nhà hàng',
+            'Trạm sạc': 'Trạm sạc',
+            'Siêu thị': 'Siêu thị',
+            'Bãi đỗ xe': 'Bãi đỗ xe',
+            'TTTM': 'Trung tâm thương mại',
+            'Cửa hàng tiện lợi': 'Cửa hàng tiện lợi',
+            'Bệnh viện': 'Bệnh viện',
+            'Khách sạn': 'Khách sạn',
+            'Hiệu thuốc': 'Nhà thuốc',
+            'Cafe': 'Quán cà phê',
+            'Trạm xăng': 'Cây xăng',
+            'Y tế khác': 'Phòng khám'
+        };
+        const targetLabel = aliasMap[catName] || catName;
+        const c = PLACE_CATEGORIES.find((x) => x.label === targetLabel) ||
+                  PLACE_CATEGORIES.find((x) => x.label.toLowerCase() === targetLabel.toLowerCase()) ||
+                  PLACE_CATEGORIES.find((x) => x.words && x.words.includes(noAccent(targetLabel).toLowerCase())) ||
+                  PLACE_CATEGORIES.find((x) => x.core && x.core.some((k) => noAccent(k) === noAccent(targetLabel)));
+
+        const input = $('searchInput');
+        if (input) input.value = targetLabel;
+        renderSearchClear();
+        setActiveCategory(targetLabel);
+
+        openModal('searchModal');
+        const resultsEl = $('searchResults');
+        if (resultsEl) {
+            resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${escapeHtml(targetLabel.toLowerCase())} gần nhất...</p>`;
+        }
+
+        if (c) {
+            const rows = await searchCategory(c);
+            renderSearchResults(rows);
+        } else {
+            doSearch();
+        }
+    }
+    window.selectQuickCategory = selectQuickCategory;
+
     function setActiveCategory(label) {
         if (activeCategory === label) return;
         activeCategory = label || '';
@@ -11825,7 +11878,25 @@
         const homeRecent = $('home-recent-list');
         if (homeChips) homeChips.style.display = currentSheetHeight <= 140 ? 'none' : 'flex';
         if (homeRecent) homeRecent.style.display = currentSheetHeight <= 220 ? 'none' : 'block';
+
+        const toggleIcon = $('sheetToggleIcon');
+        if (toggleIcon) {
+            if (currentSheetHeight <= 120) {
+                toggleIcon.className = 'fa-solid fa-chevron-up text-xs';
+            } else {
+                toggleIcon.className = 'fa-solid fa-chevron-down text-xs';
+            }
+        }
     }
+
+    function toggleBottomSheet() {
+        if (currentSheetHeight > 120) {
+            setSheetPosition('low');
+        } else {
+            setSheetPosition('mid');
+        }
+    }
+    window.toggleBottomSheet = toggleBottomSheet;
 
     function setSheetPosition(pos) {
         const sheet = $('home-bottom-sheet');
@@ -11842,77 +11913,6 @@
         }, 320);
     }
 
-    /** Test mô phỏng tự động lên xuống của bảng tìm kiếm */
-    function testSimulateState(stateName) {
-        const btnInit = $('btn-test-init');
-        const btnNav = $('btn-test-nav');
-        const btnStop = $('btn-test-stop');
-        
-        [btnInit, btnNav, btnStop].forEach(b => {
-            if (b) {
-                b.classList.remove('bg-blue-600', 'text-white');
-                b.classList.add('text-slate-300');
-            }
-        });
-
-        if (stateName === 'init') {
-            if (btnInit) {
-                btnInit.classList.add('bg-blue-600', 'text-white');
-                btnInit.classList.remove('text-slate-300');
-            }
-            if (nav.active) {
-                clearRoute();
-            }
-            nav.active = false;
-            setSheetPosition('mid');
-            $('bottom-bar')?.classList.add('hidden');
-            $('home-chips-row')?.classList.remove('hidden');
-            $('home-recent-list')?.classList.remove('hidden');
-            renderNav();
-            showToast('1. Mở app: Bảng tìm kiếm ở vị trí cao (340px)');
-        } else if (stateName === 'nav') {
-            if (btnNav) {
-                btnNav.classList.add('bg-blue-600', 'text-white');
-                btnNav.classList.remove('text-slate-300');
-            }
-            nav.active = true;
-            nav.destName = 'Đảo Vũ Yên, Thuỷ Nguyên';
-            navState.remainingKm = 18.5;
-            navState.etaMin = 28;
-            navState.turn = { dir: 'right', dist: 200, street: 'Lê Hồng Phong' };
-            setSheetPosition('low');
-            $('bottom-bar')?.classList.remove('hidden');
-            $('home-chips-row')?.classList.add('hidden');
-            $('home-recent-list')?.classList.add('hidden');
-            renderNav();
-            showToast('2. Đang dẫn đường: Bảng tìm kiếm tự động tụt xuống (76px), còn lại ô tìm kiếm');
-        } else if (stateName === 'stop') {
-            if (btnStop) {
-                btnStop.classList.add('bg-blue-600', 'text-white');
-                btnStop.classList.remove('text-slate-300');
-            }
-            if (nav.active) {
-                clearRoute();
-            }
-            nav.active = false;
-            setSheetPosition('mid');
-            $('bottom-bar')?.classList.add('hidden');
-            $('home-chips-row')?.classList.remove('hidden');
-            $('home-recent-list')?.classList.remove('hidden');
-            renderNav();
-            showToast('3. Dừng dẫn đường: Bảng tìm kiếm tự động quay về vị trí cao (340px)');
-            setTimeout(() => {
-                if (btnInit && !nav.active) {
-                    btnStop?.classList.remove('bg-blue-600', 'text-white');
-                    btnStop?.classList.add('text-slate-300');
-                    btnInit.classList.add('bg-blue-600', 'text-white');
-                    btnInit.classList.remove('text-slate-300');
-                }
-            }, 1800);
-        }
-    }
-    window.testSimulateState = testSimulateState;
-
     function initBottomSheetDrag() {
         const handle = $('sheet-drag-handle');
         const sheet = $('home-bottom-sheet');
@@ -11921,17 +11921,23 @@
         let isDragging = false;
         let startY = 0;
         let startH = currentSheetHeight;
+        let hasMoved = false;
 
         const onStart = (clientY) => {
             isDragging = true;
+            hasMoved = false;
             startY = clientY;
             startH = currentSheetHeight;
             sheet.classList.remove('transition-[height]', 'duration-300');
         };
 
-        const onMove = (clientY) => {
+        const onMove = (clientY, e) => {
             if (!isDragging) return;
             const delta = startY - clientY;
+            if (Math.abs(delta) > 4) {
+                hasMoved = true;
+                if (e && e.cancelable) e.preventDefault();
+            }
             updateSheetHeight(startH + delta);
         };
 
@@ -11939,6 +11945,11 @@
             if (!isDragging) return;
             isDragging = false;
             sheet.classList.add('transition-[height]', 'duration-300');
+            if (!hasMoved) {
+                // Chạm/click nhẹ mà không kéo -> tự động đóng/mở
+                toggleBottomSheet();
+                return;
+            }
             if (currentSheetHeight < 180) {
                 setSheetPosition('low');
             } else if (currentSheetHeight < 420) {
@@ -11949,15 +11960,15 @@
         };
 
         handle.addEventListener('mousedown', (e) => onStart(e.clientY));
-        window.addEventListener('mousemove', (e) => onMove(e.clientY));
+        window.addEventListener('mousemove', (e) => onMove(e.clientY, e));
         window.addEventListener('mouseup', onEnd);
 
         handle.addEventListener('touchstart', (e) => {
             if (e.touches && e.touches[0]) onStart(e.touches[0].clientY);
         }, { passive: true });
         window.addEventListener('touchmove', (e) => {
-            if (e.touches && e.touches[0]) onMove(e.touches[0].clientY);
-        }, { passive: true });
+            if (e.touches && e.touches[0]) onMove(e.touches[0].clientY, e);
+        }, { passive: false });
         window.addEventListener('touchend', onEnd);
 
         // Khởi tạo vị trí cao mặc định (340px)
@@ -14314,6 +14325,7 @@
         safe('nav', renderNav);
         safe('speed', renderSpeed);
         safe('voices', initVoices);
+        safe('bottomSheetDrag', initBottomSheetDrag);
 
         safe('gps', startGps);
         safe('heading', () => {
