@@ -1414,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'f8ce038';
+    const BUILD_TAG = 'ba39dbb';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3426,7 +3426,31 @@
           core: ['sân bay', 'cảng hàng không', 'airport', 'phi trường'],
           coreRe: /san bay|cang hang khong|airport|phi truong|aerodrome/,
           prefer: /san bay|cang hang khong|airport|phi truong/,
-          demote: /dai ly|ve may bay|phong ve|khach san|taxi|bai do/ }
+          demote: /dai ly|ve may bay|phong ve|khach san|taxi|bai do/ },
+        /*
+         * BẢO TÀNG — cơ sở văn hoá, lịch sử, nghệ thuật.
+         * Phải phân biệt rõ ràng với các cơ sở mang chữ "bảo" khác như
+         * cửa hàng/xưởng sản xuất mũ bảo hiểm, bảo hiểm, quán bia, quán cafe.
+         */
+        { mb: 'museum', label: 'Bảo tàng', icon: 'fa-landmark',
+          words: ['bao tang', 'vien bao tang', 'museum', 'nha bao tang', 'di tich', 'khu di tich'],
+          tags: ['tourism=museum', 'amenity=arts_centre', 'historic=memorial'],
+          core: ['bảo tàng', 'museum', 'viện bảo tàng', 'nhà bảo tàng'],
+          coreRe: /bao tang|vien bao tang|museum|nha bao tang/,
+          prefer: /bao tang|vien bao tang|museum|lich su|my thuat|dan toc|quan doi|khong quan|phong khong|b52|phu nu|ha noi|ho chi minh/,
+          below: /di tich|nha luu niem|lang bac|van mieu/,
+          demote: /mu bao hiem|non bao hiem|bao hiem|cafe|quan bia|bia hoi|xuong|gara|cua hang/ },
+        /*
+         * CHUNG CƯ / CĂN HỘ / KHU DÂN CƯ — khu nhà ở cao tầng hoặc khu đô thị.
+         * Từ khoá tương đương: chung cư, căn hộ, apartment, condo, residence, khu dân cư (KDC), khu đô thị (KĐT).
+         */
+        { mb: 'building', label: 'Chung cư', icon: 'fa-building',
+          words: ['chung cu', 'can ho', 'apartment', 'condo', 'condominium', 'residence', 'residences', 'khu dan cu', 'kdc', 'khu do thi', 'kdt', 'toa nha'],
+          tags: ['building=apartments', 'building=residential', 'landuse=residential'],
+          core: ['chung cư', 'căn hộ', 'apartment', 'residence', 'khu dân cư', 'khu đô thị'],
+          coreRe: /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt|toa nha/,
+          prefer: /chung cu|can ho|apartment|residence|residences|block|toa/,
+          demote: /cho thue|moi gioi|ban nha|thi cong|noi that|tap hoa|quan an|nha thuoc/ }
     ];
 
     /** Bỏ dấu để so khớp: "Bệnh Viện" và "benh vien" phải cùng một thứ. */
@@ -3746,23 +3770,20 @@
         };
         /*
          * Hỏi theo TỪNG CÁCH GỌI CẤP MỘT, không chỉ theo nhãn nhóm.
-         *
-         * Lỗi người dùng gặp: bấm nút "Bệnh viện" thì Bệnh viện Việt Tiệp cơ
-         * sở 2 ngay gần lại không ra, Bệnh viện Kim Thành 14 km cũng không,
-         * mà danh sách thì đầy trạm y tế với phòng khám. Lý do: lượt hỏi
-         * theo thẻ chỉ trả về 25 chỗ GẦN NHẤT (toàn cơ sở nhỏ), còn lượt hỏi
-         * theo tên thì chỉ hỏi đúng một câu "Bệnh viện".
-         *
-         * Mỗi cách gọi là một câu hỏi riêng, nên một bệnh viện mang tên
-         * "Trung tâm y tế huyện ..." hay "Cảng hàng không quốc tế ..." vẫn
-         * tìm ra, không phụ thuộc vào việc quanh đây có bao nhiêu chỗ nhỏ.
+         * Ưu tiên _subQuery (ví dụ: "trường tiểu học") nếu người dùng yêu cầu phân cấp cụ thể.
          */
+        if (cat._subQuery) add(cat._subQuery);
         (cat.core || []).forEach(add);
         add(cat.label);
         (cat.brands || []).slice(0, 1).forEach(add);
         let out = [];
         for (const q of qs.slice(0, 5)) {
             out = out.concat(await searchMapboxPoi(q, here, km));
+            try {
+                out = out.concat(await searchMapbox(q, here, km));
+            } catch (e) {
+                console.warn('Mapbox category geocode:', e);
+            }
         }
         out.forEach((r) => { r._cat = cat.label; });
         return out;
@@ -3811,6 +3832,12 @@
                     gKeywords = (cat.core && cat.core.length) ? cat.core.slice(0, 3) : [cat.label];
                 }
 
+                // Quét Google Places Nearby Search với rankby=distance trước để gom đủ tiện ích gần nhất
+                // (ví dụ: trường tiểu học Kim Thành cách 300m không bị bỏ sót)
+                for (const kw of gKeywords) {
+                    const nearbyRes = await searchGooglePlacesNearby(kw, here);
+                    if (nearbyRes && nearbyRes.length) allHits = allHits.concat(nearbyRes);
+                }
                 for (const kw of gKeywords) {
                     const res = await searchGooglePlaces(kw, here, km);
                     if (res && res.length) allHits = allHits.concat(res);
@@ -4060,6 +4087,46 @@
             }).filter(Boolean);
         } catch (e) {
             console.warn('Google Places error:', e);
+            return [];
+        }
+    }
+
+    /**
+     * Tra cứu Google Places Nearby Search với rankby=distance.
+     * Cực kỳ quan trọng để quét chính xác các địa điểm sát cạnh người dùng (vài trăm mét như
+     * trường tiểu học Kim Thành cách 300m, cây xăng ngay ngã tư) mà Text Search dễ bỏ qua
+     * do ưu tiên điểm nổi tiếng ở xa hơn.
+     */
+    async function searchGooglePlacesNearby(keyword, here, type) {
+        const key = googleApiKey();
+        if (!key || !here) return [];
+        let url = 'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
+            + `?location=${here[0].toFixed(5)},${here[1].toFixed(5)}`
+            + `&rankby=distance`
+            + `&language=vi`
+            + `&key=${encodeURIComponent(key)}`;
+        if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+        if (type) url += `&type=${encodeURIComponent(type)}`;
+        try {
+            const raw = await nativeFetch(url, 4500);
+            const data = JSON.parse(raw);
+            if (data.status !== 'OK' || !Array.isArray(data.results)) return [];
+            return data.results.map((r) => {
+                const lat = r.geometry?.location?.lat;
+                const lon = r.geometry?.location?.lng;
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+                const nm = (r.name || '').trim();
+                const addr = (r.vicinity || r.formatted_address || '').trim();
+                const dName = addr ? (addr.startsWith(nm) ? addr : `${nm}, ${addr}`) : nm;
+                return {
+                    lat, lon,
+                    display_name: dName,
+                    _dist: haversine(here[0], here[1], lat, lon),
+                    _src: 'google_nearby'
+                };
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('Google Places nearby error:', e);
             return [];
         }
     }
@@ -5497,8 +5564,11 @@
         const raw = stripCommandWords((query || '').trim());
         if (raw.length < 2) return [];
 
+        const isNearby = isProximityQuery(raw);
+        const cleanNoFiller = stripProximityWords(raw);
+
         // Tìm theo nhóm đi trước: nó làm mới GPS rồi xếp theo khoảng cách thật
-        const cat = matchCategory(raw);
+        const cat = matchCategory(raw) || matchCategory(cleanNoFiller);
         if (cat) {
             const rows = await searchCategory(cat);
             if (rows.length) return rows;
@@ -5513,20 +5583,17 @@
         const here = userLatLng || getCurrentPos();
 
         /*
-         * Tên trơ của một thương hiệu — "Vincom", "Lotte", "Circle K" — là
-         * câu hỏi về CHI NHÁNH GẦN NHẤT, không phải về thương hiệu đó ở đâu
-         * trên cả nước. Nên quét gần trước rồi nới dần, dừng ngay khi có.
-         *
-         * Khác hẳn với "Vincom Imperia" hay "Vincom Hà Nội": đã ghi rõ thì
-         * phải tìm đúng cái tên đó, dù nó ở tỉnh khác.
+         * Tên trơ của một thương hiệu — "Vincom", "Lotte", "Circle K" — hoặc có từ khoá "gần nhất"
+         * là câu hỏi về CHI NHÁNH GẦN NHẤT. Quét tối đa 30km từ vị trí GPS xe và sắp xếp theo
+         * khoảng cách từ gần đến xa.
          */
-        if (bareBrandQuery(raw)) {
-            const near = await searchByName(raw, here, BRAND_NEAR_MAX_KM);
+        if (bareBrandQuery(raw) || bareBrandQuery(cleanNoFiller)) {
+            const near = await searchByName(cleanNoFiller || raw, here, BRAND_NEAR_MAX_KM, { isNearby: true });
             if (near.length) return near;
-            return searchByName(raw, here);     // quanh đây không có thì mở ra cả nước
+            return searchByName(cleanNoFiller || raw, here, null, { isNearby: true });
         }
 
-        const rows = await searchByName(raw, here);
+        const rows = await searchByName(raw, here, null, { isNearby });
 
         /*
          * Gõ sai tên thì máy tìm kiếm vẫn trả về thứ na ná, rải khắp nơi.
@@ -5693,6 +5760,15 @@
     // những loại xung đột xuống. Dùng chung bộ xếp hạng với tìm theo nhóm.
     // ---------------------------------------------------------------------
     const TYPE_HINTS = [
+        { words: ['bao tang', 'museum', 'vien bao tang'],
+          prefer: /bao tang|museum|vien bao tang|di tich|lich su/,
+          demote: /mu bao hiem|non bao hiem|bao hiem|cafe|quan bia|bia hoi|xuong|gara|cua hang/ },
+        { words: ['chung cu', 'can ho', 'apartment', 'condo', 'residence', 'residences', 'khu dan cu', 'kdc', 'khu do thi', 'kdt'],
+          prefer: /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt|block|toa nha/,
+          demote: /cho thue|moi gioi|ban nha|thi cong|noi that|tap hoa|quan an/ },
+        { words: ['vincom', 'tttm', 'trung tam thuong mai', 'mega mall', 'plaza'],
+          prefer: /vincom|tttm|trung tam thuong mai|mega mall|center|plaza/,
+          demote: /cgv|highlands|zara|kfc|lotteria|texas|jollibee|phuc long|starbucks|tiem|cua hang|gian hang/ },
         { words: ['nha may', 'factory', 'xuong', 'nha xuong'],
           prefer: /nha may|factory|plant|khu cong nghiep|kcn/,
           demote: /showroom|dai ly|cua hang|tram sac|charging|phong trung bay|3s|dich vu|sua chua|gara/ },
@@ -5980,59 +6056,294 @@
     const SCOPE_KM = 60;          // một vùng đô thị; Tân Thuận cách tâm TP HCM ~7 km
     const RE_ESC = /[.*+?^${}()|[\]\\]/g;
 
+    const ADMIN_PREFIX = /^(thanh pho|tp\.?|tinh|quan|q\.?|huyen|thi xa|thi tran|phuong|xa|duong|pho)\s+/i;
+    const ADMIN_WORDS = ['thanh pho', 'tp', 'tinh', 'thi xa', 'thi tran', 'quan', 'huyen', 'phuong', 'xa'];
+
+    /** Tách thành từ, kèm bản bỏ dấu của từng từ. */
+    function words(text) {
+        return String(text || '').split(/\s+/).filter(Boolean)
+            .map((w) => ({ raw: w, na: noAccent(w).replace(/[.,;]/g, '') }));
+    }
+
     /**
-     * Câu gõ có ghi rõ tỉnh/thành không, và phần còn lại là gì?
-     *
-     * "Khu chế xuất Tân Thuận, thành phố Hồ Chí Minh" đã nói rõ nơi cần tìm.
-     * Trả về kết quả ở Bình Dương hay Hải Phòng là phớt lờ điều người ta vừa
-     * ghi. Nên khi nhận ra tên tỉnh thành trong câu, mọi thứ ngoài vùng đó
-     * đều bị loại — kể cả khi không tìm thấy gì, vì "không có" vẫn đúng hơn
-     * "có, nhưng ở tỉnh khác".
-     *
-     * Câu CHỈ có mỗi tên thành phố thì không tính: lúc đó thành phố chính là
-     * đích đến, không phải phạm vi.
+     * Bỏ cụm từ `phraseNa` (đã bỏ dấu) khỏi câu, GIỮ NGUYÊN DẤU phần còn lại.
+     * So khớp theo bản bỏ dấu nên gõ kiểu nào cũng cắt được.
+     */
+    function dropPhrase(text, phraseNa) {
+        const want = String(phraseNa || '').trim().split(/\s+/).filter(Boolean);
+        if (!want.length) return String(text || '').trim();
+        const ws = words(text);
+        const out = [];
+        for (let i = 0; i < ws.length;) {
+            let hit = true;
+            for (let k = 0; k < want.length; k++) {
+                if (!ws[i + k] || ws[i + k].na !== want[k]) { hit = false; break; }
+            }
+            if (hit) { i += want.length; continue; }
+            out.push(ws[i].raw);
+            i++;
+        }
+        return out.join(' ').replace(/\s*,\s*,/g, ',').replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
+    }
+
+    /** Bỏ "thành phố", "tp", "tỉnh", "quận"... ở bất cứ đâu trong câu, giữ nguyên dấu. */
+    function stripAdminWords(text) {
+        let out = String(text || '').trim();
+        for (const w of ADMIN_WORDS) out = dropPhrase(out, w);
+        return out.trim();
+    }
+
+    const CMD_PHRASES = [
+        'chi duong den', 'chi duong toi', 'chi duong ve', 'chi duong',
+        'dan duong den', 'dan duong toi', 'dan duong ve', 'dan duong',
+        'tim duong den', 'tim duong toi', 'tim duong ve', 'tim duong',
+        'hay chi duong den', 'hay chi duong', 'hay dan duong',
+        'tim vi tri', 'tim dia chi', 'tim kiem dia chi', 'tim kiem vi tri',
+        'duong den', 'duong toi', 'duong ve',
+        'dua toi den', 'dua toi toi', 'dua toi ve', 'dua toi',
+        'cho toi den', 'cho toi toi', 'cho toi ve', 'cho toi',
+        'di den', 'di toi', 'di ve', 'di tu day den', 'lam on cho toi den',
+        'tim kiem', 'tim giup toi', 'tim giup', 'tim cho toi', 'tim',
+        'navigate to', 'directions to', 'route to', 'drive to', 'go to',
+        'take me to'
+    ].sort((a, b) => b.length - a.length);
+
+    const CMD_SINGLE = ['đến', 'tới', 'về', 'đi', 'tìm'];
+
+    function dropLeadingWords(text, n) {
+        return String(text || '').trim().split(/\s+/).slice(n).join(' ');
+    }
+
+    function stripCommandWords(query) {
+        let out = String(query || '').trim();
+        if (!out) return out;
+        for (let i = 0; i < 3; i++) {
+            const na = noAccent(out).replace(/\s+/g, ' ').trim();
+            const found = CMD_PHRASES.find((c) => na === c || na.startsWith(c + ' '));
+            if (!found) break;
+            const rest = dropLeadingWords(out, found.split(' ').length);
+            if (noAccent(rest).trim().length < 2) break;
+            out = rest;
+        }
+        for (let i = 0; i < 2; i++) {
+            const first = out.split(/\s+/)[0] || '';
+            if (!CMD_SINGLE.includes(first.toLowerCase())) break;
+            const rest = dropLeadingWords(out, 1);
+            if (noAccent(rest).trim().length < 2) break;
+            out = rest;
+        }
+        return out.trim() || String(query || '').trim();
+    }
+
+    /**
+     * Dọn sạch giới từ / từ đệm vị trí như: ở, tại, ở tại, khu vực, thuộc, gần...
+     */
+    function cleanScopeRest(text) {
+        let out = String(text || '').trim();
+        out = stripCommandWords(out);
+        for (const w of ADMIN_WORDS) out = dropPhrase(out, w);
+        out = out.replace(/\b(?:ở tại|tại khu vực|ở khu vực|khu vực|tại|ở|trong|thuộc|gần)\s*$/i, '');
+        out = out.replace(/^(?:ở tại|tại khu vực|ở khu vực|khu vực|tại|ở|trong|thuộc|gần)\s+/i, '');
+        return out.replace(/^[,;.\s]+|[,;.\s]+$/g, '').trim();
+    }
+
+    const PROXIMITY_WORDS = [
+        'gần nhất', 'gan nhat', 'gần tôi nhất', 'gan toi nhat',
+        'gần đây', 'gan day', 'xung quanh đây', 'xung quanh day',
+        'xung quanh', 'quanh đây', 'quanh day', 'quanh tôi', 'quanh toi',
+        'ở gần', 'o gan', 'gần tôi', 'gan toi'
+    ];
+
+    function isProximityQuery(query) {
+        if (!query) return false;
+        const na = noAccent(query).toLowerCase();
+        return PROXIMITY_WORDS.some((pw) => {
+            const re = new RegExp('(^|[^\\p{L}])' + pw.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'ui');
+            return re.test(na);
+        });
+    }
+
+    function stripProximityWords(query) {
+        let out = String(query || '').trim();
+        for (const pw of PROXIMITY_WORDS) {
+            out = dropPhrase(out, pw);
+        }
+        return out.replace(/^[,;.\s]+|[,;.\s]+$/g, '').trim();
+    }
+
+    /**
+     * Danh mục khử xung đột từ ghép tiếng Việt (Compound Noun Disambiguation).
+     * Khi người dùng tìm "nhà hát" thì tuyệt đối loại bỏ "nhà khoa", "nhà hàng", "nhà ở", "nhà bạn"...
+     */
+    const COMPOUND_TYPES = [
+        { key: 'nha hat', re: /\bnha hat\b/i, conflict: /\b(nha hang|nha khoa|nha nghi|nha o|nha may|nha thuoc|nha xe|nha ban|nha rieng|nha kho|nha phan phoi)\b/i },
+        { key: 'bao tang', re: /\b(bao tang|vien bao tang|museum)\b/i, conflict: /\b(mu bao hiem|non bao hiem|bao hiem|quan bia|bia hoi|cafe|ca phe|xuong)\b/i },
+        { key: 'cong vien', re: /\b(cong vien|park)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh)\b/i },
+        { key: 'san bay', re: /\b(san bay|airport|cang hang khong)\b/i, conflict: /\b(san bong|san golf|san van dong|san tennis)\b/i },
+        { key: 'ben xe', re: /\b(ben xe|bus station)\b/i, conflict: /\b(ben pha|ben cang|ben tau|ben do)\b/i },
+        { key: 'truong hoc', re: /\b(truong|school)\b/i, conflict: /\b(cua hang|quan an|cafe|shop)\b/i }
+    ];
+
+    /*
+     * Danh mục quận / huyện / thị xã trọng điểm (TP.HCM, Hà Nội, Hải Phòng, Đà Nẵng).
+     * Cung cấp tâm toạ độ khoanh vùng hẹp (bán kính 8 - 15 km), kèm các phường/xã trực thuộc
+     * và ghi chú biến động hành chính lịch sử (ví dụ: Q7 có các phường Phú Mỹ, Tân Phú, Tân Phong...;
+     * Q2, Q9, Thủ Đức nay thuộc TP Thủ Đức).
+     */
+    const VN_DISTRICTS = [
+        // TP. Hồ Chí Minh
+        { name: 'Quận 7', parent: 'Hồ Chí Minh', g: [10.7340, 106.7218], radiusKm: 12,
+          aliases: ['q7', 'q 7', 'q.7', 'quan 7', 'q. 7'],
+          wards: ['Phú Mỹ', 'Tân Phú', 'Tân Phong', 'Tân Thuận Đông', 'Tân Thuận Tây', 'Tân Kiểng', 'Tân Quy', 'Bình Thuận', 'Phú Thuận'] },
+        { name: 'Quận 1', parent: 'Hồ Chí Minh', g: [10.7756, 106.7004], radiusKm: 8,
+          aliases: ['q1', 'q 1', 'q.1', 'quan 1', 'q. 1'],
+          wards: ['Bến Nghé', 'Bến Thành', 'Cầu Kho', 'Cầu Ông Lãnh', 'Cô Giang', 'Đa Kao', 'Nguyễn Cư Trinh', 'Nguyễn Thái Bình', 'Phạm Ngũ Lão', 'Tân Định'] },
+        { name: 'Quận 2', parent: 'Hồ Chí Minh', g: [10.7872, 106.7498], radiusKm: 10,
+          aliases: ['q2', 'q 2', 'q.2', 'quan 2', 'q. 2'], note: 'Thuộc TP Thủ Đức',
+          wards: ['Thảo Điền', 'An Phú', 'Bình An', 'Bình Trưng Đông', 'Bình Trưng Tây', 'Cát Lái', 'Thạnh Mỹ Lợi', 'An Khánh', 'Thủ Thiêm'] },
+        { name: 'Quận 3', parent: 'Hồ Chí Minh', g: [10.7844, 106.6844], radiusKm: 8,
+          aliases: ['q3', 'q 3', 'q.3', 'quan 3', 'q. 3'] },
+        { name: 'Quận 4', parent: 'Hồ Chí Minh', g: [10.7644, 106.7031], radiusKm: 8,
+          aliases: ['q4', 'q 4', 'q.4', 'quan 4', 'q. 4'] },
+        { name: 'Quận 5', parent: 'Hồ Chí Minh', g: [10.7554, 106.6653], radiusKm: 8,
+          aliases: ['q5', 'q 5', 'q.5', 'quan 5', 'q. 5'] },
+        { name: 'Quận 6', parent: 'Hồ Chí Minh', g: [10.7478, 106.6352], radiusKm: 8,
+          aliases: ['q6', 'q 6', 'q.6', 'quan 6', 'q. 6'] },
+        { name: 'Quận 8', parent: 'Hồ Chí Minh', g: [10.7241, 106.6286], radiusKm: 10,
+          aliases: ['q8', 'q 8', 'q.8', 'quan 8', 'q. 8'] },
+        { name: 'Quận 9', parent: 'Hồ Chí Minh', g: [10.8428, 106.8287], radiusKm: 12,
+          aliases: ['q9', 'q 9', 'q.9', 'quan 9', 'q. 9'], note: 'Thuộc TP Thủ Đức',
+          wards: ['Hiệp Phú', 'Long Bình', 'Long Phước', 'Long Thạnh Mỹ', 'Long Trường', 'Phú Hữu', 'Phước Bình', 'Phước Long A', 'Phước Long B', 'Tăng Nhơn Phú', 'Trường Thạnh'] },
+        { name: 'Quận 10', parent: 'Hồ Chí Minh', g: [10.7716, 106.6672], radiusKm: 8,
+          aliases: ['q10', 'q 10', 'q.10', 'quan 10', 'q. 10'] },
+        { name: 'Quận 11', parent: 'Hồ Chí Minh', g: [10.7630, 106.6502], radiusKm: 8,
+          aliases: ['q11', 'q 11', 'q.11', 'quan 11', 'q. 11'] },
+        { name: 'Quận 12', parent: 'Hồ Chí Minh', g: [10.8672, 106.6413], radiusKm: 12,
+          aliases: ['q12', 'q 12', 'q.12', 'quan 12', 'q. 12'] },
+        { name: 'Thủ Đức', parent: 'Hồ Chí Minh', g: [10.8494, 106.7537], radiusKm: 15,
+          aliases: ['tp thu duc', 'thanh pho thu duc', 'quan thu duc'] },
+        { name: 'Bình Thạnh', parent: 'Hồ Chí Minh', g: [10.8106, 106.7091], radiusKm: 10,
+          aliases: ['quan binh thanh'] },
+        { name: 'Gò Vấp', parent: 'Hồ Chí Minh', g: [10.8388, 106.6658], radiusKm: 10,
+          aliases: ['quan go vap'] },
+        { name: 'Phú Nhuận', parent: 'Hồ Chí Minh', g: [10.7992, 106.6803], radiusKm: 8,
+          aliases: ['quan phu nhuan'] },
+        { name: 'Tân Bình', parent: 'Hồ Chí Minh', g: [10.8015, 106.6558], radiusKm: 10,
+          aliases: ['quan tan binh'] },
+        { name: 'Tân Phú', parent: 'Hồ Chí Minh', g: [10.7901, 106.6281], radiusKm: 10,
+          aliases: ['quan tan phu'] },
+        { name: 'Bình Tân', parent: 'Hồ Chí Minh', g: [10.7654, 106.6038], radiusKm: 12,
+          aliases: ['quan binh tan'] },
+        { name: 'Nhà Bè', parent: 'Hồ Chí Minh', g: [10.6953, 106.7279], radiusKm: 15,
+          aliases: ['huyen nha be'] },
+        { name: 'Bình Chánh', parent: 'Hồ Chí Minh', g: [10.6874, 106.5939], radiusKm: 18,
+          aliases: ['huyen binh chanh'] },
+        { name: 'Hóc Môn', parent: 'Hồ Chí Minh', g: [10.8839, 106.5947], radiusKm: 15,
+          aliases: ['huyen hoc mon'] },
+        { name: 'Củ Chi', parent: 'Hồ Chí Minh', g: [11.0067, 106.5132], radiusKm: 20,
+          aliases: ['huyen cu chi'] },
+        { name: 'Cần Giờ', parent: 'Hồ Chí Minh', g: [10.4114, 106.9546], radiusKm: 25,
+          aliases: ['huyen can gio'] },
+
+        // Hà Nội
+        { name: 'Ba Đình', parent: 'Hà Nội', g: [21.0341, 105.8242], radiusKm: 8, aliases: ['quan ba dinh'] },
+        { name: 'Hoàn Kiếm', parent: 'Hà Nội', g: [21.0307, 105.8524], radiusKm: 8, aliases: ['quan hoan kiem'] },
+        { name: 'Tây Hồ', parent: 'Hà Nội', g: [21.0718, 105.8230], radiusKm: 10, aliases: ['quan tay ho'] },
+        { name: 'Long Biên', parent: 'Hà Nội', g: [21.0364, 105.8924], radiusKm: 12, aliases: ['quan long bien'] },
+        { name: 'Cầu Giấy', parent: 'Hà Nội', g: [21.0362, 105.7906], radiusKm: 10, aliases: ['quan cau giay'] },
+        { name: 'Đống Đa', parent: 'Hà Nội', g: [21.0181, 105.8267], radiusKm: 8, aliases: ['quan dong da'] },
+        { name: 'Hai Bà Trưng', parent: 'Hà Nội', g: [21.0069, 105.8524], radiusKm: 8, aliases: ['quan hai ba trung'] },
+        { name: 'Hoàng Mai', parent: 'Hà Nội', g: [20.9765, 105.8542], radiusKm: 12, aliases: ['quan hoang mai'] },
+        { name: 'Thanh Xuân', parent: 'Hà Nội', g: [20.9938, 105.8118], radiusKm: 10, aliases: ['quan thanh xuan'] },
+        { name: 'Nam Từ Liêm', parent: 'Hà Nội', g: [21.0152, 105.7656], radiusKm: 12, aliases: ['quan nam tu liem'] },
+        { name: 'Bắc Từ Liêm', parent: 'Hà Nội', g: [21.0664, 105.7631], radiusKm: 12, aliases: ['quan bac tu liem'] },
+        { name: 'Hà Đông', parent: 'Hà Nội', g: [20.9632, 105.7656], radiusKm: 15, aliases: ['quan ha dong'] },
+        { name: 'Sơn Tây', parent: 'Hà Nội', g: [21.1352, 105.5074], radiusKm: 18, aliases: ['thi xa son tay'] },
+        { name: 'Gia Lâm', parent: 'Hà Nội', g: [21.0205, 105.9392], radiusKm: 18, aliases: ['huyen gia lam'] },
+        { name: 'Đông Anh', parent: 'Hà Nội', g: [21.1383, 105.8458], radiusKm: 18, aliases: ['huyen dong anh'] },
+        { name: 'Sóc Sơn', parent: 'Hà Nội', g: [21.2828, 105.8472], radiusKm: 22, aliases: ['huyen soc son'] },
+        { name: 'Thanh Trì', parent: 'Hà Nội', g: [20.9472, 105.8492], radiusKm: 15, aliases: ['huyen thanh tri'] },
+        { name: 'Hoài Đức', parent: 'Hà Nội', g: [21.0250, 105.7000], radiusKm: 15, aliases: ['huyen hoai duc'] },
+
+        // Hải Phòng
+        { name: 'Hồng Bàng', parent: 'Hải Phòng', g: [20.8651, 106.6713], radiusKm: 10, aliases: ['quan hong bang'] },
+        { name: 'Ngô Quyền', parent: 'Hải Phòng', g: [20.8524, 106.6978], radiusKm: 10, aliases: ['quan ngo quyen'] },
+        { name: 'Lê Chân', parent: 'Hải Phòng', g: [20.8425, 106.6778], radiusKm: 10, aliases: ['quan le chan'] },
+        { name: 'Hải An', parent: 'Hải Phòng', g: [20.8351, 106.7278], radiusKm: 12, aliases: ['quan hai an'] },
+        { name: 'Kiến An', parent: 'Hải Phòng', g: [20.8035, 106.6278], radiusKm: 12, aliases: ['quan kien an'] },
+        { name: 'Đồ Sơn', parent: 'Hải Phòng', g: [20.7100, 106.7800], radiusKm: 15, aliases: ['quan do son'] },
+        { name: 'Dương Kinh', parent: 'Hải Phòng', g: [20.7850, 106.7150], radiusKm: 15, aliases: ['quan duong kinh'] },
+        { name: 'Thuỷ Nguyên', parent: 'Hải Phòng', g: [20.9150, 106.6850], radiusKm: 18, aliases: ['huyen thuy nguyen', 'tp thuy nguyen'] },
+        { name: 'An Dương', parent: 'Hải Phòng', g: [20.8680, 106.6020], radiusKm: 15, aliases: ['huyen an duong', 'quan an duong'] },
+        { name: 'Cát Hải', parent: 'Hải Phòng', g: [20.7280, 107.0480], radiusKm: 25, aliases: ['huyen cat hai', 'dao cat ba', 'cat ba'] },
+
+        // Đà Nẵng
+        { name: 'Hải Châu', parent: 'Đà Nẵng', g: [16.0522, 108.2190], radiusKm: 8, aliases: ['quan hai chau'] },
+        { name: 'Thanh Khê', parent: 'Đà Nẵng', g: [16.0631, 108.1824], radiusKm: 8, aliases: ['quan thanh khe'] },
+        { name: 'Sơn Trà', parent: 'Đà Nẵng', g: [16.0888, 108.2435], radiusKm: 10, aliases: ['quan son tra'] },
+        { name: 'Ngũ Hành Sơn', parent: 'Đà Nẵng', g: [16.0125, 108.2520], radiusKm: 12, aliases: ['quan ngu hanh son'] },
+        { name: 'Liên Chiểu', parent: 'Đà Nẵng', g: [16.0825, 108.1460], radiusKm: 12, aliases: ['quan lien chieu'] },
+        { name: 'Cẩm Lệ', parent: 'Đà Nẵng', g: [16.0190, 108.1960], radiusKm: 10, aliases: ['quan cam le'] },
+        { name: 'Hoà Vang', parent: 'Đà Nẵng', g: [16.0020, 108.1400], radiusKm: 18, aliases: ['huyen hoa vang'] }
+    ];
+
+    /**
+     * Nhận diện phạm vi hành chính đa cấp (Quận/Huyện & Tỉnh/Thành),
+     * làm sạch giới từ mồi và trả về tâm toạ độ khoanh vùng.
      */
     function cityScope(query) {
-        const q = noAccent(query).replace(ADMIN_PREFIX, '').trim();
+        if (!query) return null;
+        const raw = String(query).trim();
+        const na = noAccent(raw).toLowerCase();
+
+        // 1. Kiểm tra QUẬN / HUYỆN trước (phạm vi hẹp 8 - 15 km)
+        for (const dist of VN_DISTRICTS) {
+            const checkKeys = [noAccent(dist.name).toLowerCase(), ...(dist.aliases || [])];
+            for (const key of checkKeys) {
+                const re = new RegExp('(^|[^\\p{L}])' + key.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'ui');
+                if (re.test(na)) {
+                    let restRaw = cleanScopeRest(dropPhrase(raw, key));
+                    if (restRaw.length < 2) return null; // Chỉ có mỗi tên quận
+                    const fullName = `${dist.name}, ${dist.parent}`;
+                    return {
+                        name: dist.name,
+                        parentCity: dist.parent,
+                        fullName,
+                        g: dist.g,
+                        radiusKm: dist.radiusKm || 12,
+                        isDistrict: true,
+                        wards: dist.wards || [],
+                        aliases: dist.aliases || [],
+                        restRaw
+                    };
+                }
+            }
+        }
+
+        // 2. Kiểm tra TỈNH / THÀNH PHỐ (phạm vi bao quát 45 km)
+        const q = na.replace(ADMIN_PREFIX, '').trim();
         if (!q) return null;
         for (const key of VN_ACCENT_KEYS) {
             const re = new RegExp('(^|[^\\p{L}])' + key.replace(RE_ESC, '\\$&')
-                + '(?![\\p{L}])', 'u');
+                + '(?![\\p{L}])', 'ui');
             if (!re.test(q)) continue;
-            if (CITY_SHORT_RISKY.has(key) && q !== key && !/\btp\b/.test(q)) continue;
+            if (CITY_SHORT_RISKY.has(key) && q !== key && !/\btp\b/i.test(q)) continue;
             const name = VN_ACCENT_MAP.get(key);
             const row = VN_CITIES.find(([n]) => n === name) || VN_CITIES.find(([n]) => n === cityKey(name));
             if (!row) continue;                 // là điểm nổi bật, không phải tỉnh thành
-            const rest = q.replace(re, ' ').replace(/[,.]/g, ' ')
-                .replace(/\b(thanh pho|tp|tinh)\b/g, ' ')   // "…, thành phố X" bỏ cả chữ đệm
-                .replace(/\s+/g, ' ').trim();
-            if (rest.length < 3) return null;   // câu chỉ có mỗi tên thành phố
-
-            /*
-             * restRaw: phần cần tìm, GIỮ NGUYÊN DẤU.
-             *
-             * `rest` ở trên đã bỏ dấu (vì phải bỏ dấu mới so khớp được tên
-             * thành phố). Đưa chuỗi bỏ dấu đó đi tra tên trong OSM thì không
-             * bao giờ khớp, vì tên trong OSM có dấu đầy đủ — "khu che xuat
-             * tan thuan" không khớp "Khu chế xuất Tân Thuận". Đó chính là lý
-             * do đường tra OSM theo tên không cứu được gì.
-             */
-            /*
-             * Cắt tên thành phố ra khỏi câu BẰNG CÁCH SO BẢN BỎ DẤU.
-             *
-             * Cách cũ cắt bằng regex tên CÓ DẤU ("Hà Nội"), nên câu gõ không
-             * dấu thì không cắt được gì: "Lotteria Ha Noi" được đem đi tra
-             * nguyên văn và chỉ ra 1 kết quả, trong khi "Lotteria Hà Nội"
-             * (cắt được, còn lại "Lotteria") ra rất nhiều. Đúng chỗ người
-             * dùng gọi là "chưa đồng nhất có dấu và không dấu".
-             *
-             * dropPhrase so theo bản bỏ dấu nên cắt được cả hai kiểu gõ, mà
-             * phần còn lại vẫn giữ nguyên dấu — thứ mà tra tên trong OSM cần.
-             */
-            const full = String(query || '');
-            let restRaw = stripAdminWords(dropPhrase(full, key));
-            if (restRaw.length < 3) restRaw = rest;
-            return { name: row[0], g: [row[1], row[2]], rest, restRaw };
+            let restRaw = cleanScopeRest(dropPhrase(raw, key));
+            if (restRaw.length < 2) return null; // Chỉ có mỗi tên thành phố
+            return {
+                name: row[0],
+                parentCity: row[0],
+                fullName: row[0],
+                g: [row[1], row[2]],
+                radiusKm: 45,
+                isDistrict: false,
+                wards: [],
+                aliases: [],
+                restRaw
+            };
         }
         return null;
     }
@@ -6309,133 +6620,6 @@
         return hit ? out : '';
     }
 
-    /*
-     * Những chữ đứng trước tên hành chính. Phải bỏ đi trước khi so khớp, nếu
-     * không "Thành phố Hà Nội" sẽ không trùng với câu gõ "Hà Nội".
-     */
-    const ADMIN_PREFIX = /^(thanh pho|tp\.?|tinh|quan|huyen|thi xa|thi tran|phuong|xa|duong|pho)\s+/;
-
-    /* =====================================================================
-     * CÓ DẤU / KHÔNG DẤU PHẢI RA CÙNG MỘT KẾT QUẢ
-     *
-     * Ba lỗi người dùng báo đều cùng một gốc: câu gõ vào được "chữa" một
-     * nửa rồi gửi nguyên cho máy tìm kiếm.
-     *
-     *  - "Thanh pho da nang": addVnAccents chỉ thêm dấu cho tên tỉnh thành,
-     *    nên câu gửi đi là "Thanh pho Đà Nẵng" — nửa có dấu nửa không. Máy
-     *    tìm kiếm thấy chữ "pho" không dấu và trả về PHỐ Đà Nẵng ở Thuỷ
-     *    Nguyên, Hải Phòng. Đúng chữ nó được hỏi, sai hoàn toàn ý người hỏi.
-     *  - "Lotteria Ha Noi" ra 1 kết quả, "Lotteria Hà Nội" ra nhiều: phần
-     *    cắt tên thành phố ra khỏi câu dùng regex CÓ DẤU, nên với câu không
-     *    dấu nó không cắt được gì, và "Lotteria Ha Noi" được đem đi tra
-     *    nguyên văn trong phạm vi Hà Nội.
-     *  - "Hồ Chí Minh" ra nhiều hơn "Thành phố Hồ Chí Minh": chữ "Thành
-     *    phố" được giữ lại trong câu hỏi và làm lệch kết quả.
-     *
-     * Cách sửa: tách từ, so khớp theo bản BỎ DẤU, nhưng giữ nguyên dấu ở
-     * phần còn lại. Nhờ vậy "thành phố", "tp", "tỉnh" bị bỏ dù gõ có dấu
-     * hay không, và tên thành phố cũng cắt được ra khỏi câu dù gõ kiểu nào.
-     * ===================================================================== */
-    const ADMIN_WORDS = ['thanh pho', 'tp', 'tinh', 'thi xa', 'thi tran'];
-
-    /** Tách thành từ, kèm bản bỏ dấu của từng từ. */
-    function words(text) {
-        return String(text || '').split(/\s+/).filter(Boolean)
-            .map((w) => ({ raw: w, na: noAccent(w).replace(/[.,;]/g, '') }));
-    }
-
-    /**
-     * Bỏ cụm từ `phraseNa` (đã bỏ dấu) khỏi câu, GIỮ NGUYÊN DẤU phần còn lại.
-     * So khớp theo bản bỏ dấu nên gõ kiểu nào cũng cắt được.
-     */
-    function dropPhrase(text, phraseNa) {
-        const want = String(phraseNa || '').trim().split(/\s+/).filter(Boolean);
-        if (!want.length) return String(text || '').trim();
-        const ws = words(text);
-        const out = [];
-        for (let i = 0; i < ws.length;) {
-            let hit = true;
-            for (let k = 0; k < want.length; k++) {
-                if (!ws[i + k] || ws[i + k].na !== want[k]) { hit = false; break; }
-            }
-            if (hit) { i += want.length; continue; }
-            out.push(ws[i].raw);
-            i++;
-        }
-        return out.join(' ').replace(/\s*,\s*,/g, ',').replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
-    }
-
-    /** Bỏ "thành phố", "tp", "tỉnh"… ở bất cứ đâu trong câu, giữ nguyên dấu. */
-    function stripAdminWords(text) {
-        let out = String(text || '').trim();
-        for (const w of ADMIN_WORDS) out = dropPhrase(out, w);
-        return out.trim();
-    }
-
-    /* =====================================================================
-     * BỎ CÂU LỆNH, GIỮ LẠI TÊN NƠI CẦN ĐẾN
-     *
-     * "chỉ đường đến bến xe Niệm Nghĩa" mà đem nguyên cả câu đi tra thì máy
-     * tìm kiếm coi "chỉ đường đến bến xe..." là MỘT CÁI TÊN và trả về những
-     * chỗ chẳng liên quan. Người lái nói theo thói quen, không ai gõ trơ tên
-     * địa điểm mỗi lần.
-     *
-     * CHỖ DỄ SAI NHẤT — bỏ dấu đi thì nhiều chữ đụng nhau:
-     *   "đến" ≡ "đền"  → "Đền Hùng" mà bỏ chữ đầu thì còn "Hùng"
-     *   "tới" ≡ "tôi", "tối"
-     *   "về"  ≡ "vé"
-     * Nên chia làm hai loại:
-     *   - Cụm NHIỀU CHỮ ("chỉ đường đến", "dẫn đường tới", "đi đến"): so sau
-     *     khi bỏ dấu cũng an toàn, vì không có địa danh nào trùng cả cụm.
-     *   - Chữ ĐƠN ("đến", "tới", "về"): CHỈ bỏ khi câu gõ CÓ DẤU đúng chữ
-     *     đó. Gõ không dấu "den hung" thì giữ nguyên — thà tra thừa một chữ
-     *     còn hơn cắt mất tên Đền Hùng.
-     * Và luôn phải còn lại ít nhất 2 ký tự, nếu không thì trả câu gốc.
-     * ===================================================================== */
-    const CMD_PHRASES = [
-        'chi duong den', 'chi duong toi', 'chi duong ve', 'chi duong',
-        'dan duong den', 'dan duong toi', 'dan duong ve', 'dan duong',
-        'tim duong den', 'tim duong toi', 'tim duong ve', 'tim duong',
-        'duong den', 'duong toi', 'duong ve',
-        'dua toi den', 'dua toi toi', 'dua toi ve', 'dua toi',
-        'cho toi den', 'cho toi toi', 'cho toi ve', 'cho toi',
-        'di den', 'di toi', 'di ve', 'di tu day den', 'lam on cho toi den',
-        'tim kiem', 'tim giup toi', 'tim giup', 'tim cho toi', 'tim',
-        'navigate to', 'directions to', 'route to', 'drive to', 'go to',
-        'take me to'
-    ].sort((a, b) => b.length - a.length);     // cụm dài xét trước
-
-    const CMD_SINGLE = ['đến', 'tới', 'về', 'đi', 'tìm'];
-
-    function stripCommandWords(query) {
-        let out = String(query || '').trim();
-        if (!out) return out;
-
-        // 1. Cụm nhiều chữ, so trên bản bỏ dấu, chỉ ở ĐẦU câu
-        for (let i = 0; i < 3; i++) {                 // "làm ơn cho tôi đến ..." có thể lồng nhau
-            const na = noAccent(out).replace(/\s+/g, ' ').trim();
-            const found = CMD_PHRASES.find((c) => na === c || na.startsWith(c + ' '));
-            if (!found) break;
-            const rest = dropLeadingWords(out, found.split(' ').length);
-            if (noAccent(rest).trim().length < 2) break;   // cắt xong rỗng thì thôi
-            out = rest;
-        }
-
-        // 2. Chữ đơn: chỉ bỏ khi CÓ DẤU đúng chữ đó
-        for (let i = 0; i < 2; i++) {
-            const first = out.split(/\s+/)[0] || '';
-            if (!CMD_SINGLE.includes(first.toLowerCase())) break;
-            const rest = dropLeadingWords(out, 1);
-            if (noAccent(rest).trim().length < 2) break;
-            out = rest;
-        }
-        return out.trim() || String(query || '').trim();
-    }
-
-    function dropLeadingWords(text, n) {
-        return String(text || '').trim().split(/\s+/).slice(n).join(' ');
-    }
-
     /**
      * Mọi cách hỏi của cùng một câu, xếp theo thứ tự ưu tiên:
      * bản CÓ DẤU và đã bỏ chữ đệm hành chính trước, rồi mới tới bản gõ thô.
@@ -6498,8 +6682,12 @@
      * một màn hình trống, và phần chấm điểm vẫn đẩy rác xuống đáy.
      * ===================================================================== */
     const TYPE_WORDS = [
-        'khu che xuat', 'khu cong nghiep', 'khu do thi', 'khu du lich',
-        'trung tam thuong mai', 'trung tam', 'benh vien', 'phong kham',
+        'khu che xuat', 'khu cong nghiep', 'khu do thi', 'khu du lich', 'khu dan cu', 'kdc', 'kdt',
+        'trung tam thuong mai', 'trung tam mua sam', 'trung tam', 'tttm', 'mega mall',
+        'chung cu', 'can ho', 'apartment', 'condo', 'residence', 'residences', 'toa nha', 'building',
+        'bao tang', 'vien bao tang', 'museum', 'nha bao tang', 'di tich', 'khu di tich',
+        'nha hat', 'opera house', 'theatre',
+        'benh vien', 'phong kham',
         'tram y te', 'nha hang', 'quan an', 'cua hang', 'sieu thi', 'cho',
         'truong', 'cong ty', 'nha may', 'khach san', 'san bay', 'ben xe',
         'tram sac', 'cay xang', 'bai do xe', 'duong', 'pho', 'ngo', 'khu'
@@ -6581,6 +6769,18 @@
         const full = noAccent(displayName);
         // Phần trước dấu phẩy đầu tiên là TÊN; phần sau là địa chỉ hành chính
         let first = full.split(',')[0].trim().replace(ADMIN_PREFIX, '');
+
+        // Kiểm tra xung đột từ ghép tiếng Việt (Compound Noun Disambiguation):
+        // Ví dụ: người dùng tìm "nhà hát" mà tên cơ sở là "nhà khoa", "nhà hàng", "nhà ở"...
+        // thì lập tức cho 0 điểm, không cho phép ghép chữ "nhà" lẻ tẻ.
+        for (const ct of COMPOUND_TYPES) {
+            if (ct.re.test(q)) {
+                const hasTarget = ct.re.test(first) || ct.re.test(full);
+                const hasConflict = ct.conflict.test(first) || ct.conflict.test(full);
+                if (!hasTarget && hasConflict) return 0;
+            }
+        }
+
         const bonus = accentMatch(query, displayName) ? ACCENT_EXACT_BONUS : 0;
         if (first === q) return 100 + bonus;               // trùng khít
         if (first.startsWith(q + ' ')) return 80 + bonus;   // "Vincom Plaza ..." với câu "vincom"
@@ -6641,26 +6841,148 @@
         return PLACE_KINDS.some((w) => k.includes(w));
     }
 
-    function rankByName(rows, query) {
-        // Dòng từ danh bạ trong máy đã mang sẵn điểm: thành phố 100, điểm nổi
-        // bật của thành phố đó 90. Chấm lại theo tên sẽ dìm chúng xuống đáy,
-        // vì "Hồ Hoàn Kiếm" chẳng khớp chữ nào với câu gõ "Hà Nội".
+    function rankByName(rows, query, opts) {
+        opts = opts || {};
+        const scope = opts.scope;
+        const isNearby = opts.isNearby;
+        const rawQuery = opts.rawQuery || query;
+        const qNorm = noAccent(query).toLowerCase().trim();
+        const rawNorm = noAccent(rawQuery).toLowerCase().trim();
+
+        // 1. Phân loại từ khoá tìm kiếm
+        const isMallBrand = /vincom|lotte|aeon|big c|go!|mega mall|trung tam thuong mai|tttm/i.test(qNorm) || (scope && /vincom|lotte|aeon|big c|go!/i.test(scope.restRaw));
+        const isMuseum = /bao tang|vien bao tang|museum/i.test(qNorm) || (scope && /bao tang|vien bao tang|museum/i.test(scope.restRaw));
+        const isResidential = /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt/i.test(qNorm) || (scope && /chung cu|can ho|apartment|condo|residence|khu dan cu|kdc/i.test(scope.restRaw));
+
+        const coreName = corePhrase(query) || qNorm;
+
+        // Tách thương hiệu chính và nhánh con (ví dụ: "Vincom Imperia" -> brand: "Vincom", subBranch: "Imperia")
+        let brandName = '';
+        let subBranch = '';
+        if (isMallBrand) {
+            const m = qNorm.match(/^(vincom|lotte|aeon|big c|go!)\s*(.+)?/i);
+            if (m) {
+                brandName = m[1].trim();
+                subBranch = (m[2] || '').trim();
+            }
+        }
+
+        const FAKE_MUSEUM_RE = /\b(mu bao hiem|non bao hiem|bao hiem|quan bia|bia hoi|cafe|ca phe|xuong|xuong may|gara|sua chua|cua hang mu)\b/i;
+        const MAIN_MALL_RE = /(?:vincom center|vincom mega mall|vincom plaza|tttm vincom|vincom\+|vincom retail|^vincom\b)/i;
+        const TENANT_RE = /(?:cgv|highlands|zara|kfc|jollibee|texas chicken|lotteria|phuc long|starbucks|king bbq|kichi|dookki|manwah|gogi|haidilao|tiem|cua hang|gian hang|vinmart\+|winmart\+|playtime|tiiniworld)/i;
+
+        // Kiểm tra xung đột từ ghép (Compound Noun Disambiguation):
+        // Ví dụ: người dùng tìm "nhà hát" mà kết quả ra "nhà khoa", "nhà hàng", "nhà ở", "nhà bạn"...
+        // thì tuyệt đối loại bỏ vì chữ "nhà" ghép với chữ khác sẽ ra nghĩa hoàn toàn khác.
+        for (const ct of COMPOUND_TYPES) {
+            if (ct.re.test(qNorm) || ct.re.test(rawNorm)) {
+                rows.forEach((r) => {
+                    const cTitle = noAccent((r.display_name || '').split(',')[0]).toLowerCase();
+                    const cFull = noAccent(r.display_name || '').toLowerCase();
+                    const hasTarget = ct.re.test(cTitle) || ct.re.test(cFull);
+                    const hasConflict = ct.conflict.test(cTitle) || ct.conflict.test(cFull);
+                    if (!hasTarget && hasConflict) {
+                        r._isConflictCompound = true;
+                        r._score = -500;
+                    }
+                });
+            }
+        }
+
         rows.forEach((r) => {
+            if (r._isConflictCompound) return;
             if (r._score == null) {
                 r._score = nameScore(query, r.display_name || '') + (r._poiRank || 0);
                 if (rowIsPlace(r)) r._score += PLACE_BONUS;
             }
+
+            const cFull = noAccent(r.display_name || '').toLowerCase();
+            const cTitle = noAccent((r.display_name || '').split(',')[0]).toLowerCase();
+
+            // Khớp chính xác cụm nguyên vẹn người dùng gõ
+            if (rawNorm && cFull.includes(rawNorm)) {
+                r._score += 35;
+            }
+
+            // Quy tắc Bảo tàng: Ưu tiên bảo tàng thật (+90), loại bỏ xưởng mũ bảo hiểm, quán bia, cafe (-200)
+            if (isMuseum) {
+                if (FAKE_MUSEUM_RE.test(cFull)) {
+                    r._isFakeMuseum = true;
+                    r._score -= 200;
+                } else if (/bao tang|vien bao tang|museum|nha bao tang|di tich/i.test(cFull)) {
+                    r._isRealMuseum = true;
+                    r._score += 90;
+                }
+            }
+
+            // Quy tắc TTTM (Vincom, Lotte, Aeon):
+            // Ưu tiên toà nhà TTTM chính (+80), dìm hoặc lọc bỏ gian hàng/tiệm bên trong (CGV, KFC, Zara...)
+            if (isMallBrand) {
+                if (MAIN_MALL_RE.test(cTitle)) {
+                    r._isMainMall = true;
+                    r._score += 80;
+                }
+                if (TENANT_RE.test(cTitle)) {
+                    r._isTenant = true;
+                    r._score -= 80;
+                }
+                // Nếu người dùng tìm nhánh cụ thể như "Vincom Imperia":
+                if (brandName && subBranch) {
+                    if (cFull.includes(brandName) && cFull.includes(subBranch)) {
+                        // Khớp cả Vincom và Imperia -> Ưu tiên số 1 tuyệt đối!
+                        r._isExactBranch = true;
+                        r._score += 100;
+                    } else if (cFull.includes(brandName)) {
+                        // Chỉ khớp Vincom nhưng là nhánh khác (như Lê Thánh Tông) -> Đóng vai trò địa chỉ liên quan
+                        r._isRelatedBrand = true;
+                        r._score += 40;
+                    }
+                }
+            }
+
+            // Quy tắc Chung cư / Căn hộ / Khu dân cư (ví dụ: Chung Cư Belleza quận 7):
+            if (isResidential || (coreName && coreName.length >= 3 && cFull.includes(coreName))) {
+                if (coreName && cFull.includes(coreName)) {
+                    r._score += 60;
+                }
+                // Kiểm tra các từ khoá loại hình liên quan: chung cu, can ho, apartment, kdc...
+                if (/chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt|toa nha/i.test(cFull)) {
+                    r._score += 40;
+                }
+                // Nếu có phạm vi quận, kiểm tra xem địa điểm có nằm đúng quận hoặc đúng phường trực thuộc quận không
+                if (scope && scope.isDistrict) {
+                    const distKm = haversine(scope.g[0], scope.g[1], Number(r.lat), Number(r.lon)) / 1000;
+                    if (distKm <= scope.radiusKm) {
+                        r._score += 30; // Nằm trong bán kính quận
+                    }
+                    if (cFull.includes(noAccent(scope.name).toLowerCase()) || (scope.aliases && scope.aliases.some((a) => cFull.includes(a)))) {
+                        r._score += 40; // Ghi rõ tên quận
+                    } else if (scope.wards && scope.wards.some((w) => cFull.includes(noAccent(w).toLowerCase()))) {
+                        r._score += 40; // Ghi tên phường trực thuộc quận (ví dụ: Phường Phú Mỹ của Q7)
+                    }
+                }
+            }
         });
 
-        /*
-         * Nhiều nơi TRÙNG TÊN NHAU thì chỉ giữ cái gần nhất ở trên.
-         *
-         * Gõ "Hà Nội" trả về bốn dòng cùng tên "Hà Nội": thành phố cách 72 km,
-         * một con phố ở Huế cách 504 km, một con phố ở TP HCM cách 1114 km.
-         * Chúng cùng điểm khớp tên nên xen vào giữa danh sách, đẩy những chỗ
-         * thật sự hữu ích xuống dưới. Chỉ có MỘT Hà Nội người ta định tới;
-         * các bản trùng tên ở xa vẫn giữ lại, nhưng xuống cuối.
-         */
+        // Loại bỏ kết quả xung đột từ ghép (ví dụ: "nhà khoa", "nhà hàng" khi tìm "nhà hát")
+        if (rows.some((r) => r._isConflictCompound)) {
+            const cleanRows = rows.filter((r) => !r._isConflictCompound);
+            if (cleanRows.length) rows = cleanRows;
+        }
+
+        // Lọc bỏ bảo tàng giả (mũ bảo hiểm, quán bia, cafe) nếu có bảo tàng thật hoặc câu hỏi rõ ràng về bảo tàng
+        if (isMuseum && rows.some((r) => r._isRealMuseum)) {
+            const realOnly = rows.filter((r) => !r._isFakeMuseum);
+            if (realOnly.length) rows = realOnly;
+        }
+
+        // Lọc bớt gian hàng con nếu có toà nhà TTTM chính
+        if (isMallBrand && rows.some((r) => r._isMainMall)) {
+            const mallsOnly = rows.filter((r) => !r._isTenant);
+            if (mallsOnly.length) rows = mallsOnly;
+        }
+
+        // Bỏ trùng theo tên cùng khoảng cách
         const seenName = new Set();
         rows.slice()
             .sort((a, b) => (b._score - a._score) || (a._dist - b._dist))
@@ -6670,7 +6992,18 @@
                 else seenName.add(key);
             });
 
-        rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
+        // Sắp xếp cuối cùng:
+        // Nếu người dùng có từ khoá "gần nhất", "xung quanh" VÀ điểm khớp tên tương đương nhau:
+        // xếp theo khoảng cách km từ gần đến xa.
+        if (isNearby) {
+            rows.sort((a, b) => {
+                const diffScore = (b._score || 0) - (a._score || 0);
+                if (Math.abs(diffScore) > 30) return diffScore; // chênh lệch rõ ràng (như nhánh chính xác vs nhánh khác)
+                return (a._dist || 0) - (b._dist || 0); // ngang nhau thì gần nhất lên trước
+            });
+        } else {
+            rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || ((a._dist || 0) - (b._dist || 0)));
+        }
         return rows;
     }
 
@@ -6727,7 +7060,9 @@
      *              con đường cao tốc mang tên Hà Nội — thành phố Hà Nội không
      *              bao giờ được hỏi tới.
      */
-    async function searchByName(query, here, maxKm) {
+    async function searchByName(query, here, maxKm, opts) {
+        opts = opts || {};
+        const isNearby = !!opts.isNearby;
         const raw = (query || '').trim();
         if (raw.length < 2 || !here) return [];
 
@@ -6861,12 +7196,12 @@
                  * show kết quả theo tên đúng trước rồi mới theo km".
                  */
                 const core = corePhrase(canon);
-                if (core && core.split(' ').length >= 2) rankByName(rows, canon);
+                if (core && core.split(' ').length >= 2) rankByName(rows, canon, { isNearby: true, rawQuery: raw });
                 else rows.sort((a, b) => a._dist - b._dist);
             }
             dropTailors(rows);
             rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || (a._dist - b._dist));
-            return dedupeByCoord(pinned.concat(rows)).slice(0, 12);
+            return dedupeByCoord(pinned.concat(rows)).slice(0, 25);
         }
 
         // ------------------------------------------------------------------
@@ -6890,11 +7225,12 @@
          * điểm tên dọn dẹp — rác được 0 điểm nên tự rơi xuống đáy.
          */
         const base = canon;
+        const cleanedRaw = stripCommandWords(raw);
+        const cleanNoFiller = stripProximityWords(cleanedRaw);
 
         /*
-         * Câu đã ghi rõ tỉnh thành thì MỌI lượt hỏi lấy nơi đó làm tâm, và
-         * kết quả ngoài vùng bị loại hẳn. Người ta đã nói "ở thành phố Hồ Chí
-         * Minh" thì trả về một chỗ ở Bình Dương là phớt lờ câu hỏi.
+         * Câu đã ghi rõ tỉnh thành hoặc quận/huyện thì MỌI lượt hỏi lấy nơi đó làm tâm, và
+         * kết quả ngoài vùng bị loại hẳn.
          */
         const scope = cityScope(raw);
         const anchor = scope ? scope.g : here;
@@ -6908,36 +7244,69 @@
             ? await findRoadByName(base, here, NEAR_PASS_KM) : [];
         let rows = (scope ? [] : local.slice()).concat(roadHit);
 
-        const nearKm = scope ? 35 : NEAR_PASS_KM;
+        const nearKm = scope ? (scope.isDistrict ? (scope.radiusKm || 12) : 45) : NEAR_PASS_KM;
 
         /*
-         * Hỏi NHIỀU CÁCH rồi gộp, không chọn một cách rồi bỏ các cách khác.
-         *
-         * Mỗi kho dữ liệu nhạy với một kiểu gõ khác nhau: kho địa điểm của
-         * Mapbox chịu được gõ không dấu khá tốt, kho địa chỉ thì cần đúng
-         * dấu, Photon lại tìm mờ. Trước đây chỉ một bản được gửi đi nên kết
-         * quả phụ thuộc vào việc người dùng có bỏ dấu hay không — đúng chỗ
-         * "chưa đồng nhất".
-         *
-         * Giới hạn 2 cách để số lượt gọi mạng không phình ra: bản chuẩn (có
-         * dấu, đã bỏ chữ đệm) và bản gõ thô. Thường hai bản này trùng nhau
-         * nên phần lớn trường hợp vẫn chỉ một lượt như trước.
+         * Xây dựng danh sách câu hỏi đa dạng (askList):
+         * - Từ nguyên vẹn của người dùng gõ vào (đã bỏ từ mồi như chỉ đường/tìm kiếm)
+         * - Biến thể kết hợp phạm vi hành chính (tỉnh/thành, quận/huyện)
+         * - Mở rộng cho Trung tâm thương mại (Vincom, Lotte, Aeon), Bảo tàng (museum), Chung cư (căn hộ, apartment)
          */
         const askForms = (scope ? queryForms(scope.restRaw) : forms).slice(0, 2);
-        const askList = scope
-            ? askForms.map((f) => `${f.q}, ${scope.name}`)
-            : askForms.map((f) => f.q);
+        const askList = [];
+        const addAsk = (s) => {
+            const v = String(s || '').trim();
+            if (v && v.length >= 2 && !askList.some((x) => x.toLowerCase() === v.toLowerCase())) {
+                askList.push(v);
+            }
+        };
+
+        if (scope) {
+            if (cleanedRaw) addAsk(cleanedRaw);
+            askForms.forEach((f) => addAsk(`${f.q}, ${scope.name}`));
+            if (scope.isDistrict && scope.parentCity) {
+                askForms.forEach((f) => addAsk(`${f.q}, ${scope.name}, ${scope.parentCity}`));
+            }
+            addAsk(`${scope.restRaw}, ${scope.name}`);
+            addAsk(scope.restRaw);
+
+            // Mở rộng TTTM trong phạm vi địa phương (Vincom, Lotte, Aeon...)
+            const lowerRest = scope.restRaw.toLowerCase();
+            if (/(vincom|lotte|aeon)/i.test(lowerRest)) {
+                const bName = /(vincom)/i.test(lowerRest) ? 'Vincom' : (/(lotte)/i.test(lowerRest) ? 'Lotte' : 'Aeon');
+                addAsk(`${bName} Plaza, ${scope.name}`);
+                addAsk(`${bName} Mega Mall, ${scope.name}`);
+                addAsk(`TTTM ${bName}, ${scope.name}`);
+                addAsk(`${bName} Center, ${scope.name}`);
+            }
+            // Mở rộng Bảo tàng / Museum
+            if (/(bảo tàng|bao tang|museum)/i.test(lowerRest)) {
+                addAsk(`Bảo tàng, ${scope.name}`);
+                addAsk(`Museum, ${scope.name}`);
+                addAsk(`Viện bảo tàng, ${scope.name}`);
+            }
+            // Mở rộng Chung cư / Căn hộ / Apartment
+            if (/(chung cư|chung cu|căn hộ|can ho|apartment|condo|residence|belleza)/i.test(lowerRest)) {
+                addAsk(`Chung cư ${scope.restRaw}, ${scope.name}`);
+                addAsk(`Căn hộ ${scope.restRaw}, ${scope.name}`);
+                addAsk(`Apartment ${scope.restRaw}, ${scope.name}`);
+            }
+        } else {
+            if (cleanedRaw) addAsk(cleanedRaw);
+            if (cleanNoFiller && cleanNoFiller !== cleanedRaw) addAsk(cleanNoFiller);
+            askForms.forEach((f) => addAsk(f.q));
+        }
+
         const nearQueries = looksLikeStreet
             ? ['Đường ' + (scope ? `${scope.restRaw}, ${scope.name}` : askList[0]), ...askList]
             : askList.slice();
 
         /*
-         * Tên cần tìm dùng để CHẤM ĐIỂM: lấy bản chuẩn (có dấu, đã bỏ chữ
-         * đệm và bỏ tên tỉnh thành). Chấm điểm theo bản gõ thô thì câu gõ
-         * không dấu lại cho điểm khác câu gõ có dấu — vẫn là cái lệch cũ,
-         * chỉ chuyển từ lúc hỏi sang lúc xếp hạng.
+         * Tên cần tìm dùng để CHẤM ĐIỂM:
+         * Phải là tên đối tượng (ví dụ "Vincom", "Bảo tàng", "Chung Cư Belleza"),
+         * KHÔNG gắn đuôi tỉnh/thành ("Vincom, Hải Phòng") vì sẽ làm hỏng hàm so khớp tên và filterByPhrase!
          */
-        const target = askList[0] || base;
+        const target = scope ? (askForms[0]?.q || scope.restRaw) : (cleanNoFiller || askList[0] || base);
         /*
          * "Đã tìm thấy" chỉ tính kết quả TRỰC TUYẾN.
          *
@@ -7063,11 +7432,20 @@
         // Ngoài vùng đã ghi rõ thì loại, kể cả khi vì thế mà không còn gì
         if (scope) {
             const scopeNorm = noAccent(scope.name).toLowerCase();
-            const scopeRadiusM = 35 * 1000;
+            const scopeRadiusM = (scope.isDistrict ? (scope.radiusKm || 12) : 45) * 1000;
             rows = rows.filter((r) => {
                 const dist = haversine(anchor[0], anchor[1], Number(r.lat), Number(r.lon));
-                if (dist > scopeRadiusM) return false;
                 const fullAddr = noAccent(r.display_name || '').toLowerCase();
+                if (scope.isDistrict) {
+                    // Khoanh vùng quận/huyện: Kiểm tra bán kính hoặc tên quận, tên phường trực thuộc
+                    const inRadius = dist <= scopeRadiusM;
+                    const matchesName = fullAddr.includes(scopeNorm) || (scope.aliases && scope.aliases.some((a) => fullAddr.includes(noAccent(a).toLowerCase())));
+                    const matchesWard = scope.wards && scope.wards.some((w) => fullAddr.includes(noAccent(w).toLowerCase()));
+                    if (matchesName || matchesWard) return true;
+                    if (inRadius) return true;
+                    return false;
+                }
+                if (dist > scopeRadiusM) return false;
                 for (const [cName] of VN_CITIES) {
                     const cNorm = noAccent(cName).toLowerCase();
                     if (cNorm !== scopeNorm && fullAddr.includes(cNorm)) {
@@ -7088,14 +7466,9 @@
         rows.forEach((r) => { r._dist = haversine(here[0], here[1], Number(r.lat), Number(r.lon)); });
         /*
          * Luôn chấm điểm TÊN, kể cả khi câu có từ chỉ loại.
-         *
-         * Trước đây "bệnh viện Việt Tiệp" rơi vào nhánh xếp-theo-loại và bỏ
-         * qua hẳn phần tên, nên những nơi chẳng liên quan — Tiên Cường, Tiên
-         * Tiến — vẫn nằm nguyên trong danh sách. Từ chỉ loại là gia vị thêm
-         * vào, không thay thế được việc so tên.
          */
         rows = filterByPhrase(rows, target);
-        rankByName(rows, target);
+        rankByName(rows, target, { scope, isNearby, rawQuery: raw });
         if (hint) {
             rows.forEach((r) => {
                 const n = noAccent(r.display_name || '');
@@ -7106,7 +7479,7 @@
         }
         dropTailors(rows);
         rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || (a._dist - b._dist));
-        return dedupeByCoord(pinned.concat(rows)).slice(0, 12);
+        return dedupeByCoord(pinned.concat(rows)).slice(0, 25);
     }
 
     /**
@@ -7700,22 +8073,33 @@
         const lower = query.toLowerCase().trim();
         showAssistantUI('Bạn vừa nói', query);
 
-        // 1. Dẫn đường đến địa điểm
-        const navMatch = query.match(/(?:dẫn đường|chỉ đường|tìm đường|tìm|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
-        if (navMatch && navMatch[1]) {
-            const dest = navMatch[1].trim();
-            // Nếu nói "tìm nhà máy VinFast" thì dest là "nhà máy VinFast"
-            $('searchInput').value = dest;
-            renderSearchClear();
-            openModal('searchModal');
-            closeAssistantUI();
-            doSearch();
-            speakAssistant('Đang tìm đường đến ' + dest);
-            return;
-        }
-
         // Phân biệt rõ nhà máy / showroom / công ty với trạm sạc (Đặc biệt khi dùng Voice Google)
         const isFactoryOrOrg = /(nhà máy|nha may|công xưởng|cong xuong|khu công nghiệp|kcn|công ty|showroom|đại lý|cửa hàng)/i.test(lower);
+
+        // 1. Tìm trường học / trường tiểu học / THCS / THPT / mầm non
+        if (/(trường học|tiểu học|thcs|thpt|mầm non|mẫu giáo|cấp 1|cấp 2|cấp 3|nhà trẻ)/i.test(lower)) {
+            const hasSpecificName = /(kim thành|kim thanh|lê quý đôn|le quy don|chu văn an|chu van an|nguyễn trãi|nguyen trai|nguyễn du|nguyen du|amsterdam|trần phú|tran phu|marie curie|nguyễn thị minh khai|nguyen thi minh khai|hồng bàng|hong bang|ngô quyền|ngo quyen)/i.test(lower);
+            const isNearIntent = /(gần|quanh|ở đâu|chỗ nào)/i.test(lower) || !hasSpecificName;
+            if (isNearIntent && !hasSpecificName) {
+                closeAssistantUI();
+                const sub = /(tiểu học|cấp 1)/i.test(lower) ? 'trường tiểu học'
+                    : (/(thcs|cấp 2)/i.test(lower) ? 'trường THCS'
+                    : (/(thpt|cấp 3)/i.test(lower) ? 'trường THPT'
+                    : (/(mầm non|mẫu giáo)/i.test(lower) ? 'trường mầm non' : 'trường học')));
+                speakAssistant(`Đang tìm ${sub} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường học');
+                if (c) {
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
+            }
+        }
 
         // 2. Tìm trạm sạc xe điện / VinFast (chỉ khi hỏi về sạc và KHÔNG chứa từ khoá nhà máy/công ty/showroom)
         if (!isFactoryOrOrg && /(trạm sạc|sạc xe|sạc vinfast|pin vinfast|trụ sạc|chỗ sạc)/i.test(lower)) {
@@ -7735,7 +8119,7 @@
         }
 
         // 3. Tìm cây xăng / trạm xăng
-        if (/(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/i.test(lower)) {
+        if (/(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
             closeAssistantUI();
             speakAssistant('Đang tìm cây xăng gần bạn nhất.');
             const c = PLACE_CATEGORIES.find((x) => x.label === 'Cây xăng');
@@ -7751,8 +8135,8 @@
             }
         }
 
-        // 4. Tìm siêu thị / trung tâm thương mại / chợ
-        if (/(siêu thị|trung tâm thương mại|mua sắm|chợ)/i.test(lower)) {
+        // 4. Tìm siêu thị / trung tâm thương mại / chợ (chỉ khi tìm chung, không chứa thương hiệu riêng như Vincom, Lotte...)
+        if (/(siêu thị|trung tâm thương mại|mua sắm|chợ)/i.test(lower) && !/(vincom|lotte|aeon|co.op|big c|go!|winmart)/i.test(lower)) {
             closeAssistantUI();
             const isMarket = /(chợ)/i.test(lower);
             const catLabel = isMarket ? 'Chợ' : 'Siêu thị';
@@ -7770,29 +8154,25 @@
             }
         }
 
-        // 5. Tìm trường học / trường tiểu học / THCS / THPT / mầm non
-        if (/(trường học|tiểu học|thcs|thpt|mầm non|mẫu giáo|cấp 1|cấp 2|cấp 3|nhà trẻ)/i.test(lower)) {
+        // 5. Tìm bảo tàng gần nhất
+        if (/(bảo tàng|bao tang|museum|viện bảo tàng)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
             closeAssistantUI();
-            speakAssistant('Đang tìm trường học gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường học');
+            speakAssistant('Đang tìm bảo tàng gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bảo tàng');
             if (c) {
-                const sub = /(tiểu học|cấp 1)/i.test(lower) ? 'trường tiểu học'
-                    : (/(thcs|cấp 2)/i.test(lower) ? 'trường THCS'
-                    : (/(thpt|cấp 3)/i.test(lower) ? 'trường THPT'
-                    : (/(mầm non|mẫu giáo)/i.test(lower) ? 'trường mầm non' : 'trường học')));
-                $('searchInput').value = sub;
+                $('searchInput').value = 'Bảo tàng';
                 renderSearchClear();
                 setActiveCategory(c.label);
                 openModal('searchModal');
                 const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bảo tàng gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
                 return;
             }
         }
 
-        // 6. Tìm bệnh viện / y tế
-        if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower)) {
+        // 6. Tìm bệnh viện / y tế gần nhất
+        if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower) && !/(việt tiệp|bạch mai|chợ rẫy|vinmec|từ dũ|108|115|kim thành)/i.test(lower)) {
             closeAssistantUI();
             speakAssistant('Đang tìm bệnh viện gần bạn nhất.');
             const c = PLACE_CATEGORIES.find((x) => x.label === 'Bệnh viện');
@@ -7823,6 +8203,19 @@
                 searchCategory(c).then(renderSearchResults);
                 return;
             }
+        }
+
+        // 8. Dẫn đường đến địa điểm đích cụ thể
+        const navMatch = query.match(/(?:dẫn đường|chỉ đường|tìm đường|tìm|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
+        if (navMatch && navMatch[1]) {
+            const dest = navMatch[1].trim();
+            $('searchInput').value = dest;
+            renderSearchClear();
+            openModal('searchModal');
+            closeAssistantUI();
+            doSearch();
+            speakAssistant('Đang tìm đường đến ' + dest);
+            return;
         }
 
         // 7. Hỏi tốc độ giới hạn
