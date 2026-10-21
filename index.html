@@ -269,14 +269,13 @@
         .car-pulse { animation: carPulse 2.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
         @media (prefers-reduced-motion: reduce) { .car-pulse { animation: none; } }
 
-        /* Hiệu ứng camera phạt nguội nhấp nháy tại đúng toạ độ */
+        /* Hiệu ứng camera phạt nguội nhấp nháy tại đúng toạ độ (chỉ dùng filter/opacity, không dùng transform để tránh lỗi nhảy toạ độ) */
         @keyframes cameraBlink {
-            0%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.8)); }
-            50% { transform: scale(1.22); opacity: 0.85; filter: drop-shadow(0 0 10px rgba(239, 68, 68, 1)); }
+            0%, 100% { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.7)); }
+            50% { opacity: 1; filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1)); }
         }
         .camera-blink {
             animation: cameraBlink 1.2s ease-in-out infinite;
-            transform-origin: center;
         }
 
         /* Nút micro to gấp đôi trong ô tìm kiếm, đè lên mép khung */
@@ -488,12 +487,12 @@
         /* Hiệu ứng nhấp nháy cho icon camera phạt nguội trên toạ độ bản đồ */
         @keyframes camBlink {
             0%, 100% {
-                transform: scale(1);
-                filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4));
+                filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.5));
+                opacity: 0.9;
             }
             50% {
-                transform: scale(1.22);
-                filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.95));
+                filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1));
+                opacity: 1;
             }
         }
         .cam-blinking {
@@ -602,19 +601,27 @@
                             style="width: 42px; height: 42px;">
                         <i class="fa-solid fa-triangle-exclamation text-xl"></i>
                     </button>
-                    <!-- 2. Chế độ lọc đường / tránh đường ĐẶT DƯỚI TAM GIÁC BÁO CÁO: BIỂU TƯỢNG TRÁNH MÔ TẢ ĐI ĐƯỜNG RẼ VÀ MỘT BÊN TRÁNH -->
+                    <!-- 2. Chế độ lọc đường / tránh đường ĐẶT DƯỚI TAM GIÁC BÁO CÁO: BIỂU TƯỢNG CON ĐƯỜNG VÀ ĐƯỜNG TRÁNH NÉ VẬT CẢN -->
                     <button id="routeFilterBtn" onclick="openRouteSettings()" aria-label="Chế độ lọc và tránh đường"
-                            class="rounded-xl bg-slate-900/90 border border-indigo-400/50 shadow-xl flex items-center justify-center text-indigo-400 hover:text-indigo-300 active:scale-95 transition"
+                            class="rounded-xl bg-slate-900/90 border border-indigo-400/50 shadow-xl flex items-center justify-center hover:bg-slate-800 active:scale-95 transition"
                             style="width: 42px; height: 42px;">
-                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <!-- Đường chính từ dưới lên -->
-                            <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
-                            <!-- Nhánh thẳng bị tránh/chặn: nét đứt và thanh chắn cấm đỏ -->
-                            <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
-                            <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-                            <!-- Nhánh rẽ tránh sang một bên lượn mượt mà đi tiếp -->
-                            <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
-                            <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- Con đường chính với 2 mép đường song song rõ nét (biểu tượng con đường) -->
+                            <path d="M4 22L4 12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 22L12 14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                            <!-- Đoạn đường thẳng phía trước bị cấm/chặn (nét đứt) -->
+                            <path d="M4 12L4 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                            <path d="M12 12L12 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                            <!-- Rào chắn / Vật cản màu đỏ cấm đi thẳng -->
+                            <rect x="2.5" y="7" width="11" height="4" rx="1.5" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
+                            <line x1="5.5" y1="7" x2="7.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                            <line x1="8.5" y1="7" x2="10.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                            <!-- Mép ngoài của nhánh đường tránh rẽ sang một bên -->
+                            <path d="M12 14C15 14 20 12 20 8L20 3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                            <!-- Làn xe rẽ nhánh tránh chướng ngại vật (màu xanh cyan rực rỡ) -->
+                            <path d="M8 21L8 15C8 11.5 16 11.5 16 7L16 2.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
+                            <!-- Mũi tên dẫn hướng đường tránh chỉ về phía trước -->
+                            <path d="M13.5 5L16 2.5L18.5 5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </button>
                 </div>
@@ -674,7 +681,7 @@
                             <span class="text-xs font-semibold ml-1 text-slate-500">km/h</span>
                         </div>
                     </div>
-                    <div id="limit-speed-box" onclick="demoNextSpeedLimit()" class="w-[56px] h-[56px] rounded-full border-[5px] border-red-600 bg-white shadow-lg flex items-center justify-center flex-shrink-0 cursor-pointer">
+                    <div id="limit-speed-box" onclick="demoNextSpeedLimit()" oncontextmenu="event.preventDefault(); demoTrafficSign();" class="w-[56px] h-[56px] rounded-full border-[5px] border-red-600 bg-white shadow-lg flex items-center justify-center flex-shrink-0 cursor-pointer" title="Chạm: Báo tốc độ tiếp theo trên trục đường | Chuột phải/giữ: Thử biển báo (Khu dân cư, cấm vượt...)">
                         <span id="limitValue" class="text-2xl font-black text-black leading-none">60</span>
                     </div>
                 </div>
@@ -773,15 +780,20 @@
                     </div>
 
                     <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="event.stopPropagation(); openRouteSettings()" aria-label="Tuỳ chọn tuyến đường"
-                                class="bar-btn text-indigo-500">
-                            <!-- Biểu tượng tránh icon mô tả đi đường rẽ và một bên tránh -->
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
-                                <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
-                                <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-                                <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
-                                <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <button onclick="event.stopPropagation(); openRouteSettings()" aria-label="Tuỳ chọn tuyến đường & tránh đường"
+                                class="bar-btn">
+                            <!-- Biểu tượng con đường và đường rẽ tránh vật cản -->
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 22L4 12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M12 22L12 14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M4 12L4 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                                <path d="M12 12L12 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                                <rect x="2.5" y="7" width="11" height="4" rx="1.5" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
+                                <line x1="5.5" y1="7" x2="7.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                                <line x1="8.5" y1="7" x2="10.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                                <path d="M12 14C15 14 20 12 20 8L20 3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M8 21L8 15C8 11.5 16 11.5 16 7L16 2.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
+                                <path d="M13.5 5L16 2.5L18.5 5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
                         <div class="w-7 h-7 rounded-full bg-slate-200/50 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 dark:text-slate-400">
@@ -1419,13 +1431,18 @@
                 <!-- 2. Thay đổi hướng / Tuỳ chọn lộ trình tránh đường -->
                 <button onclick="closeModal('navActionsModal'); openRouteSettings()"
                         class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-sm active:scale-98 transition">
-                    <!-- Icon tránh đường: đường rẽ và một bên tránh -->
-                    <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
-                        <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
-                        <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
-                        <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
-                        <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Icon tránh đường: con đường rõ ràng và một bên rẽ nhánh tránh vật cản -->
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 22L4 12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M12 22L12 14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 12L4 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                        <path d="M12 12L12 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
+                        <rect x="2.5" y="7" width="11" height="4" rx="1.5" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
+                        <line x1="5.5" y1="7" x2="7.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                        <line x1="8.5" y1="7" x2="10.5" y2="11" stroke="#ffffff" stroke-width="1"/>
+                        <path d="M12 14C15 14 20 12 20 8L20 3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M8 21L8 15C8 11.5 16 11.5 16 7L16 2.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
+                        <path d="M13.5 5L16 2.5L18.5 5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span>Thay đổi hướng & Tuỳ chọn tránh</span>
                 </button>
@@ -1649,7 +1666,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'ec4771b';
+    const BUILD_TAG = '69bad84';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2493,11 +2510,28 @@
         };
         speedCameras.forEach((cam) => {
             const st = STYLE[cam.kind] || STYLE.other;
+            const isSpeedCam = cam.kind === 'speed' || !cam.kind;
+            const distBadge = cam.dist ? `<span class="absolute -bottom-2 -left-1 bg-slate-900 text-sky-400 font-black text-[7.5px] px-1 py-0.5 rounded border border-sky-400 leading-none">${cam.dist}m</span>` : '';
+            const iconHtml = isSpeedCam ? `
+                <div class="cam-blinking relative flex items-center justify-center" style="width: 24px; height: 22px;">
+                    <svg width="24" height="22" viewBox="0 0 32 30" fill="none" style="filter: drop-shadow(0 2px 5px rgba(0,0,0,0.6)); transform: scaleX(-1);">
+                        <ellipse cx="6" cy="22" rx="4.5" ry="5.5" fill="#93c5fd"/>
+                        <path d="M 6 21 L 16 20 L 16 23 L 6 24 Z" fill="#1e3a8a"/>
+                        <rect x="15" y="19" width="4" height="6" rx="1.5" fill="#60a5fa"/>
+                        <path d="M 12 14 C 12 17 21 17 21 14 Z" fill="#60a5fa"/>
+                        <path d="M 8 9 L 26 14 L 23 20 L 9 14 Z" fill="#3b82f6"/>
+                        <path d="M 7 6 C 7 5 9 5 10 5.5 L 29 10 C 31 10.5 31 12 30 13 L 27 15 L 7 9 Z" fill="#bfdbfe"/>
+                        <ellipse cx="26" cy="14.5" rx="2.5" ry="3.5" fill="#ffffff" stroke="#1e3a8a" stroke-width="0.8"/>
+                        <circle cx="21" cy="11" r="1.2" fill="#ef4444"/>
+                    </svg>
+                    ${distBadge}
+                </div>` : `
+                <div class="vm-icon cam-blinking rounded-full w-6 h-6 flex items-center justify-center border-2 border-white text-white ${st.bg}">
+                    <i class="fa-solid ${st.icon} text-[10px]"></i>
+                </div>`;
             const icon = L.divIcon({
-                html: `<div class="vm-icon cam-blinking rounded-full w-8 h-8 flex items-center justify-center border-2 border-white text-white ${st.bg}">
-                         <i class="fa-solid ${st.icon} text-xs"></i>
-                       </div>`,
-                className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+                html: iconHtml,
+                className: '', iconSize: [24, 22], iconAnchor: [12, 11]
             });
             const isSample = cam.source === 'sample' || (cam.source === 'local' && localCameraIsSample);
             const rows = [
@@ -4222,6 +4256,30 @@
         }
 
         if (isOffline()) {
+            if (typeof VN_LANDMARKS !== 'undefined' && Array.isArray(VN_LANDMARKS)) {
+                const sub = cat && cat._subQuery ? String(cat._subQuery).toLowerCase() : '';
+                const offlineHits = VN_LANDMARKS
+                    .filter(([n]) => {
+                        const na = noAccent(n);
+                        if (sub && na.includes(sub)) return true;
+                        if (cat.coreRe && cat.coreRe.test(na)) return true;
+                        if (cat.words && cat.words.some((w) => na.includes(w))) return true;
+                        return false;
+                    })
+                    .map(([n, lat, lon, c]) => ({
+                        lat, lon,
+                        display_name: `${n}, ${c}`,
+                        _dist: haversine(here[0], here[1], lat, lon),
+                        _cat: cat.label,
+                        _local: true
+                    }))
+                    .filter((r) => r._dist <= CATEGORY_MAX_KM * 1000);
+                if (offlineHits.length) {
+                    const keptOff = strictFilter(offlineHits, cat);
+                    rankCategoryRows(keptOff, cat);
+                    return keptOff.slice(0, CAT_LIST_SIZE);
+                }
+            }
             showToast(`Cần mạng để tìm ${cat.label.toLowerCase()}`, 'warn');
             return [];
         }
@@ -4300,6 +4358,28 @@
             if (r.status === 'fulfilled' && Array.isArray(r.value)) {
                 allHits = allHits.concat(r.value);
             }
+        }
+
+        // Thu hoạch thêm các tiện ích / cơ sở có sẵn trong VN_LANDMARKS nằm trong bán kính tìm kiếm
+        if (typeof VN_LANDMARKS !== 'undefined' && Array.isArray(VN_LANDMARKS)) {
+            const sub = cat && cat._subQuery ? String(cat._subQuery).toLowerCase() : '';
+            const localMatches = VN_LANDMARKS
+                .filter(([n]) => {
+                    const na = noAccent(n);
+                    if (sub && na.includes(sub)) return true;
+                    if (cat.coreRe && cat.coreRe.test(na)) return true;
+                    if (cat.words && cat.words.some((w) => na.includes(w))) return true;
+                    return false;
+                })
+                .map(([n, lat, lon, c]) => ({
+                    lat, lon,
+                    display_name: `${n}, ${c}`,
+                    _dist: haversine(here[0], here[1], lat, lon),
+                    _cat: cat.label,
+                    _local: true
+                }))
+                .filter((r) => r._dist <= km * 1000);
+            if (localMatches.length) allHits = allHits.concat(localMatches);
         }
 
         allHits = dedupeByCoord(allHits).filter((r) => r._dist <= km * 1000);
@@ -12191,6 +12271,22 @@
             'vi-VN': (d) => `Phía trước giới hạn ${d.a}, ngay sau đó là ${d.b}. Chú ý.`,
             'en-US': (d) => `Limit ${d.a} ahead, then ${d.b}. Take care.`
         },
+        residential_in: {
+            'vi-VN': (d) => `Sắp vào khu đông dân cư${d.limit ? ', tốc độ tối đa ' + d.limit : ''} sau ${d.dist} mét.`,
+            'en-US': (d) => `Approaching residential area in ${d.dist} meters${d.limit ? ', speed limit ' + d.limit : ''}.`
+        },
+        residential_out: {
+            'vi-VN': (d) => `Hết khu đông dân cư${d.limit ? ', tốc độ tối đa ' + d.limit : ''} sau ${d.dist} mét.`,
+            'en-US': (d) => `Leaving residential area in ${d.dist} meters${d.limit ? ', speed limit ' + d.limit : ''}.`
+        },
+        no_overtaking: {
+            'vi-VN': (d) => `Khu vực cấm vượt sau ${d.dist} mét. Chú ý không vượt xe.`,
+            'en-US': (d) => `No overtaking zone ahead in ${d.dist} meters.`
+        },
+        end_restrictions: {
+            'vi-VN': (d) => `Hết tất cả các lệnh cấm sau ${d.dist} mét.`,
+            'en-US': (d) => `End of all restrictions in ${d.dist} meters.`
+        },
         test_voice: {
             'vi-VN': () => 'Giọng nói đang hoạt động. Rẽ phải sau hai trăm mét.',
             'en-US': () => 'Voice is working. Turn right in two hundred meters.'
@@ -12765,10 +12861,18 @@
     }
 
     let nextLimitTimer = null;
+    let nextSpeedMarkerObj = null;
+    let trafficSignMarkerObj = null;
+    let trafficSignTimer = null;
+
     function hideNextLimitBox() {
         $('next-limit-box').classList.add('hidden');
         $('next-limit-box').classList.remove('flex');
     }
+
+    /**
+     * BIỂN GIỚI HẠN TỐC ĐỘ TIẾP THEO: NẰM TRÊN TRỤC ĐƯỜNG (ĐÈ LÊN) KÈM SỐ MÉT CÒN LẠI
+     */
     function announceNextLimit(nextSpeed, dist) {
         if (nextSpeed === speedState.limit) return;
         const dir = nextSpeed < speedState.limit ? 'down' : 'up';
@@ -12777,15 +12881,28 @@
         speak('next_speed', { speed: nextSpeed, dist, dir });
 
         if (map) {
-            // Giả lập vị trí biển phía Bắc xe (1 độ vĩ ≈ 111 km)
+            // Vị trí nằm chính xác TRÊN TRỤC ĐƯỜNG (dọc theo lộ trình di chuyển của xe)
+            const aheadPt = pointAhead(dist);
             const pos = getCurrentPos();
-            const coords = [pos[0] + dist / 111000, pos[1]];
-            const html = `<div class="w-12 h-12 rounded-full border-[5px] border-red-600 bg-white shadow-2xl flex items-center justify-center">
-                    <span class="text-xl font-black text-black leading-none">${nextSpeed}</span></div>`;
-            const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 48] });
+            const coords = aheadPt || (heading != null && !isNaN(heading)
+                ? [pos[0] + (dist * Math.cos(heading * Math.PI / 180)) / 110540,
+                   pos[1] + (dist * Math.sin(heading * Math.PI / 180)) / (111320 * Math.cos(pos[0] * Math.PI / 180))]
+                : [pos[0] + dist / 111000, pos[1]]);
+
+            // Marker chuẩn biển báo tròn viền đỏ nền trắng số đen ĐÈ LÊN TRỤC ĐƯỜNG kèm huy hiệu số mét còn lại
+            const html = `<div class="flex flex-col items-center select-none cursor-pointer filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.65)]" style="transform: translate3d(0,0,0);">
+                    <div class="relative w-11 h-11 rounded-full border-[4px] border-red-600 bg-white shadow-md flex items-center justify-center">
+                        <div class="absolute -inset-1 rounded-full border border-red-500/40 animate-ping"></div>
+                        <span class="text-lg font-black text-black leading-none">${nextSpeed}</span>
+                    </div>
+                    <div class="mt-1 px-2 py-0.5 rounded-full bg-slate-900/95 border border-sky-400 text-sky-400 font-black text-[10px] leading-tight shadow-md flex items-center gap-0.5 whitespace-nowrap">
+                        <span>${dist}m</span>
+                    </div>
+                </div>`;
+            const icon = L.divIcon({ html, className: '', iconSize: [44, 64], iconAnchor: [22, 22] });
             if (nextSpeedMarkerObj) map.removeLayer(nextSpeedMarkerObj);
             nextSpeedMarkerObj = L.marker(coords, { icon, zIndexOffset: 1000 }).addTo(map)
-                .bindTooltip(`Giới hạn tiếp theo (${dist}m)`, { permanent: true, direction: 'top', offset: [0, -45], className: 'font-bold text-xs' });
+                .bindTooltip(`Giới hạn tiếp theo (${dist}m)`, { permanent: false, direction: 'top', offset: [0, -22], className: 'font-bold text-xs' });
         }
 
         clearTimeout(nextLimitTimer);
@@ -12795,6 +12912,191 @@
             setSpeedLimit(nextSpeed);
             showToast(`Đã vào khu vực giới hạn ${nextSpeed} km/h`);
         }, 6000);
+    }
+
+    // =====================================================================
+    // 9b. BỘ BIỂN BÁO GIAO THÔNG CHUẨN QCVN 41:2019
+    // - Biển R.420: Bắt đầu khu đông dân cư kèm tốc độ giới hạn sau biển
+    // - Biển R.421: Hết khu đông dân cư kèm tốc độ giới hạn sau biển (nếu có)
+    // - Biển P.125: Khu vực cấm vượt
+    // - Biển DP.135: Hết tất cả các lệnh cấm
+    // =====================================================================
+
+    /** Biển Khu dân cư (R.420) chuẩn ảnh QCVN 41 kèm biển tốc độ sau biển */
+    function getResidentialSignHtml(speedLimit = 50, dist = 400) {
+        return `<div class="flex flex-col items-center select-none cursor-pointer filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.7)]">
+            <div class="flex items-center gap-1">
+                <!-- Biển chữ nhật R.420: Bắt đầu khu đông dân cư chuẩn vector -->
+                <div class="relative w-12 h-10 rounded bg-[#0046aa] border-[1px] border-white/40 shadow-md flex items-end justify-center p-0.5 overflow-hidden">
+                    <svg viewBox="0 0 1024 853" class="w-full h-full" fill="none">
+                        <rect width="1024" height="853" rx="16" fill="#0046aa"/>
+                        <rect x="14" y="14" width="996" height="825" rx="12" stroke="#ffffff" stroke-width="14" fill="none"/>
+                        <polygon points="46,639 46,497 128,413 210,497 210,563 234,563 234,400 252,381 252,220 299,130 346,220 346,381 364,400 364,468 418,440 524,505 524,600 552,600 552,364 562,364 562,267 572,267 572,171 668,171 668,297 684,297 684,462 720,462 720,559 736,559 736,398 801,342 874,403 874,485 931,439 982,491 982,639" fill="#ffffff"/>
+                    </svg>
+                </div>
+                ${speedLimit ? `
+                <!-- Biển tròn giới hạn tốc độ sau biển -->
+                <div class="w-7 h-7 rounded-full border-[2.5px] border-red-600 bg-white shadow-md flex items-center justify-center -ml-2 z-10">
+                    <span class="text-xs font-black text-black leading-none">${speedLimit}</span>
+                </div>` : ''}
+            </div>
+            ${dist ? `<div class="mt-1 px-2 py-0.5 rounded-full bg-slate-900/95 border border-sky-400 text-sky-400 font-black text-[10px] leading-tight shadow-md whitespace-nowrap">
+                ${dist}m
+            </div>` : ''}
+        </div>`;
+    }
+
+    /** Biển Hết khu dân cư (R.421) chuẩn ảnh QCVN 41 kèm biển tốc độ sau biển (nếu có) */
+    function getEndResidentialSignHtml(speedLimit = 80, dist = 350) {
+        return `<div class="flex flex-col items-center select-none cursor-pointer filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.7)]">
+            <div class="flex items-center gap-1">
+                <!-- Biển chữ nhật R.421: Hết khu đông dân cư có vạch đỏ chéo từ dưới-trái lên trên-phải -->
+                <div class="relative w-12 h-10 rounded bg-[#0046aa] border-[1px] border-white/40 shadow-md flex items-end justify-center p-0.5 overflow-hidden">
+                    <svg viewBox="0 0 1024 853" class="w-full h-full" fill="none">
+                        <defs>
+                            <clipPath id="r421-leaflet-clip">
+                                <rect width="1024" height="853" rx="16"/>
+                            </clipPath>
+                        </defs>
+                        <g clip-path="url(#r421-leaflet-clip)">
+                            <rect width="1024" height="853" rx="16" fill="#0046aa"/>
+                            <rect x="14" y="14" width="996" height="825" rx="12" stroke="#ffffff" stroke-width="14" fill="none"/>
+                            <polygon points="46,639 46,497 128,413 210,497 210,563 234,563 234,400 252,381 252,220 299,130 346,220 346,381 364,400 364,468 418,440 524,505 524,600 552,600 552,364 562,364 562,267 572,267 572,171 668,171 668,297 684,297 684,462 720,462 720,559 736,559 736,398 801,342 874,403 874,485 931,439 982,491 982,639" fill="#ffffff"/>
+                            <line x1="-30" y1="880" x2="1054" y2="-27" stroke="#e11d48" stroke-width="74" stroke-linecap="square"/>
+                        </g>
+                    </svg>
+                </div>
+                ${speedLimit ? `
+                <!-- Biển tròn giới hạn tốc độ sau biển (nếu có) -->
+                <div class="w-7 h-7 rounded-full border-[2.5px] border-red-600 bg-white shadow-md flex items-center justify-center -ml-2 z-10">
+                    <span class="text-xs font-black text-black leading-none">${speedLimit}</span>
+                </div>` : ''}
+            </div>
+            ${dist ? `<div class="mt-1 px-2 py-0.5 rounded-full bg-slate-900/95 border border-sky-400 text-sky-400 font-black text-[10px] leading-tight shadow-md whitespace-nowrap">
+                ${dist}m
+            </div>` : ''}
+        </div>`;
+    }
+
+    /** Biển Cấm vượt (P.125) chuẩn ảnh QCVN 41 */
+    function getNoOvertakingSignHtml(dist = 200) {
+        return `<div class="flex flex-col items-center select-none cursor-pointer filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.7)]">
+            <div class="relative w-10 h-10 rounded-full border-[3.5px] border-red-600 bg-[#f8fafc] shadow-md flex items-center justify-center">
+                <svg viewBox="0 0 100 100" class="w-8 h-8" fill="none">
+                    <!-- Xe đỏ bên trái đang vượt -->
+                    <g transform="translate(15, 37)">
+                        <path d="M 6.5 10 L 9.5 1.5 C 10 0.5 11 0 12.5 0 L 21.5 0 C 23 0 24 0.5 24.5 1.5 L 27.5 10 Z" stroke="#e11d48" stroke-width="2.6" fill="none" stroke-linejoin="round"/>
+                        <rect x="0" y="10" width="34" height="11" rx="3.5" fill="#e11d48"/>
+                        <rect x="3.5" y="21" width="5.5" height="6" rx="2.5" fill="#e11d48"/>
+                        <rect x="25" y="21" width="5.5" height="6" rx="2.5" fill="#e11d48"/>
+                    </g>
+                    <!-- Xe xám đen bên phải -->
+                    <g transform="translate(51, 37)">
+                        <path d="M 6.5 10 L 9.5 1.5 C 10 0.5 11 0 12.5 0 L 21.5 0 C 23 0 24 0.5 24.5 1.5 L 27.5 10 Z" stroke="#334155" stroke-width="2.6" fill="none" stroke-linejoin="round"/>
+                        <rect x="0" y="10" width="34" height="11" rx="3.5" fill="#334155"/>
+                        <rect x="3.5" y="21" width="5.5" height="6" rx="2.5" fill="#334155"/>
+                        <rect x="25" y="21" width="5.5" height="6" rx="2.5" fill="#334155"/>
+                    </g>
+                </svg>
+            </div>
+            ${dist ? `<div class="mt-1 px-2 py-0.5 rounded-full bg-slate-900/95 border border-sky-400 text-sky-400 font-black text-[10px] leading-tight shadow-md whitespace-nowrap">
+                ${dist}m
+            </div>` : ''}
+        </div>`;
+    }
+
+    /** Biển Hết tất cả các lệnh cấm (DP.135) chuẩn ảnh QCVN 41 viền xanh cyan */
+    function getEndAllRestrictionsSignHtml(dist = 150) {
+        return `<div class="flex flex-col items-center select-none cursor-pointer filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.7)]">
+            <div class="relative w-10 h-10 rounded-full border-[3px] border-[#00aeef] bg-white shadow-md flex items-center justify-center overflow-hidden">
+                <svg viewBox="0 0 100 100" class="w-8 h-8" fill="none">
+                    <defs>
+                        <clipPath id="circle-clip-dp135-leaflet">
+                            <circle cx="50" cy="50" r="42"/>
+                        </clipPath>
+                    </defs>
+                    <g clip-path="url(#circle-clip-dp135-leaflet)" stroke="#1e293b" stroke-width="3.5" stroke-linecap="square">
+                        <line x1="-15" y1="115" x2="115" y2="-15" transform="translate(-16, -16)"/>
+                        <line x1="-15" y1="115" x2="115" y2="-15" transform="translate(-8, -8)"/>
+                        <line x1="-15" y1="115" x2="115" y2="-15"/>
+                        <line x1="-15" y1="115" x2="115" y2="-15" transform="translate(8, 8)"/>
+                        <line x1="-15" y1="115" x2="115" y2="-15" transform="translate(16, 16)"/>
+                    </g>
+                </svg>
+            </div>
+            ${dist ? `<div class="mt-1 px-2 py-0.5 rounded-full bg-slate-900/95 border border-sky-400 text-sky-400 font-black text-[10px] leading-tight shadow-md whitespace-nowrap">
+                ${dist}m
+            </div>` : ''}
+        </div>`;
+    }
+
+    /** Phát loa và vẽ biển báo giao thông tiếp theo trên bản đồ */
+    function announceTrafficSign(type, dist = 300, extra = {}) {
+        let html = '';
+        let label = '';
+        switch (type) {
+            case 'residential_in':
+                html = getResidentialSignHtml(extra.limit || 50, dist);
+                label = `Khu dân cư (tối đa ${extra.limit || 50} km/h)`;
+                break;
+            case 'residential_out':
+                html = getEndResidentialSignHtml(extra.limit || 80, dist);
+                label = `Hết khu dân cư (tối đa ${extra.limit || 80} km/h)`;
+                break;
+            case 'no_overtaking':
+                html = getNoOvertakingSignHtml(dist);
+                label = 'Khu vực cấm vượt';
+                break;
+            case 'end_restrictions':
+                html = getEndAllRestrictionsSignHtml(dist);
+                label = 'Hết mọi lệnh cấm';
+                break;
+            default:
+                return;
+        }
+
+        speak(type, { dist, limit: extra.limit });
+
+        if (map) {
+            const aheadPt = pointAhead(dist);
+            const pos = getCurrentPos();
+            const coords = aheadPt || (heading != null && !isNaN(heading)
+                ? [pos[0] + (dist * Math.cos(heading * Math.PI / 180)) / 110540,
+                   pos[1] + (dist * Math.sin(heading * Math.PI / 180)) / (111320 * Math.cos(pos[0] * Math.PI / 180))]
+                : [pos[0] + dist / 111000, pos[1]]);
+
+            const icon = L.divIcon({ html, className: '', iconSize: [56, 64], iconAnchor: [28, 24] });
+            if (trafficSignMarkerObj) map.removeLayer(trafficSignMarkerObj);
+            trafficSignMarkerObj = L.marker(coords, { icon, zIndexOffset: 950 }).addTo(map)
+                .bindTooltip(`${label} (${dist}m)`, { permanent: false, direction: 'top', offset: [0, -20], className: 'font-bold text-xs' });
+        }
+
+        showToast(`${label} cách ${dist}m`);
+
+        clearTimeout(trafficSignTimer);
+        trafficSignTimer = setTimeout(() => {
+            if (map && trafficSignMarkerObj) {
+                map.removeLayer(trafficSignMarkerObj);
+                trafficSignMarkerObj = null;
+            }
+        }, 8000);
+    }
+
+    const DEMO_TRAFFIC_SIGNS = [
+        { type: 'residential_in', dist: 400, limit: 50 },
+        { type: 'residential_out', dist: 350, limit: 80 },
+        { type: 'no_overtaking', dist: 200 },
+        { type: 'end_restrictions', dist: 150 }
+    ];
+    let demoSignIdx = 0;
+    function demoTrafficSign(type) {
+        if (!type) {
+            const item = DEMO_TRAFFIC_SIGNS[demoSignIdx++ % DEMO_TRAFFIC_SIGNS.length];
+            announceTrafficSign(item.type, item.dist, { limit: item.limit });
+        } else {
+            const item = DEMO_TRAFFIC_SIGNS.find(s => s.type === type) || DEMO_TRAFFIC_SIGNS[0];
+            announceTrafficSign(item.type, item.dist, { limit: item.limit });
+        }
     }
 
     // =====================================================================
@@ -13049,7 +13351,7 @@
         const routing = nav.active;
         if (routing) {
             $('bottom-bar')?.classList.remove('hidden');
-            $('home-search-container')?.classList.add('hidden');
+            $('home-search-container')?.classList.remove('hidden'); // Dẫn đường tụt xuống, còn lại ô tìm kiếm
             $('home-chips-row')?.classList.add('hidden');
             $('home-recent-list')?.classList.add('hidden');
             setSheetPosition('low');
