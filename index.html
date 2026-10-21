@@ -1080,49 +1080,6 @@
                     </button>
                     <p class="text-[10px] text-center text-slate-400 mt-2">Chia sẻ VietNav qua Zalo, Messenger, SMS...</p>
 
-                    <!-- Địa điểm VMaps chưa có, ghi lại từ link dán vào -->
-                    <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-                        <div class="text-sm font-semibold mb-1">Địa điểm mới ghi nhận được</div>
-                        <p class="text-xs text-slate-500 mb-2">
-                            Dán link Google Maps vào ô tìm kiếm, nếu chỗ đó chưa có trong dữ liệu
-                            VMaps thì app tự ghi lại đây. <b>Chưa gửi đi đâu cả</b> — app chưa có
-                            máy chủ nhận. Xuất ra file rồi gửi cho người làm dữ liệu.
-                        </p>
-                        <div id="contribStatus" class="text-xs font-semibold mb-2">–</div>
-                        <div class="flex gap-2">
-                            <button onclick="exportContrib()" class="flex-1 bg-slate-700 text-white rounded-xl px-3 py-2 font-bold text-xs">
-                                <i class="fa-solid fa-file-export mr-1"></i>Xuất file
-                            </button>
-                            <button onclick="clearContrib()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-500 font-bold text-xs">
-                                Xoá
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- KHO DỮ LIỆU CẢNH BÁO (camera phạt nguội, giới hạn tốc độ,
-                         địa điểm mới). Nằm trên Drive, phân theo tỉnh thành, nên
-                         thêm dữ liệu KHÔNG cần dựng lại app. Phần này ai cũng
-                         thấy: đọc dữ liệu là việc của mọi người dùng, chỉ phần
-                         GHI mới cần quản trị. -->
-                    <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-700 p-3">
-                        <div class="text-sm font-semibold mb-1">
-                            <i class="fa-solid fa-database mr-1"></i>Kho dữ liệu cảnh báo
-                        </div>
-                        <div id="remoteStatus" class="text-xs mb-2">–</div>
-                        <div class="flex gap-2">
-                            <input id="remoteUrlInput" type="url" placeholder="Địa chỉ kho dữ liệu (https://…)"
-                                   class="flex-1 text-[11px] px-2 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent">
-                            <button onclick="saveRemoteUrl()" class="px-3 py-1.5 rounded-lg bg-slate-700 text-white font-bold text-[11px]">Lưu</button>
-                        </div>
-                        <button onclick="refreshRemoteData(true)" class="w-full mt-2 py-2 rounded-xl border border-slate-300 dark:border-slate-600 font-bold text-xs">
-                            <i class="fa-solid fa-rotate mr-1"></i>Tải lại dữ liệu ngay
-                        </button>
-                        <p class="text-[10px] text-slate-400 mt-1">
-                            Nhận JSON từ Apps Script, hoặc CSV từ Google Sheet đã publish.
-                            Mất mạng thì dùng bản vừa tải còn lưu trong máy.
-                        </p>
-                    </div>
-
                     <!-- ===== QUẢN TRỊ: áp giới hạn tốc độ cho cả một tuyến =====
                          Ẩn hoàn toàn với người dùng thường. Bật bằng
                          localStorage.setItem('vietnav.admin','1') rồi mở lại app.
@@ -1251,18 +1208,13 @@
                         <div class="mt-3">
                             <div id="limitStoreStatus" class="text-xs font-semibold mb-1">–</div>
                             <div id="limitList" class="space-y-1 max-h-64 overflow-y-auto no-scrollbar"></div>
-                            <div class="flex gap-2 mt-2">
-                                <button onclick="exportLimits()" class="flex-1 py-2 rounded-xl bg-slate-700 text-white font-bold text-xs">
-                                    <i class="fa-solid fa-file-export mr-1"></i>Xuất file
-                                </button>
-                                <button onclick="clearLimitDrafts()" class="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-500 font-bold text-xs">
+                            <div class="mt-2">
+                                <button onclick="clearLimitDrafts()" class="w-full py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-500 font-bold text-xs">
                                     Xoá hết nháp
                                 </button>
                             </div>
                             <p class="text-[10px] text-slate-400 mt-1">
-                                Nháp và mục đã xác nhận lưu ngay trong máy này. Xuất file rồi đưa vào
-                                <code>data/speed_limits_manual.json</code> thì mọi máy mới nhận được.
-                                Khi đã nối Apps Script thì gửi thẳng lên Sheet, phân theo tỉnh thành.
+                                Nháp và mục đã xác nhận lưu trong máy. Khi đã nối Apps Script thì gửi thẳng lên Sheet, phân theo tỉnh thành.
                             </p>
                         </div>
                         </div>
@@ -1462,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'c279377';
+    const BUILD_TAG = 'f8ce038';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -10296,8 +10248,8 @@
         // Nút thoát app chỉ có nghĩa trong APK — quyết định lúc mở bảng, vì
         // cầu nối Android có thể chưa sẵn sàng lúc trang vừa nạp.
         if (id === 'settingsModal') {
-            showExitSuggest(); renderContribStatus();
-            renderRemoteStatus(); showAdminBox();
+            showExitSuggest();
+            showAdminBox();
         }
     }
     function closeModal(id) {
