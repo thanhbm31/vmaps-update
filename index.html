@@ -557,7 +557,7 @@
                     </div>
                     <div class="flex-1 min-w-0">
                         <div id="assistantStatus" class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Trợ lý VMaps</div>
-                        <div id="assistantText" class="text-sm font-medium text-slate-100 truncate mt-0.5">"Hey VMaps! Bạn muốn đi đâu?"</div>
+                        <div id="assistantText" class="text-sm font-medium text-slate-100 truncate mt-0.5">"Alo bản đồ! Bạn muốn đi đâu?"</div>
                     </div>
                     <button onclick="closeAssistantUI()" class="text-slate-400 hover:text-white p-1">
                         <i class="fa-solid fa-xmark text-lg"></i>
@@ -1414,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '4533682';
+    const BUILD_TAG = 'e08c964';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3479,7 +3479,7 @@
          */
         { mb: 'park', label: 'Công viên', icon: 'fa-tree',
           words: [
-              'cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'safari',
+              'cong vien', 'park', 'so thu', 'zoo', 'vuon thu', 'safari',
               'vuon bach thao', 'cong vien giai tri', 'cong vien nuoc', 'khu vui choi', 'theme park'
           ],
           tags: ['leisure=park', 'tourism=zoo', 'leisure=nature_reserve', 'tourism=theme_park', 'leisure=water_park'],
@@ -5883,7 +5883,13 @@
     // những loại xung đột xuống. Dùng chung bộ xếp hạng với tìm theo nhóm.
     // ---------------------------------------------------------------------
     const TYPE_HINTS = [
-        { words: ['cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'safari', 'vuon bach thao'],
+        { words: ['cho', 'cho dau moi'],
+          prefer: /cho |cho dau moi|marketplace|cho trung tam/,
+          demote: /cho coc|cho tam|sieu thi|tap hoa|quan an|quan / },
+        { words: ['sieu thi', 'supermarket'],
+          prefer: /sieu thi|supermarket|co.?opmart|winmart|big ?c|go!|lotte mart|mega market|bach hoa xanh|emart|fujimart|lan ?chi|dien may xanh|mediamart|pico/,
+          demote: /tap hoa|cua hang tien loi|quan / },
+        { words: ['cong vien', 'park', 'so thu', 'zoo', 'vuon thu', 'safari', 'vuon bach thao'],
           prefer: /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|asia park|sun world/,
           demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ },
         { words: ['chua', 'nha tho', 'den', 'dinh', 'mieu', 'tu vien', 'toa thanh', 'pagoda', 'temple', 'cathedral', 'church'],
@@ -6324,7 +6330,7 @@
         { key: 'chua', re: /\b(chua|pagoda)\b/i, conflict: /\b(quan chay|com chay|cafe|ca phe|shop phong thuy|tiem vang|quan an)\b/i },
         { key: 'nha tho', re: /\b(nha tho|cathedral|church)\b/i, conflict: /\b(nha tho ho|nha tho toc|nha hang|nha khoa|nha nghi|nha o|nha may)\b/i },
         { key: 'bao tang', re: /\b(bao tang|vien bao tang|museum)\b/i, conflict: /\b(mu bao hiem|non bao hiem|bao hiem|quan bia|bia hoi|cafe|ca phe|xuong)\b/i },
-        { key: 'cong vien', re: /\b(cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh|khuon vien gia dinh|khuon vien nha|khuon vien cafe|nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo)\b/i },
+        { key: 'cong vien', re: /\b(cong vien|park|so thu|zoo|vuon thu|vuon bach thao|safari)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh|khuon vien gia dinh|khuon vien nha|khuon vien cafe|nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo)\b/i },
         { key: 'san van dong', re: /\b(san van dong|stadium|svd|cung the thao|nha thi dau)\b/i, conflict: /\b(quan bia|bia hoi|quan an|quan nhau|shop the thao|san mini)\b/i },
         { key: 'san bay', re: /\b(san bay|airport|cang hang khong)\b/i, conflict: /\b(san bong|san golf|san van dong|san tennis)\b/i },
         { key: 'ben xe', re: /\b(ben xe|bus station)\b/i, conflict: /\b(ben pha|ben cang|ben tau|ben do)\b/i },
@@ -6839,7 +6845,7 @@
         'trung tam thuong mai', 'trung tam mua sam', 'trung tam', 'tttm', 'mega mall',
         'chung cu', 'can ho', 'apartment', 'condo', 'residence', 'residences', 'toa nha', 'building',
         'bao tang', 'vien bao tang', 'museum', 'nha bao tang', 'di tich', 'khu di tich',
-        'cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'vuon bach thao', 'safari',
+        'cong vien', 'park', 'so thu', 'zoo', 'vuon thu', 'vuon bach thao', 'safari',
         'chua', 'pagoda', 'nha tho', 'cathedral', 'church', 'den', 'dinh', 'mieu', 'tu vien', 'toa thanh',
         'san van dong', 'svd', 'stadium', 'cung the thao', 'nha thi dau', 'san golf', 'arena',
         'ga tau', 'ga duong sat', 'train station', 'ga metro', 'ubnd', 'uy ban nhan dan', 'toa an', 'vien kiem sat',
@@ -7088,7 +7094,7 @@
                 const isCemetery = /(?:nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo|dia tang)/i.test(cFull);
                 const isFakePark = /(?:khuon vien gia dinh|khuon vien nha|khuon vien cafe|khuon vien ca nhan|cafe cong vien|quan an|quan nhau|quan bia|bia hoi|gara|sua chua|rua xe)/i.test(cFull);
                 const isReal = /(?:cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|asia park|vinwonders|sun world)/i.test(cFull);
-                const isFamous = /(?:thong nhat|cau giay|thu le|yen so|hoa binh|nghia do|bach thao|tuoi tre|linh dam|gia dinh|tao dan|hoang van thu|23 thang 9|le van tam|le thi rieng|tam bac|rong bien|kim dong|nguyen du|an duong|29 thang 3|bien dong|saigon zoo|hanoi zoo|safari|dam sen|suoi tien|asia park)/i.test(cFull);
+                const isFamous = /(?:thong nhat|cau giay|thu le|yen so|hoa binh|nghia do|bach thao|tuoi tre|linh dam|gia dinh|tao dan|hoang van thu|23 thang 9|le van tam|le thi rieng|tam bac|rong bien|kim dong|nguyen du|an duong|29 thang 3|bien dong|saigon zoo|hanoi zoo|safari|dam sen|suoi tien|asia park|thao cam vien)/i.test(cFull);
 
                 if (isCemetery) {
                     r._isCemetery = true;
@@ -7625,6 +7631,19 @@
             }
             addAsk(`${scope.restRaw}, ${scope.name}`);
             addAsk(scope.restRaw);
+
+            // Mở rộng Chợ & Siêu thị trong phạm vi địa phương (Chợ Đà Lạt, Chợ Hải Phòng, Siêu thị...)
+            if (/(chợ|cho|market)/i.test(lowerRest)) {
+                addAsk(`Chợ ${scope.restRaw}, ${scope.name}`);
+                addAsk(`Chợ, ${scope.name}`);
+                addAsk(`Chợ đầu mối, ${scope.name}`);
+                addAsk(`Chợ trung tâm, ${scope.name}`);
+            }
+            if (/(siêu thị|sieu thi|supermarket)/i.test(lowerRest)) {
+                addAsk(`Siêu thị ${scope.restRaw}, ${scope.name}`);
+                addAsk(`Siêu thị, ${scope.name}`);
+                addAsk(`Supermarket, ${scope.name}`);
+            }
 
             // Mở rộng TTTM trong phạm vi địa phương (Vincom, Lotte, Aeon...)
             const lowerRest = scope.restRaw.toLowerCase();
@@ -8395,6 +8414,9 @@
         if (st) st.textContent = status || 'Trợ lý VMaps';
         if (txt) txt.textContent = text || '...';
         b.classList.remove('hidden');
+        clearTimeout(assistantTimer);
+        // Tự động đóng thanh mô tả sau 8 giây để tránh bị kẹt lại dưới đáy bản đồ
+        assistantTimer = setTimeout(closeAssistantUI, 8000);
     }
 
     function closeAssistantUI() {
@@ -8411,7 +8433,8 @@
         enqueueVoice({ type: 'assistant', text, lang, prio: 10 });
         showAssistantUI('VMaps phản hồi', text);
         clearTimeout(assistantTimer);
-        assistantTimer = setTimeout(closeAssistantUI, 4000);
+        const autoDismiss = Math.max(3500, Math.min(8000, 2000 + text.length * 60));
+        assistantTimer = setTimeout(closeAssistantUI, autoDismiss);
         if (onDone) {
             const delay = Math.max(1200, Math.min(8000, 800 + text.length * 80));
             setTimeout(onDone, delay);
@@ -8444,7 +8467,7 @@
             // Sau khi dứt tiếng, nghỉ thêm 250ms cho âm thanh loa ngắt hoàn toàn
             // rồi mới mở giao diện lắng nghe và kích hoạt bộ nhận dạng giọng nói
             setTimeout(() => {
-                showAssistantUI('Đang lắng nghe...', 'Nói: "Dẫn đường đến...", "Cây xăng", "Nhà máy VinFast"...');
+                showAssistantUI('Đang lắng nghe...', 'Nói: "Alo bản đồ", "Dẫn đường đến...", "Cây xăng"...');
                 startVoiceSearch();
             }, 250);
         };
@@ -8479,9 +8502,23 @@
         let t = String(text).trim();
         t = t.replace(/^(dạ\s+)?(em\s+nghe\s+đây|tôi\s+nghe|nghe\s+đây)[,:\s]*/i, '');
         t = t.replace(/(dạ\s+)?(em\s+nghe\s+đây|tôi\s+nghe|nghe\s+đây)$/i, '');
-        t = t.replace(/^(hey|ê|chào|ok|alo)?\s*(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?[,:\s]*/i, '');
-        t = t.replace(/[,:\s]+(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?$/i, '');
+        // Đầu câu: "alo bản đồ", "hey bản đồ", "bản đồ ơi", "a lô bản đồ", "hey vmaps", "vmaps ơi"...
+        t = t.replace(/^(hey|ê|chào|ok|alo|a\s*lô)?\s*(bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(\s+ơi)?[,:\s]*/i, '');
+        // Cuối câu: "... bản đồ ơi", "... vmaps ơi"
+        t = t.replace(/[,:\s]+(hey|ê|alo|a\s*lô)?\s*(bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|trợ\s*lý)(\s+ơi)?$/i, '');
         return t.trim();
+    }
+
+    /**
+     * Tách phần tên riêng / địa danh sau khi đã lược bỏ từ khoá nhóm và các từ mồi lân cận.
+     * Dùng để nhận diện người dùng đang hỏi tìm CHUNG một nhóm (gần nhất) hay đang tìm một TÊN CỤ THỂ / ĐỊA DANH
+     * (ví dụ "chợ Bến Thành", "chợ Hôm", "chợ Đà Lạt", "siêu thị Điện Máy Xanh", "siêu thị Lan Chi").
+     */
+    function extractCategoryRest(query, catPattern) {
+        let q = stripCommandWords(query).toLowerCase();
+        q = q.replace(catPattern, ' ');
+        q = q.replace(/(gần nhất|gần đây|gần tôi|gần bạn|xung quanh đây|xung quanh|quanh đây|quanh tôi|ở gần đây|ở quanh đây|ở đây|ở đâu|chỗ nào|nào|gần|nhất|đâu|chỗ|những|các|có không|không|cho tôi|giúp tôi|với|ạ)/gi, ' ');
+        return q.replace(/[,;.\s]+/g, ' ').trim();
     }
 
     function handleAssistantIntent(query) {
@@ -8491,11 +8528,10 @@
         // Phân biệt rõ nhà máy / showroom / công ty với trạm sạc (Đặc biệt khi dùng Voice Google)
         const isFactoryOrOrg = /(nhà máy|nha may|công xưởng|cong xuong|khu công nghiệp|kcn|công ty|showroom|đại lý|cửa hàng)/i.test(lower);
 
-        // 1. Tìm trường học / trường tiểu học / THCS / THPT / mầm non
+        // 1. Tìm trường học / trường tiểu học / THCS / THPT / mầm non (chỉ khi tìm chung gần nhất, không có tên trường cụ thể)
         if (/(trường học|tiểu học|thcs|thpt|mầm non|mẫu giáo|cấp 1|cấp 2|cấp 3|nhà trẻ)/i.test(lower)) {
-            const hasSpecificName = /(kim thành|kim thanh|lê quý đôn|le quy don|chu văn an|chu van an|nguyễn trãi|nguyen trai|nguyễn du|nguyen du|amsterdam|trần phú|tran phu|marie curie|nguyễn thị minh khai|nguyen thi minh khai|hồng bàng|hong bang|ngô quyền|ngo quyen)/i.test(lower);
-            const isNearIntent = /(gần|quanh|ở đâu|chỗ nào)/i.test(lower) || !hasSpecificName;
-            if (isNearIntent && !hasSpecificName) {
+            const rest = extractCategoryRest(lower, /(trường học|trường tiểu học|tiểu học|trường thcs|thcs|trường thpt|thpt|trường mầm non|mầm non|mẫu giáo|cấp 1|cấp 2|cấp 3|nhà trẻ|trường)/gi);
+            if (rest.length < 2) {
                 closeAssistantUI();
                 const sub = /(tiểu học|cấp 1)/i.test(lower) ? 'trường tiểu học'
                     : (/(thcs|cấp 2)/i.test(lower) ? 'trường THCS'
@@ -8518,214 +8554,252 @@
 
         // 2. Tìm trạm sạc xe điện / VinFast (chỉ khi hỏi về sạc và KHÔNG chứa từ khoá nhà máy/công ty/showroom)
         if (!isFactoryOrOrg && /(trạm sạc|sạc xe|sạc vinfast|pin vinfast|trụ sạc|chỗ sạc)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm trạm sạc gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trạm sạc');
-            if (c) {
-                $('searchInput').value = 'Trạm sạc';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm trạm sạc gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+            const rest = extractCategoryRest(lower, /(trạm sạc|sạc xe|sạc vinfast|pin vinfast|trụ sạc|chỗ sạc|sạc)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm trạm sạc gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Trạm sạc');
+                if (c) {
+                    $('searchInput').value = 'Trạm sạc';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm trạm sạc gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 3. Tìm cây xăng / trạm xăng
-        if (/(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm cây xăng gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Cây xăng');
-            if (c) {
-                $('searchInput').value = 'Cây xăng';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm cây xăng gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+        // 3. Tìm cây xăng / trạm xăng (chỉ khi tìm cây xăng gần nhất)
+        if (/(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm cây xăng gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Cây xăng');
+                if (c) {
+                    $('searchInput').value = 'Cây xăng';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm cây xăng gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 4. Tìm siêu thị / trung tâm thương mại / chợ (chỉ khi tìm chung, không chứa thương hiệu riêng như Vincom, Lotte...)
-        if (/(siêu thị|trung tâm thương mại|mua sắm|chợ)/i.test(lower) && !/(vincom|lotte|aeon|co.op|big c|go!|winmart)/i.test(lower)) {
-            closeAssistantUI();
-            const isMarket = /(chợ)/i.test(lower);
-            const catLabel = isMarket ? 'Chợ' : 'Siêu thị';
-            speakAssistant(`Đang tìm ${catLabel.toLowerCase()} gần bạn nhất.`);
-            const c = PLACE_CATEGORIES.find((x) => x.label === catLabel);
-            if (c) {
-                $('searchInput').value = catLabel;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${catLabel.toLowerCase()} gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+        // 4. Tìm siêu thị / trung tâm thương mại / chợ (CHỈ khi tìm chung loại hình gần nhất; NẾU có tên chợ/siêu thị hoặc địa danh thì chuyển sang tìm theo tên chính xác)
+        if (/(siêu thị|trung tâm thương mại|mua sắm|chợ)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(siêu thị|trung tâm thương mại|mua sắm|chợ)/gi);
+            // Nếu người dùng nói kèm tên riêng hoặc địa danh (như "Bến Thành", "Hôm", "Đồng Xuân", "Đà Lạt", "Hải Phòng", "Điện Máy Xanh", "MediaMart", "Lan Chi", "Big C"...)
+            // thì TUYỆT ĐỐI không ép về danh mục Chợ / Siêu thị gần nhất, mà để chuyển xuống nhánh tìm kiếm chính xác theo tên và địa phương!
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const isMarket = /(chợ)/i.test(lower);
+                const catLabel = isMarket ? 'Chợ' : 'Siêu thị';
+                speakAssistant(`Đang tìm ${catLabel.toLowerCase()} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === catLabel);
+                if (c) {
+                    $('searchInput').value = catLabel;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${catLabel.toLowerCase()} gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 5. Tìm bảo tàng gần nhất
-        if (/(bảo tàng|bao tang|museum|viện bảo tàng)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm bảo tàng gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bảo tàng');
-            if (c) {
-                $('searchInput').value = 'Bảo tàng';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bảo tàng gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+        // 5. Tìm bảo tàng gần nhất (chỉ khi tìm chung, không có tên bảo tàng cụ thể)
+        if (/(bảo tàng|bao tang|museum|viện bảo tàng)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(viện bảo tàng|bảo tàng|bao tang|museum)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm bảo tàng gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Bảo tàng');
+                if (c) {
+                    $('searchInput').value = 'Bảo tàng';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bảo tàng gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 6. Tìm công viên / sở thú / zoo gần nhất
-        if (/(công viên|cong vien|park|sở thú|so thu|zoo|thảo cầm viên|thao cam vien|vườn thú|vuon thu|safari)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            const isZoo = /(sở thú|so thu|zoo|thảo cầm viên|thao cam vien|vườn thú|vuon thu|safari)/i.test(lower);
-            const promptVoice = isZoo ? 'Đang tìm sở thú gần bạn nhất.' : 'Đang tìm công viên gần bạn nhất.';
-            speakAssistant(promptVoice);
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Công viên');
-            if (c) {
-                const sub = isZoo ? 'Sở thú' : 'Công viên';
-                $('searchInput').value = sub;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
-                return;
+        // 6. Tìm công viên / sở thú / zoo gần nhất (chỉ khi tìm chung; loại trừ Thảo Cầm Viên là địa danh riêng TP HCM)
+        if (/(công viên|cong vien|park|sở thú|so thu|zoo|vườn thú|vuon thu|safari)/i.test(lower) && !/(thảo cầm viên|thao cam vien)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(công viên|cong vien|park|sở thú|so thu|zoo|vườn thú|vuon thu|safari)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const isZoo = /(sở thú|so thu|zoo|vườn thú|vuon thu|safari)/i.test(lower);
+                const promptVoice = isZoo ? 'Đang tìm sở thú gần bạn nhất.' : 'Đang tìm công viên gần bạn nhất.';
+                speakAssistant(promptVoice);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Công viên');
+                if (c) {
+                    const sub = isZoo ? 'Sở thú' : 'Công viên';
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 7. Tìm bệnh viện / y tế gần nhất
-        if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower) && !/(việt tiệp|bạch mai|chợ rẫy|vinmec|từ dũ|108|115|kim thành)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm bệnh viện gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bệnh viện');
-            if (c) {
-                $('searchInput').value = 'Bệnh viện';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bệnh viện gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+        // 7. Tìm bệnh viện / y tế gần nhất (chỉ khi tìm chung, không có tên bệnh viện cụ thể)
+        if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(bệnh viện đa khoa|bệnh viện|phòng khám đa khoa|phòng khám|trạm y tế|cấp cứu|y tế)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm bệnh viện gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Bệnh viện');
+                if (c) {
+                    $('searchInput').value = 'Bệnh viện';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bệnh viện gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8. Tìm bãi đỗ xe
+        // 8. Tìm bãi đỗ xe gần nhất
         if (/(bãi đỗ|bãi xe|gửi xe|đỗ xe)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm bãi đỗ xe gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bãi đỗ xe');
-            if (c) {
-                $('searchInput').value = 'Bãi đỗ xe';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bãi đỗ xe gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+            const rest = extractCategoryRest(lower, /(bãi đỗ xe|bãi đỗ|bãi giữ xe|bãi xe|chỗ đỗ xe|gửi xe|đỗ xe)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm bãi đỗ xe gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Bãi đỗ xe');
+                if (c) {
+                    $('searchInput').value = 'Bãi đỗ xe';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bãi đỗ xe gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8a. Tìm trường đại học / học viện / cao đẳng gần nhất
-        if (/(đại học|học viện|cao đẳng|university)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            const sub = /(học viện)/i.test(lower) ? 'Học viện' : (/(cao đẳng)/i.test(lower) ? 'Cao đẳng' : 'Đại học');
-            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường đại học');
-            if (c) {
-                $('searchInput').value = sub;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
-                return;
+        // 8a. Tìm trường đại học / học viện / cao đẳng gần nhất (chỉ khi tìm chung)
+        if (/(đại học|học viện|cao đẳng|university)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(trường đại học|đại học|học viện|trường cao đẳng|cao đẳng|university|college|academy)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const sub = /(học viện)/i.test(lower) ? 'Học viện' : (/(cao đẳng)/i.test(lower) ? 'Cao đẳng' : 'Đại học');
+                speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường đại học');
+                if (c) {
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8b. Tìm trường dạy nghề / trung cấp gần nhất
-        if (/(trường dạy nghề|trường nghề|dạy nghề|trung cấp|cao đẳng nghề)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            const sub = /(trung cấp)/i.test(lower) ? 'Trường trung cấp' : 'Trường dạy nghề';
-            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường dạy nghề');
-            if (c) {
-                $('searchInput').value = sub;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
-                return;
+        // 8b. Tìm trường dạy nghề / trung cấp gần nhất (chỉ khi tìm chung)
+        if (/(trường dạy nghề|trường nghề|dạy nghề|trung cấp|cao đẳng nghề)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(trường dạy nghề|trường nghề|dạy nghề|trường trung cấp|trung cấp|cao đẳng nghề)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const sub = /(trung cấp)/i.test(lower) ? 'Trường trung cấp' : 'Trường dạy nghề';
+                speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường dạy nghề');
+                if (c) {
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8c. Tìm chùa / nhà thờ gần nhất
-        if (/(chùa|nhà thờ|đền|miếu|tu viện)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            const sub = /(nhà thờ)/i.test(lower) ? 'Nhà thờ' : (/(đền)/i.test(lower) ? 'Đền' : 'Chùa');
-            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Chùa / Nhà thờ');
-            if (c) {
-                $('searchInput').value = sub;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
-                return;
+        // 8c. Tìm chùa / nhà thờ gần nhất (chỉ khi tìm chung)
+        if (/(chùa|nhà thờ|đền|miếu|tu viện)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(chùa|nhà thờ|đền|miếu|tu viện|pagoda|cathedral|church)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const sub = /(nhà thờ)/i.test(lower) ? 'Nhà thờ' : (/(đền)/i.test(lower) ? 'Đền' : 'Chùa');
+                speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Chùa / Nhà thờ');
+                if (c) {
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8d. Tìm sân vận động / nhà thi đấu gần nhất
-        if (/(sân vận động|nhà thi đấu|cung thể thao|sân golf)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            const sub = /(nhà thi đấu)/i.test(lower) ? 'Nhà thi đấu' : (/(sân golf)/i.test(lower) ? 'Sân golf' : 'Sân vận động');
-            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Sân vận động');
-            if (c) {
-                $('searchInput').value = sub;
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
-                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
-                return;
+        // 8d. Tìm sân vận động / nhà thi đấu gần nhất (chỉ khi tìm chung)
+        if (/(sân vận động|nhà thi đấu|cung thể thao|sân golf)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(sân vận động|svd|nhà thi đấu|cung thể thao|sân golf|stadium|arena)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                const sub = /(nhà thi đấu)/i.test(lower) ? 'Nhà thi đấu' : (/(sân golf)/i.test(lower) ? 'Sân golf' : 'Sân vận động');
+                speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Sân vận động');
+                if (c) {
+                    $('searchInput').value = sub;
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                    searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
-        // 8e. Tìm ga tàu gần nhất
-        if (/(ga tàu|ga đường sắt|ga xe lửa|ga metro)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
-            closeAssistantUI();
-            speakAssistant('Đang tìm ga tàu gần bạn nhất.');
-            const c = PLACE_CATEGORIES.find((x) => x.label === 'Ga tàu');
-            if (c) {
-                $('searchInput').value = 'Ga tàu';
-                renderSearchClear();
-                setActiveCategory(c.label);
-                openModal('searchModal');
-                const resultsEl = $('searchResults');
-                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ga tàu gần nhất...</p>`;
-                searchCategory(c).then(renderSearchResults);
-                return;
+        // 8e. Tìm ga tàu gần nhất (chỉ khi tìm chung)
+        if (/(ga tàu|ga đường sắt|ga xe lửa|ga metro)/i.test(lower)) {
+            const rest = extractCategoryRest(lower, /(ga tàu|ga đường sắt|ga xe lửa|ga metro|train station)/gi);
+            if (rest.length < 2) {
+                closeAssistantUI();
+                speakAssistant('Đang tìm ga tàu gần bạn nhất.');
+                const c = PLACE_CATEGORIES.find((x) => x.label === 'Ga tàu');
+                if (c) {
+                    $('searchInput').value = 'Ga tàu';
+                    renderSearchClear();
+                    setActiveCategory(c.label);
+                    openModal('searchModal');
+                    const resultsEl = $('searchResults');
+                    if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ga tàu gần nhất...</p>`;
+                    searchCategory(c).then(renderSearchResults);
+                    return;
+                }
             }
         }
 
@@ -8830,14 +8904,18 @@
     // Vỏ Android gọi ngược vào đây khi nhận xong giọng nói
     function onVoiceResult(text) {
         micBusy(false);
-        if (!text) return;
+        if (!text || !text.trim()) {
+            closeAssistantUI();
+            return;
+        }
         const raw = text.trim();
         const stripped = stripWakeWords(raw);
         const lowerRaw = raw.toLowerCase();
 
-        // Kiểm tra nếu người dùng chỉ nói wake-word mà chưa kèm câu lệnh
-        const isOnlyWake = /^(hey|ê|chào|ok|alo)?\s*(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?$/i.test(lowerRaw)
-            || lowerRaw === 'hey map' || lowerRaw === 'vmaps' || lowerRaw === 'vmap';
+        // Kiểm tra nếu người dùng chỉ nói wake-word (Alo bản đồ, Hey bản đồ, Bản đồ ơi, Hey VMaps...) mà chưa kèm câu lệnh
+        const isOnlyWake = /^(hey|ê|chào|ok|alo|a\s*lô)?\s*(bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(\s+ơi)?$/i.test(lowerRaw)
+            || /^(alo|a\s*lô|hey|ê)(\s+ơi)?$/i.test(lowerRaw)
+            || lowerRaw === 'hey map' || lowerRaw === 'vmaps' || lowerRaw === 'vmap' || lowerRaw === 'bản đồ';
         if (isOnlyWake) {
             triggerVoiceAssistant();
             return;
@@ -8852,7 +8930,10 @@
     }
     function onVoiceError(msg) {
         micBusy(false);
-        showToast(msg || 'Không nghe rõ, thử lại', 'warn');
+        closeAssistantUI();
+        if (msg && String(msg).trim()) {
+            showToast(msg, 'warn');
+        }
     }
 
     function startVoiceSearch() {
@@ -10829,7 +10910,8 @@
         if (!map) return;
         // dragstart: chạm kéo. zoomstart có thể do chính flyTo gây ra nên
         // không dùng; thay vào đó bắt wheel và hai nút phóng tay.
-        map.on('dragstart', () => { setFollowCar(false); pauseRotation(true); });
+        map.on('dragstart', () => { setFollowCar(false); pauseRotation(true); closeAssistantUI(); });
+        map.on('click', () => { closeAssistantUI(); });
         const el = map.getContainer();
         el.addEventListener('wheel', () => setFollowCar(false), { passive: true });
 
@@ -11159,6 +11241,7 @@
     const isModalOpen = (id) => !$(id).classList.contains('hidden');
 
     function openModal(id) {
+        closeAssistantUI();
         MODALS.forEach((m) => { if (m !== id && m !== 'childWarningModal' && isModalOpen(m)) closeModal(m); });
         $(id).classList.remove('hidden');
         $(id).classList.add('flex');
