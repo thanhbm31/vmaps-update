@@ -530,10 +530,29 @@
                     <button onclick="openUtilities()" aria-label="Tiện ích" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-teal-500 transition-transform border border-teal-500/30">
                         <i class="fa-solid fa-layer-group text-lg"></i>
                     </button>
+                    <button id="assistantFabBtn" onclick="triggerVoiceAssistant()" aria-label="Trợ lý ảo VMaps" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-indigo-500 hover:text-indigo-600 transition-transform border border-indigo-500/30">
+                        <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
+                    </button>
                     <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
                         <i class="fa-solid fa-location-crosshairs text-xl"></i>
                     </button>
                 </div>
+
+            <!-- Trợ lý ảo Voice Assistant Floating Bar -->
+            <div id="assistantBanner" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-[1000] bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-indigo-500/40 p-4 transition-all duration-300">
+                <div class="flex items-center gap-3">
+                    <div id="assistantWave" class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center animate-pulse shadow-lg shadow-indigo-500/50">
+                        <i class="fa-solid fa-microphone text-lg text-white"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div id="assistantStatus" class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Trợ lý VMaps</div>
+                        <div id="assistantText" class="text-sm font-medium text-slate-100 truncate mt-0.5">"Hey VMaps! Bạn muốn đi đâu?"</div>
+                    </div>
+                    <button onclick="closeAssistantUI()" class="text-slate-400 hover:text-white p-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
             </div>
 
             <!-- Toast: phủ cả hàng giữa, bám ngay dưới hàng trên -->
@@ -1433,7 +1452,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '2349b86';
+    const BUILD_TAG = '75574ce';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -7337,11 +7356,181 @@
         i.className = on ? 'fa-solid fa-microphone-lines text-red-500 vm-attention' : 'fa-solid fa-microphone';
     }
 
-    // Vỏ Android gọi ngược vào đây khi nhận xong
+    // ---------------------------------------------------------------------
+    // TRỢ LÝ ẢO THÔNG MINH VMaps (Voice Assistant)
+    // ---------------------------------------------------------------------
+    let assistantActive = false;
+    let assistantTimer = null;
+
+    function showAssistantUI(status, text) {
+        const b = $('assistantBanner');
+        if (!b) return;
+        const st = $('assistantStatus');
+        const txt = $('assistantText');
+        if (st) st.textContent = status || 'Trợ lý VMaps';
+        if (txt) txt.textContent = text || '...';
+        b.classList.remove('hidden');
+    }
+
+    function closeAssistantUI() {
+        const b = $('assistantBanner');
+        if (b) b.classList.add('hidden');
+        assistantActive = false;
+        clearTimeout(assistantTimer);
+    }
+
+    function speakAssistant(text, onDone) {
+        if (!text) return;
+        silenceGuidance();
+        const lang = field('voiceLanguage') || 'vi-VN';
+        enqueueVoice({ type: 'assistant', text, lang, prio: 10 });
+        showAssistantUI('VMaps phản hồi', text);
+        clearTimeout(assistantTimer);
+        assistantTimer = setTimeout(closeAssistantUI, 8000);
+        if (onDone) {
+            const delay = Math.max(1600, Math.min(8000, 1000 + text.length * 85));
+            setTimeout(onDone, delay);
+        }
+    }
+
+    function triggerVoiceAssistant() {
+        assistantActive = true;
+        showAssistantUI('Đang lắng nghe', 'Nói: "Dẫn đường đến...", "Trạm sạc", "Tốc độ"...');
+        speakAssistant('VMaps nghe đây, bạn muốn dẫn đường đi đâu hoặc cần tư vấn gì?', () => {
+            startVoiceSearch();
+        });
+    }
+
+    function handleAssistantIntent(query) {
+        const lower = query.toLowerCase().trim();
+        showAssistantUI('Bạn vừa nói', query);
+
+        // 1. Dẫn đường đến địa điểm
+        const navMatch = query.match(/(?:dẫn đường|chỉ đường|tìm đường|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
+        if (navMatch && navMatch[1]) {
+            const dest = navMatch[1].trim();
+            $('searchInput').value = dest;
+            renderSearchClear();
+            doSearch();
+            speakAssistant('Đang tìm đường đến ' + dest);
+            return;
+        }
+
+        // 2. Tìm trạm sạc xe điện / VinFast
+        if (/(trạm sạc|sạc xe|sạc vinfast|pin vinfast|vinfast)/i.test(lower)) {
+            const pos = state.myPos;
+            if (vfixCharging && vfixCharging.length && pos) {
+                let nearest = null, minDist = Infinity;
+                for (const st of vfixCharging) {
+                    const d = geoDistM(pos[0], pos[1], st.lat, st.lon);
+                    if (d < minDist) { minDist = d; nearest = st; }
+                }
+                if (nearest) {
+                    const km = (minDist / 1000).toFixed(1);
+                    const name = nearest.name || 'Trạm sạc VinFast';
+                    speakAssistant(`Đã tìm thấy ${name}, cách bạn ${km} ki-lô-mét. Đang mở dẫn đường.`);
+                    setDestination(nearest.lat, nearest.lon, name);
+                    return;
+                }
+            }
+            $('searchInput').value = 'Trạm sạc VinFast';
+            renderSearchClear();
+            doSearch();
+            speakAssistant('Đang tìm trạm sạc gần bạn nhất.');
+            return;
+        }
+
+        // 3. Hỏi tốc độ giới hạn
+        if (/(tốc độ|chạy bao nhiêu|giới hạn tốc độ)/i.test(lower)) {
+            if (navState && navState.speedLimit) {
+                speakAssistant(`Tốc độ tối đa cho phép hiện tại là ${navState.speedLimit} ki-lô-mét một giờ.`);
+            } else {
+                speakAssistant('Đoạn đường này hiện chưa có dữ liệu tốc độ giới hạn.');
+            }
+            return;
+        }
+
+        // 4. Hỏi camera phạt nguội
+        if (/(camera|phạt nguội|có camera không)/i.test(lower)) {
+            if (navState && navState.camera && navState.camera.dist < 1000) {
+                const d = Math.round(navState.camera.dist);
+                speakAssistant(`Phía trước cách ${d} mét có camera phạt nguội.`);
+            } else {
+                speakAssistant('Phía trước trong bán kính 1 ki-lô-mét an toàn, không có camera phạt nguội.');
+            }
+            return;
+        }
+
+        // 5. Đổi kiểu bản đồ
+        if (/(bản đồ\s+)?vệ tinh/i.test(lower)) {
+            setMapStyle('google_hybrid');
+            speakAssistant('Đã chuyển sang bản đồ vệ tinh.');
+            return;
+        }
+        if (/(bản đồ\s+)?(giao thông|kẹt xe)/i.test(lower)) {
+            setMapStyle('google_traffic');
+            speakAssistant('Đã chuyển sang bản đồ giao thông.');
+            return;
+        }
+        if (/(bản đồ\s+)?đường phố/i.test(lower)) {
+            setMapStyle('google_streets');
+            speakAssistant('Đã chuyển sang bản đồ đường phố.');
+            return;
+        }
+        if (/(bản đồ\s+)?địa hình/i.test(lower)) {
+            setMapStyle('google_terrain');
+            speakAssistant('Đã chuyển sang bản đồ địa hình.');
+            return;
+        }
+
+        // 6. Điều khiển âm thanh
+        if (/(tắt tiếng|tắt âm thanh|im lặng)/i.test(lower)) {
+            setSoundMode(2);
+            speakAssistant('Đã tắt âm thanh cảnh báo.');
+            return;
+        }
+        if (/(bật tiếng|bật âm thanh)/i.test(lower)) {
+            setSoundMode(0);
+            speakAssistant('Đã bật toàn bộ âm thanh.');
+            return;
+        }
+
+        // 7. Tư vấn du lịch, ẩm thực, địa danh
+        if (/(du lịch|có gì đẹp|có gì chơi|quán ăn|đặc sản|tư vấn|giới thiệu)/i.test(lower)) {
+            speakAssistant('Đang tìm thông tin gợi ý địa điểm cho bạn.');
+            $('searchInput').value = query;
+            renderSearchClear();
+            doSearch();
+            return;
+        }
+
+        // 8. Mặc định: Tìm kiếm địa điểm trên bản đồ
+        $('searchInput').value = query;
+        renderSearchClear();
+        doSearch();
+        speakAssistant('Đang tìm ' + query);
+    }
+
+    // Vỏ Android gọi ngược vào đây khi nhận xong giọng nói
     function onVoiceResult(text) {
         micBusy(false);
         if (!text) return;
-        $('searchInput').value = text;
+        const q = text.trim();
+        const lower = q.toLowerCase();
+
+        // Kiểm tra Wake-Word: "hey vmaps", "vmaps ơi", "chào vmaps", "alo vmaps", "ê vmaps"
+        const isWake = /^(hey|ê|chào|ok|alo)?\s*vmaps(\s+ơi)?$/i.test(lower) || lower === 'hey map' || lower === 'vmaps';
+        if (isWake) {
+            triggerVoiceAssistant();
+            return;
+        }
+
+        if (assistantActive || /^(dẫn đường|chỉ đường|tìm đường|trạm sạc|tốc độ|camera|phạt nguội|bản đồ)/i.test(lower)) {
+            handleAssistantIntent(q);
+            return;
+        }
+
+        $('searchInput').value = q;
         renderSearchClear();
         doSearch();
     }
