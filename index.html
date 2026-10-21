@@ -1414,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'ba39dbb';
+    const BUILD_TAG = '9ea280e';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3450,7 +3450,24 @@
           core: ['chung cư', 'căn hộ', 'apartment', 'residence', 'khu dân cư', 'khu đô thị'],
           coreRe: /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt|toa nha/,
           prefer: /chung cu|can ho|apartment|residence|residences|block|toa/,
-          demote: /cho thue|moi gioi|ban nha|thi cong|noi that|tap hoa|quan an|nha thuoc/ }
+          demote: /cho thue|moi gioi|ban nha|thi cong|noi that|tap hoa|quan an|nha thuoc/ },
+        /*
+         * CÔNG VIÊN & SỞ THÚ / VƯỜN THÚ / BÁCH THẢO (Park & Zoo, Safari)
+         * Cùng cấp bậc không gian công cộng, giải trí sinh thái.
+         * Khắc phục lỗi: Lẫn khuôn viên cỡ nhỏ của hộ gia đình, quán cafe, công viên nghĩa trang.
+         * Ưu tiên liệt kê các công viên, vườn thú lớn và nổi tiếng của từng khu vực.
+         */
+        { mb: 'park', label: 'Công viên', icon: 'fa-tree',
+          words: [
+              'cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'safari',
+              'vuon bach thao', 'cong vien giai tri', 'cong vien nuoc', 'khu vui choi', 'theme park'
+          ],
+          tags: ['leisure=park', 'tourism=zoo', 'leisure=nature_reserve', 'tourism=theme_park', 'leisure=water_park'],
+          core: ['công viên', 'park', 'sở thú', 'zoo', 'thảo cầm viên', 'vườn thú', 'vườn bách thảo', 'safari'],
+          coreRe: /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|vinwonders|asia park|sun world/,
+          prefer: /thong nhat|cau giay|thu le|yen so|hoa binh|nghia do|bach thao|tuoi tre|linh dam|gia dinh|tao dan|hoang van thu|23 thang 9|le van tam|le thi rieng|tam bac|rong bien|kim dong|nguyen du|an duong|29 thang 3|bien dong|saigon zoo|hanoi zoo|safari|dam sen|suoi tien|asia park/,
+          below: /vuon hoa|khu vui choi|quang truong/,
+          demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ }
     ];
 
     /** Bỏ dấu để so khớp: "Bệnh Viện" và "benh vien" phải cùng một thứ. */
@@ -3685,6 +3702,10 @@
             } else if (wantsMamNon) {
                 if (/mam non|mau giao|nha tre/i.test(nm)) tier = 0;
                 else tier = 2;
+            } else if (sub.includes('so thu') || sub.includes('zoo') || sub.includes('thao cam vien') || sub.includes('vuon thu')) {
+                if (/so thu|zoo|thao cam vien|vuon thu|safari/i.test(nm)) tier = 0;
+                else if (/cong vien|park/i.test(nm)) tier = 2;
+                else tier = 4;
             }
 
             r._tier = tier;
@@ -3828,8 +3849,10 @@
                     gKeywords = ['trường THPT', 'THPT'];
                 } else if (sub.includes('mam non') || sub.includes('mau giao')) {
                     gKeywords = ['trường mầm non', 'mầm non'];
+                } else if (sub.includes('so thu') || sub.includes('zoo') || sub.includes('thao cam vien') || sub.includes('vuon thu')) {
+                    gKeywords = ['sở thú', 'zoo', 'thảo cầm viên', 'vườn thú'];
                 } else {
-                    gKeywords = (cat.core && cat.core.length) ? cat.core.slice(0, 3) : [cat.label];
+                    gKeywords = (cat.core && cat.core.length) ? cat.core.slice(0, 4) : [cat.label];
                 }
 
                 // Quét Google Places Nearby Search với rankby=distance trước để gom đủ tiện ích gần nhất
@@ -5760,6 +5783,9 @@
     // những loại xung đột xuống. Dùng chung bộ xếp hạng với tìm theo nhóm.
     // ---------------------------------------------------------------------
     const TYPE_HINTS = [
+        { words: ['cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'safari', 'vuon bach thao'],
+          prefer: /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|asia park|sun world/,
+          demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ },
         { words: ['bao tang', 'museum', 'vien bao tang'],
           prefer: /bao tang|museum|vien bao tang|di tich|lich su/,
           demote: /mu bao hiem|non bao hiem|bao hiem|cafe|quan bia|bia hoi|xuong|gara|cua hang/ },
@@ -6178,7 +6204,7 @@
     const COMPOUND_TYPES = [
         { key: 'nha hat', re: /\bnha hat\b/i, conflict: /\b(nha hang|nha khoa|nha nghi|nha o|nha may|nha thuoc|nha xe|nha ban|nha rieng|nha kho|nha phan phoi)\b/i },
         { key: 'bao tang', re: /\b(bao tang|vien bao tang|museum)\b/i, conflict: /\b(mu bao hiem|non bao hiem|bao hiem|quan bia|bia hoi|cafe|ca phe|xuong)\b/i },
-        { key: 'cong vien', re: /\b(cong vien|park)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh)\b/i },
+        { key: 'cong vien', re: /\b(cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh|khuon vien gia dinh|khuon vien nha|khuon vien cafe|nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo)\b/i },
         { key: 'san bay', re: /\b(san bay|airport|cang hang khong)\b/i, conflict: /\b(san bong|san golf|san van dong|san tennis)\b/i },
         { key: 'ben xe', re: /\b(ben xe|bus station)\b/i, conflict: /\b(ben pha|ben cang|ben tau|ben do)\b/i },
         { key: 'truong hoc', re: /\b(truong|school)\b/i, conflict: /\b(cua hang|quan an|cafe|shop)\b/i }
@@ -6686,6 +6712,7 @@
         'trung tam thuong mai', 'trung tam mua sam', 'trung tam', 'tttm', 'mega mall',
         'chung cu', 'can ho', 'apartment', 'condo', 'residence', 'residences', 'toa nha', 'building',
         'bao tang', 'vien bao tang', 'museum', 'nha bao tang', 'di tich', 'khu di tich',
+        'cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'vuon bach thao', 'safari',
         'nha hat', 'opera house', 'theatre',
         'benh vien', 'phong kham',
         'tram y te', 'nha hang', 'quan an', 'cua hang', 'sieu thi', 'cho',
@@ -6852,6 +6879,7 @@
         // 1. Phân loại từ khoá tìm kiếm
         const isMallBrand = /vincom|lotte|aeon|big c|go!|mega mall|trung tam thuong mai|tttm/i.test(qNorm) || (scope && /vincom|lotte|aeon|big c|go!/i.test(scope.restRaw));
         const isMuseum = /bao tang|vien bao tang|museum/i.test(qNorm) || (scope && /bao tang|vien bao tang|museum/i.test(scope.restRaw));
+        const isParkOrZoo = /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|theme park/i.test(qNorm) || (scope && /cong vien|park|so thu|zoo|thao cam vien|vuon thu|safari/i.test(scope.restRaw));
         const isResidential = /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt/i.test(qNorm) || (scope && /chung cu|can ho|apartment|condo|residence|khu dan cu|kdc/i.test(scope.restRaw));
 
         const coreName = corePhrase(query) || qNorm;
@@ -6915,6 +6943,31 @@
                 }
             }
 
+            // Quy tắc Công viên & Sở thú / Zoo / Vườn thú / Bách thảo:
+            // Ưu tiên công viên thật, sở thú thật (+90), công viên lớn/nổi tiếng của khu vực (+45).
+            // Loại bỏ khuôn viên gia đình, quán cafe (-250) và công viên nghĩa trang (-300).
+            if (isParkOrZoo) {
+                const isCemetery = /(?:nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo|dia tang)/i.test(cFull);
+                const isFakePark = /(?:khuon vien gia dinh|khuon vien nha|khuon vien cafe|khuon vien ca nhan|cafe cong vien|quan an|quan nhau|quan bia|bia hoi|gara|sua chua|rua xe)/i.test(cFull);
+                const isReal = /(?:cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|asia park|vinwonders|sun world)/i.test(cFull);
+                const isFamous = /(?:thong nhat|cau giay|thu le|yen so|hoa binh|nghia do|bach thao|tuoi tre|linh dam|gia dinh|tao dan|hoang van thu|23 thang 9|le van tam|le thi rieng|tam bac|rong bien|kim dong|nguyen du|an duong|29 thang 3|bien dong|saigon zoo|hanoi zoo|safari|dam sen|suoi tien|asia park)/i.test(cFull);
+
+                if (isCemetery) {
+                    r._isCemetery = true;
+                    r._score -= 300;
+                } else if (isFakePark) {
+                    r._isFakePark = true;
+                    r._score -= 250;
+                } else if (isReal) {
+                    r._isRealPark = true;
+                    r._score += 90;
+                    if (isFamous) {
+                        r._isFamousPark = true;
+                        r._score += 45; // Ưu tiên các công viên lớn, nổi tiếng của từng khu vực
+                    }
+                }
+            }
+
             // Quy tắc TTTM (Vincom, Lotte, Aeon):
             // Ưu tiên toà nhà TTTM chính (+80), dìm hoặc lọc bỏ gian hàng/tiệm bên trong (CGV, KFC, Zara...)
             if (isMallBrand) {
@@ -6973,6 +7026,12 @@
         // Lọc bỏ bảo tàng giả (mũ bảo hiểm, quán bia, cafe) nếu có bảo tàng thật hoặc câu hỏi rõ ràng về bảo tàng
         if (isMuseum && rows.some((r) => r._isRealMuseum)) {
             const realOnly = rows.filter((r) => !r._isFakeMuseum);
+            if (realOnly.length) rows = realOnly;
+        }
+
+        // Lọc bỏ khuôn viên gia đình, quán cafe, công viên nghĩa trang nếu có công viên/sở thú thật
+        if (isParkOrZoo && rows.some((r) => r._isRealPark)) {
+            const realOnly = rows.filter((r) => !r._isFakePark && !r._isCemetery);
             if (realOnly.length) rows = realOnly;
         }
 
@@ -7284,6 +7343,17 @@
                 addAsk(`Bảo tàng, ${scope.name}`);
                 addAsk(`Museum, ${scope.name}`);
                 addAsk(`Viện bảo tàng, ${scope.name}`);
+            }
+            // Mở rộng Công viên / Sở thú / Zoo / Bách thảo
+            if (/(công viên|cong vien|park|sở thú|so thu|zoo|thảo cầm viên|thao cam vien|vườn thú|vuon thu|safari)/i.test(lowerRest)) {
+                addAsk(`Công viên, ${scope.name}`);
+                addAsk(`Park, ${scope.name}`);
+                addAsk(`Sở thú, ${scope.name}`);
+                addAsk(`Zoo, ${scope.name}`);
+                addAsk(`Thảo cầm viên, ${scope.name}`);
+                addAsk(`Vườn thú, ${scope.name}`);
+                addAsk(`Vườn bách thảo, ${scope.name}`);
+                addAsk(`Safari, ${scope.name}`);
             }
             // Mở rộng Chung cư / Căn hộ / Apartment
             if (/(chung cư|chung cu|căn hộ|can ho|apartment|condo|residence|belleza)/i.test(lowerRest)) {
@@ -7623,7 +7693,7 @@
     // Hàng nút nhóm hay dùng: bấm một lần thay vì gõ. Chỉ đưa ra những nhóm
     // thực sự cần khi đang lái xe.
     const QUICK_CATEGORIES = ['Cây xăng', 'Trạm sạc', 'Bãi đỗ xe', 'Bệnh viện',
-        'Siêu thị', 'Trung tâm thương mại', 'Cửa hàng tiện lợi', 'Quán cà phê',
+        'Siêu thị', 'Trung tâm thương mại', 'Công viên', 'Bảo tàng', 'Cửa hàng tiện lợi', 'Quán cà phê',
         'Nhà hàng', 'Nhà vệ sinh', 'Trường học', 'ATM'];
 
     /*
@@ -8171,7 +8241,27 @@
             }
         }
 
-        // 6. Tìm bệnh viện / y tế gần nhất
+        // 6. Tìm công viên / sở thú / zoo gần nhất
+        if (/(công viên|cong vien|park|sở thú|so thu|zoo|thảo cầm viên|thao cam vien|vườn thú|vuon thu|safari)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            const isZoo = /(sở thú|so thu|zoo|thảo cầm viên|thao cam vien|vườn thú|vuon thu|safari)/i.test(lower);
+            const promptVoice = isZoo ? 'Đang tìm sở thú gần bạn nhất.' : 'Đang tìm công viên gần bạn nhất.';
+            speakAssistant(promptVoice);
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Công viên');
+            if (c) {
+                const sub = isZoo ? 'Sở thú' : 'Công viên';
+                $('searchInput').value = sub;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 7. Tìm bệnh viện / y tế gần nhất
         if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower) && !/(việt tiệp|bạch mai|chợ rẫy|vinmec|từ dũ|108|115|kim thành)/i.test(lower)) {
             closeAssistantUI();
             speakAssistant('Đang tìm bệnh viện gần bạn nhất.');
@@ -8188,7 +8278,7 @@
             }
         }
 
-        // 7. Tìm bãi đỗ xe
+        // 8. Tìm bãi đỗ xe
         if (/(bãi đỗ|bãi xe|gửi xe|đỗ xe)/i.test(lower)) {
             closeAssistantUI();
             speakAssistant('Đang tìm bãi đỗ xe gần bạn nhất.');
@@ -8205,7 +8295,7 @@
             }
         }
 
-        // 8. Dẫn đường đến địa điểm đích cụ thể
+        // 9. Dẫn đường đến địa điểm đích cụ thể
         const navMatch = query.match(/(?:dẫn đường|chỉ đường|tìm đường|tìm|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
         if (navMatch && navMatch[1]) {
             const dest = navMatch[1].trim();
@@ -8218,7 +8308,7 @@
             return;
         }
 
-        // 7. Hỏi tốc độ giới hạn
+        // 10. Hỏi tốc độ giới hạn
         if (/(tốc độ|chạy bao nhiêu|giới hạn tốc độ)/i.test(lower)) {
             if (speedState && speedState.limit != null) {
                 speakAssistant(`Tốc độ giới hạn cho phép hiện tại là ${speedState.limit} ki-lô-mét một giờ.`);
