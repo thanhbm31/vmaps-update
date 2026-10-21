@@ -1452,7 +1452,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '75574ce';
+    const BUILD_TAG = '0d8a744';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1656,7 +1656,7 @@
             const v = localStorage.getItem(MAP_STYLE_KEY);
             if (v && MAP_STYLES.some((s) => s.id === v)) return v;
         } catch (e) { }
-        return useMapbox() ? 'auto' : 'google_traffic';
+        return 'google_traffic';
     }
 
     /** Lý do đang không dùng Mapbox, rỗng nghĩa là vẫn đang dùng. */
@@ -1671,7 +1671,7 @@
     }
 
     function useMapbox() {
-        return false;
+        return !mapboxOffReason && !!mapboxToken();
     }
 
     /*
@@ -3266,7 +3266,7 @@
           words: ['cay xang', 'tram xang', 'xang', 'gas', 'cua hang xang dau', 'xang dau', 'petrol'],
           tags: ['amenity=fuel'],
           core: ['cây xăng', 'trạm xăng', 'cửa hàng xăng dầu', 'petrol'],
-          coreRe: /cay xang|tram xang|xang dau|petrol|petrolimex|pvoil|\bpv oil\b|\bgas station\b/,
+          coreRe: /cay xang|tram xang|xang dau|chxd|petrol|petrolimex|pvoil|\bpv oil\b|\bgas station\b/,
           prefer: /xang|fuel/,
           demote: /dau nhot|gara|rua xe|\bgas\b.*(binh|cong nghiep)|khi hoa long/ },
         // local: true → tra trong dữ liệu VFIX đã đóng kèm, KHÔNG gọi mạng.
@@ -3507,8 +3507,8 @@
     // khoảng cách vừa đơn giản hơn vừa không bỏ sót.
     // (Thang bán kính vẫn giữ cho tìm theo TÊN — chỗ đó cần nó, vì máy chủ
     // xếp hạng theo độ khớp tên chứ không theo khoảng cách.)
-    const CATEGORY_RADII = [30000];
-    const CATEGORY_ENOUGH = 1;
+    const CATEGORY_RADII = [3000, 8000, 20000];
+    const CATEGORY_ENOUGH = 4;
     // Trần tuyệt đối cho tìm theo NHÓM. Hỏi "siêu thị gần nhất" mà nhận về
     // một nơi ở tỉnh khác thì thà trả lời "không có" cho trung thực.
     const CATEGORY_MAX_KM = 30;
@@ -3840,7 +3840,7 @@
             let data;
             try {
                 // "out center" để way (vùng) cũng trả về một toạ độ tâm
-                data = await overpass(`[out:json][timeout:25];(${parts.join('')});out center 40;`);
+                data = await overpass(`[out:json][timeout:15];(${parts.join('')});out center 100;`);
             } catch (e) {
                 // KHÔNG quy hết cho "mất mạng": máy chủ Overpass công cộng quá
                 // tải là chuyện thường ngày, nói sai thì người dùng đi kiểm tra
@@ -7065,7 +7065,10 @@
             $('searchInput').value = c.label;
             renderSearchClear();
             setActiveCategory(c.label);        // sáng lên NGAY, đừng đợi kết quả về
-            renderSearchResults(await searchCategory(c));
+            const resultsEl = $('searchResults');
+            if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${escapeHtml(c.label.toLowerCase())} gần nhất...</p>`;
+            const rows = await searchCategory(c);
+            renderSearchResults(rows);
         }));
     }
 
