@@ -1452,7 +1452,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '0d8a744';
+    const BUILD_TAG = '7d2b630';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1630,9 +1630,31 @@
     // App không bao giờ được chết vì chuyện thanh toán.
     // =====================================================================
     const MAPBOX_TOKEN_BUILD = '';   // CI thay bằng secret MAPBOX_TOKEN lúc dựng
+    const GOOGLE_MAPS_KEY_BUILD = ''; // CI thay bằng secret GOOGLE_MAPS_KEY lúc dựng
     const MAPBOX_TOKEN_KEY = 'vietnav.mapbox.token';
+    const GOOGLE_MAPS_KEY = 'vietnav.google.maps.key';
     const MAPBOX_STYLE_DAY = 'mapbox/navigation-day-v1';
     const MAPBOX_STYLE_NIGHT = 'mapbox/navigation-night-v1';
+
+    function googleApiKey() {
+        try {
+            const saved = (localStorage.getItem(GOOGLE_MAPS_KEY) || '').trim();
+            if (saved) return saved;
+        } catch (e) { }
+        return GOOGLE_MAPS_KEY_BUILD;
+    }
+
+    function useGoogle() {
+        return !!googleApiKey();
+    }
+
+    function persistBuildGoogleKey() {
+        if (!GOOGLE_MAPS_KEY_BUILD) return;
+        try {
+            if ((localStorage.getItem(GOOGLE_MAPS_KEY) || '').trim()) return;
+            localStorage.setItem(GOOGLE_MAPS_KEY, GOOGLE_MAPS_KEY_BUILD);
+        } catch (e) { }
+    }
 
     /**
      * Các kiểu bản đồ cho người dùng chọn.
@@ -1690,6 +1712,7 @@
     const MAPBOX_TOKEN_SRC_KEY = 'vietnav.mapbox.token.src';
 
     function persistBuildToken() {
+        persistBuildGoogleKey();
         if (!MAPBOX_TOKEN_BUILD) return;
         try {
             if ((localStorage.getItem(MAPBOX_TOKEN_KEY) || '').trim()) return;
@@ -3541,40 +3564,34 @@
             }
             await Promise.all(keys.map(loadChargingTile));
 
-            const t = chargeType();
+            /* Quy tắc 4.2: Ô tìm kiếm trạm sạc hiện CẢ HAI (DC và AC), có nhãn rõ ràng, xếp DC trước */
             const rows = [];
             for (const k of keys) {
                 for (const s of (chgTiles.get(k) || [])) {
-                    // Tôn trọng lọc AC/DC đang chọn; chưa rõ công suất thì giữ
-                    if (t !== 'both' && (s.ac || s.dc)) {
-                        if (t === 'ac' ? !s.ac : !s.dc) continue;
-                    }
                     const d = haversine(here[0], here[1], s.g[0], s.g[1]);
                     if (d > R) continue;
-                    const tag = [s.dc ? 'DC' : '', s.ac ? 'AC' : ''].filter(Boolean).join('+');
+                    const isDc = !!s.dc;
+                    const isAc = !!s.ac;
+                    const tag = (isDc && isAc) ? 'DC/AC' : (isDc ? 'DC' : (isAc ? 'AC' : ''));
+                    const badge = tag ? `[${tag}] ` : '';
                     const info = [tag, s.k ? s.k + ' kW' : '', s.p ? s.p + ' trụ' : '']
                         .filter(Boolean).join(' · ');
                     rows.push({
                         lat: s.g[0], lon: s.g[1], _dist: d, _cat: 'Trạm sạc',
-                        display_name: (s.n || 'Trạm sạc') + (info ? ' — ' + info : '')
+                        _isDc: isDc ? 1 : 0,
+                        display_name: badge + (s.n || 'Trạm sạc') + (info ? ' — ' + info : '')
                             + (s.a ? ', ' + s.a : '')
                     });
                 }
             }
-            // KHÔNG dừng ngay khi có kết quả đầu tiên.
-            //
-            // Ca thật: nhà ở Tam Kỳ, Kim Thành. Ở bán kính 3km chỉ thấy trạm
-            // cây xăng Tam Kỳ (0,82km) nên vòng lặp dừng luôn, và trạm cây
-            // xăng Quang Huy cách 3,79km không bao giờ xuất hiện — dù người
-            // lái rất muốn biết là có hai lựa chọn.
-            // Chỉ dừng khi đã đủ số trạm để lấp danh sách, hoặc hết thang.
+            const sortChg = (a, b) => (b._isDc - a._isDc) || (a._dist - b._dist);
             if (rows.length >= CHG_LIST_SIZE) {
-                rows.sort((a, b) => a._dist - b._dist);
+                rows.sort(sortChg);
                 return rows.slice(0, CHG_LIST_SIZE);
             }
             best = rows;        // chưa đủ thì giữ lại rồi nới rộng tìm tiếp
         }
-        best.sort((a, b) => a._dist - b._dist);
+        best.sort((a, b) => (b._isDc - a._isDc) || (a._dist - b._dist));
         return best.slice(0, CHG_LIST_SIZE);
     }
 
@@ -3779,24 +3796,32 @@
         }
 
         /* ------------------------------------------------------------------
-         * Mapbox trước — ổn định hơn Overpass công cộng rất nhiều.
-         *
-         * HAI LƯỢT, KHÔNG MỘT LƯỢT. Trước đây chỉ hỏi theo THẺ NHÓM, và
-         * Mapbox trả về 25 chỗ GẦN NHẤT trong 30 km. Đứng ở Kim Thành thì 25
-         * chỗ gần nhất là phòng khám, trạm y tế xã và một bệnh viện khác —
-         * hết chỗ trước khi tới Bệnh viện Kim Thành ở 9 km. Bán kính đã là 30
-         * km từ trước, nên nới thêm cũng không cứu được: cái chặn là 25 CHỖ
-         * GẦN NHẤT, không phải bán kính.
-         *
-         * Nên hỏi thêm một lượt theo ĐÚNG TÊN NHÓM ("bệnh viện"). Lượt đó
-         * tìm theo tên nên một bệnh viện ở 9 km vẫn ra, dù trước nó có bao
-         * nhiêu phòng khám. Gộp hai lượt, rồi xếp hạng như cũ: thứ mang đúng
-         * tên nhóm lên bậc 0, phòng khám / trạm y tế xuống bậc 2, trong cùng
-         * bậc mới xét gần xa. Đúng thứ tự người dùng yêu cầu: quét 30 km
-         * trước, rồi mới lọc cái nào giống từ khoá nhất cho lên đầu.
+         * Phương án Hybrid: Ưu tiên Google Places Search API (nhanh, chuẩn xác),
+         * kế tiếp là Mapbox Search Box, cuối cùng mới fallback về Overpass.
          * ------------------------------------------------------------------ */
-        {
-            const km = CATEGORY_MAX_KM;
+        const km = CATEGORY_MAX_KM;
+        if (useGoogle()) {
+            try {
+                const gKeywords = (cat.core && cat.core.length) ? cat.core.slice(0, 3) : [cat.label];
+                let gHits = [];
+                for (const kw of gKeywords) {
+                    const res = await searchGooglePlaces(kw, here, km);
+                    if (res && res.length) gHits = gHits.concat(res);
+                    if (gHits.length >= 15) break;
+                }
+                if (searchStale(gen)) return [];
+                if (gHits.length) {
+                    gHits = dedupeByCoord(gHits).filter((r) => r._dist <= km * 1000);
+                    const kept = strictFilter(gHits, cat);
+                    rankCategoryRows(kept, cat);
+                    if (kept.length) return kept.slice(0, CAT_LIST_SIZE);
+                }
+            } catch (e) {
+                console.warn('Google Places tìm nhóm:', e);
+            }
+        }
+
+        if (useMapbox()) {
             try {
                 let mb = await searchMapboxCategory(cat, here, km);
                 if (searchStale(gen)) return [];
@@ -3811,7 +3836,7 @@
                     mb = dedupeByCoord(mb).filter((r) => r._dist <= km * 1000);
                     const kept = strictFilter(mb, cat);
                     rankCategoryRows(kept, cat);
-                    return kept.slice(0, CAT_LIST_SIZE);
+                    if (kept.length) return kept.slice(0, CAT_LIST_SIZE);
                 }
             } catch (e) {
                 console.warn('Mapbox tìm nhóm:', e);
@@ -3965,6 +3990,78 @@
                 resolve(null);
             }
         });
+    }
+
+    let httpReqSeq = 0;
+    const httpWaiters = new Map();
+
+    function nativeFetch(url, timeoutMs = 8000) {
+        const a = nativeApp();
+        if (a && typeof a.fetchHttp === 'function') {
+            const id = 'http_' + (++httpReqSeq);
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    httpWaiters.delete(id);
+                    reject(new Error('Háº¿t thá»i gian chá»'));
+                }, timeoutMs);
+                httpWaiters.set(id, { resolve, reject, timer });
+                try {
+                    a.fetchHttp(String(url), id);
+                } catch (e) {
+                    clearTimeout(timer);
+                    httpWaiters.delete(id);
+                    reject(e);
+                }
+            });
+        }
+        return fetch(url, { signal: AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined })
+            .then((r) => r.text());
+    }
+
+    function onHttpResult(reqId, jsonStr, err) {
+        const w = httpWaiters.get(reqId);
+        if (!w) return;
+        httpWaiters.delete(reqId);
+        clearTimeout(w.timer);
+        if (err || !jsonStr) {
+            w.reject(new Error(err || 'Lỗi kết nối'));
+        } else {
+            w.resolve(jsonStr);
+        }
+    }
+    window.onHttpResult = onHttpResult;
+
+    async function searchGooglePlaces(query, here, km) {
+        const key = googleApiKey();
+        if (!key || !here) return [];
+        const rad = Math.min(50000, Math.round((km || 30) * 1000));
+        const url = 'https://maps.googleapis.com/maps/api/place/textsearch/json'
+            + `?query=${encodeURIComponent(query)}`
+            + `&location=${here[0].toFixed(5)},${here[1].toFixed(5)}`
+            + `&radius=${rad}&language=vi`
+            + `&key=${encodeURIComponent(key)}`;
+        try {
+            const raw = await nativeFetch(url, 4500);
+            const data = JSON.parse(raw);
+            if (data.status !== 'OK' || !Array.isArray(data.results)) return [];
+            return data.results.map((r) => {
+                const lat = r.geometry?.location?.lat;
+                const lon = r.geometry?.location?.lng;
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+                const nm = (r.name || '').trim();
+                const addr = (r.formatted_address || '').trim();
+                const dName = addr ? (addr.startsWith(nm) ? addr : `${nm}, ${addr}`) : nm;
+                return {
+                    lat, lon,
+                    display_name: dName,
+                    _dist: haversine(here[0], here[1], lat, lon),
+                    _src: 'google'
+                };
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('Google Places error:', e);
+            return [];
+        }
     }
 
     function isShortMapLink(text) {
@@ -6707,39 +6804,28 @@
             const ladder = [maxKm];
             let best = [];
             for (const km of ladder) {
-                if (!useMapbox()) break;
+                if (!useGoogle() && !useMapbox()) break;
                 try {
-                    /*
-                     * KHO ĐỊA ĐIỂM TRƯỚC, ở đây cũng vậy.
-                     *
-                     * Nhánh này trước đây chỉ hỏi kho địa chỉ. Mà "VinFast",
-                     * "Lotte", "Circle K" là TÊN CƠ SỞ — kho địa chỉ không có
-                     * loại đó. Hậu quả: gõ "VinFast" ra ĐÚNG KHÔNG CÓ GÌ, kể
-                     * cả trạm sạc và showroom VinFast ngay gần đó. Tên trơ
-                     * của thương hiệu chính là thứ hay được gõ nhất, mà lại
-                     * rơi vào đúng nhánh không hỏi kho chứa nó.
-                     */
-                    /*
-                     * Hỏi kho địa điểm bằng câu TRƠ, không kèm "Đường".
-                     *
-                     * variants[0] có thể là "Đường VinFast" — biến thể dựng
-                     * riêng cho kho địa chỉ để tìm tên phố. Đưa nó sang kho
-                     * địa điểm là hỏi sai hẳn: ở đó không có cơ sở nào tên
-                     * "Đường VinFast", nên lại ra rỗng y như trước.
-                     */
-                    let mb = await searchMapboxPoi(canon, here, km);
-                    if (!mb.length) {
-                        for (const q of variants) {
-                            mb = await searchMapbox(q, here, km);
-                            if (mb.length) break;
-                        }
+                    let hits = [];
+                    if (useGoogle()) {
+                        hits = await searchGooglePlaces(canon, here, km);
                     }
-                    if (mb.length) {
-                        if (hasWanted(mb)) return rankByHint(mb, hint);
-                        if (!best.length) best = mb;
+                    if (!hits.length && useMapbox()) {
+                        let mb = await searchMapboxPoi(canon, here, km);
+                        if (!mb.length) {
+                            for (const q of variants) {
+                                mb = await searchMapbox(q, here, km);
+                                if (mb.length) break;
+                            }
+                        }
+                        hits = mb;
+                    }
+                    if (hits.length) {
+                        if (hasWanted(hits)) return rankByHint(hits, hint);
+                        if (!best.length) best = hits;
                     }
                 } catch (e) {
-                    console.warn('Mapbox geocoding:', e);
+                    console.warn('Search geocoding:', e);
                     break;
                 }
             }
@@ -6886,7 +6972,17 @@
          * nên con đường cao tốc, vốn nằm ở kho địa chỉ, không bao giờ được
          * hỏi tới. Tốn thêm một lượt gọi, đổi lại không mất kết quả.
          */
-        if (useMapbox()) {
+        if (useGoogle()) {
+            for (const q of askList) {
+                try {
+                    rows = rows.concat(await searchGooglePlaces(q, anchor, nearKm));
+                } catch (e) {
+                    console.warn('Google Places địa điểm:', e);
+                }
+            }
+        }
+
+        if (!goodHit() && useMapbox()) {
             for (const q of askList) {
                 try {
                     rows = rows.concat(await searchMapboxPoi(q, anchor, nearKm));
@@ -7389,7 +7485,7 @@
         enqueueVoice({ type: 'assistant', text, lang, prio: 10 });
         showAssistantUI('VMaps phản hồi', text);
         clearTimeout(assistantTimer);
-        assistantTimer = setTimeout(closeAssistantUI, 8000);
+        assistantTimer = setTimeout(closeAssistantUI, 12000);
         if (onDone) {
             const delay = Math.max(1600, Math.min(8000, 1000 + text.length * 85));
             setTimeout(onDone, delay);
@@ -7398,10 +7494,18 @@
 
     function triggerVoiceAssistant() {
         assistantActive = true;
-        showAssistantUI('Đang lắng nghe', 'Nói: "Dẫn đường đến...", "Trạm sạc", "Tốc độ"...');
-        speakAssistant('VMaps nghe đây, bạn muốn dẫn đường đi đâu hoặc cần tư vấn gì?', () => {
+        showAssistantUI('Đang lắng nghe', 'Nói: "Dẫn đường đến...", "Cây xăng", "Trạm sạc", "Tốc độ"...');
+        speakAssistant('Dạ, tôi có thể giúp gì cho bạn? Bạn muốn dẫn đường đi đâu hay cần tìm tiện ích gì?', () => {
             startVoiceSearch();
         });
+    }
+
+    function stripWakeWords(text) {
+        if (!text) return '';
+        let t = String(text).trim();
+        t = t.replace(/^(hey|ê|chào|ok|alo)?\s*(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?[,:\s]*/i, '');
+        t = t.replace(/[,:\s]+(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?$/i, '');
+        return t.trim();
     }
 
     function handleAssistantIntent(query) {
@@ -7414,6 +7518,7 @@
             const dest = navMatch[1].trim();
             $('searchInput').value = dest;
             renderSearchClear();
+            openSearchModal();
             doSearch();
             speakAssistant('Đang tìm đường đến ' + dest);
             return;
@@ -7421,56 +7526,124 @@
 
         // 2. Tìm trạm sạc xe điện / VinFast
         if (/(trạm sạc|sạc xe|sạc vinfast|pin vinfast|vinfast)/i.test(lower)) {
-            const pos = state.myPos;
-            if (vfixCharging && vfixCharging.length && pos) {
-                let nearest = null, minDist = Infinity;
-                for (const st of vfixCharging) {
-                    const d = geoDistM(pos[0], pos[1], st.lat, st.lon);
-                    if (d < minDist) { minDist = d; nearest = st; }
-                }
-                if (nearest) {
-                    const km = (minDist / 1000).toFixed(1);
-                    const name = nearest.name || 'Trạm sạc VinFast';
-                    speakAssistant(`Đã tìm thấy ${name}, cách bạn ${km} ki-lô-mét. Đang mở dẫn đường.`);
-                    setDestination(nearest.lat, nearest.lon, name);
+            speakAssistant('Đang tìm trạm sạc gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trạm sạc');
+            if (c) {
+                $('searchInput').value = 'Trạm sạc';
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openSearchModal();
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm trạm sạc gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 3. Tìm cây xăng / trạm xăng
+        if (/(cây xăng|trạm xăng|đổ xăng|hết xăng|mua xăng|xăng)/i.test(lower)) {
+            speakAssistant('Đang tìm cây xăng gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Cây xăng');
+            if (c) {
+                $('searchInput').value = 'Cây xăng';
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openSearchModal();
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm cây xăng gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 4. Tìm siêu thị / trung tâm thương mại / chợ
+        if (/(siêu thị|trung tâm thương mại|mua sắm|chợ)/i.test(lower)) {
+            const isMarket = /(chợ)/i.test(lower);
+            const catLabel = isMarket ? 'Chợ' : 'Siêu thị';
+            speakAssistant(`Đang tìm ${catLabel.toLowerCase()} gần bạn nhất.`);
+            const c = PLACE_CATEGORIES.find((x) => x.label === catLabel);
+            if (c) {
+                $('searchInput').value = catLabel;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openSearchModal();
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${catLabel.toLowerCase()} gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 5. Tìm bệnh viện / y tế
+        if (/(bệnh viện|phòng khám|trạm y tế|cấp cứu)/i.test(lower)) {
+            speakAssistant('Đang tìm bệnh viện gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bệnh viện');
+            if (c) {
+                $('searchInput').value = 'Bệnh viện';
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openSearchModal();
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bệnh viện gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 6. Tìm bãi đỗ xe
+        if (/(bãi đỗ|bãi xe|gửi xe|đỗ xe)/i.test(lower)) {
+            speakAssistant('Đang tìm bãi đỗ xe gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Bãi đỗ xe');
+            if (c) {
+                $('searchInput').value = 'Bãi đỗ xe';
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openSearchModal();
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bãi đỗ xe gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 7. Hỏi tốc độ giới hạn
+        if (/(tốc độ|chạy bao nhiêu|giới hạn tốc độ)/i.test(lower)) {
+            if (speedState && speedState.limit != null) {
+                speakAssistant(`Tốc độ giới hạn cho phép hiện tại là ${speedState.limit} ki-lô-mét một giờ.`);
+            } else {
+                speakAssistant('Đoạn đường hiện tại chưa có thông tin tốc độ giới hạn.');
+            }
+            return;
+        }
+
+        // 8. Hỏi camera phạt nguội
+        if (/(camera|phạt nguội|có camera không|bắn tốc độ)/i.test(lower)) {
+            if (userLatLng && speedCameras && speedCameras.length) {
+                let closest = null, minDist = Infinity;
+                speedCameras.forEach((cam) => {
+                    if (!camAppliesToHeading(cam)) return;
+                    const d = haversine(userLatLng[0], userLatLng[1], cam.lat, cam.lon);
+                    if (d < minDist) { minDist = d; closest = cam; }
+                });
+                if (closest && minDist <= 1500) {
+                    const d = Math.round(minDist);
+                    const typeName = CAMERA_KINDS[closest.kind] || 'camera phạt nguội';
+                    const cName = closest.name ? ` ở ${closest.name}` : '';
+                    speakAssistant(`Phía trước cách ${d} mét có ${typeName}${cName}.`);
                     return;
                 }
             }
-            $('searchInput').value = 'Trạm sạc VinFast';
-            renderSearchClear();
-            doSearch();
-            speakAssistant('Đang tìm trạm sạc gần bạn nhất.');
+            speakAssistant('Phía trước trong bán kính an toàn, không phát hiện camera phạt nguội.');
             return;
         }
 
-        // 3. Hỏi tốc độ giới hạn
-        if (/(tốc độ|chạy bao nhiêu|giới hạn tốc độ)/i.test(lower)) {
-            if (navState && navState.speedLimit) {
-                speakAssistant(`Tốc độ tối đa cho phép hiện tại là ${navState.speedLimit} ki-lô-mét một giờ.`);
-            } else {
-                speakAssistant('Đoạn đường này hiện chưa có dữ liệu tốc độ giới hạn.');
-            }
-            return;
-        }
-
-        // 4. Hỏi camera phạt nguội
-        if (/(camera|phạt nguội|có camera không)/i.test(lower)) {
-            if (navState && navState.camera && navState.camera.dist < 1000) {
-                const d = Math.round(navState.camera.dist);
-                speakAssistant(`Phía trước cách ${d} mét có camera phạt nguội.`);
-            } else {
-                speakAssistant('Phía trước trong bán kính 1 ki-lô-mét an toàn, không có camera phạt nguội.');
-            }
-            return;
-        }
-
-        // 5. Đổi kiểu bản đồ
+        // 9. Đổi kiểu bản đồ
         if (/(bản đồ\s+)?vệ tinh/i.test(lower)) {
             setMapStyle('google_hybrid');
             speakAssistant('Đã chuyển sang bản đồ vệ tinh.');
             return;
         }
-        if (/(bản đồ\s+)?(giao thông|kẹt xe)/i.test(lower)) {
+        if (/(bản đồ\s+)?(giao thông|kẹt xe|tắc đường)/i.test(lower)) {
             setMapStyle('google_traffic');
             speakAssistant('Đã chuyển sang bản đồ giao thông.');
             return;
@@ -7486,7 +7659,7 @@
             return;
         }
 
-        // 6. Điều khiển âm thanh
+        // 10. Điều khiển âm thanh
         if (/(tắt tiếng|tắt âm thanh|im lặng)/i.test(lower)) {
             setSoundMode(2);
             speakAssistant('Đã tắt âm thanh cảnh báo.');
@@ -7498,18 +7671,20 @@
             return;
         }
 
-        // 7. Tư vấn du lịch, ẩm thực, địa danh
+        // 11. Tư vấn du lịch, ẩm thực, địa danh
         if (/(du lịch|có gì đẹp|có gì chơi|quán ăn|đặc sản|tư vấn|giới thiệu)/i.test(lower)) {
             speakAssistant('Đang tìm thông tin gợi ý địa điểm cho bạn.');
             $('searchInput').value = query;
             renderSearchClear();
+            openSearchModal();
             doSearch();
             return;
         }
 
-        // 8. Mặc định: Tìm kiếm địa điểm trên bản đồ
+        // 12. Mặc định: Tìm kiếm địa điểm trên bản đồ
         $('searchInput').value = query;
         renderSearchClear();
+        openSearchModal();
         doSearch();
         speakAssistant('Đang tìm ' + query);
     }
@@ -7518,24 +7693,19 @@
     function onVoiceResult(text) {
         micBusy(false);
         if (!text) return;
-        const q = text.trim();
-        const lower = q.toLowerCase();
+        const raw = text.trim();
+        const stripped = stripWakeWords(raw);
+        const lowerRaw = raw.toLowerCase();
 
-        // Kiểm tra Wake-Word: "hey vmaps", "vmaps ơi", "chào vmaps", "alo vmaps", "ê vmaps"
-        const isWake = /^(hey|ê|chào|ok|alo)?\s*vmaps(\s+ơi)?$/i.test(lower) || lower === 'hey map' || lower === 'vmaps';
-        if (isWake) {
+        // Kiểm tra nếu người dùng chỉ nói wake-word mà chưa kèm câu lệnh
+        const isOnlyWake = /^(hey|ê|chào|ok|alo)?\s*(v[- ]?maps?|bản đồ|trợ lý)(\s+ơi)?$/i.test(lowerRaw)
+            || lowerRaw === 'hey map' || lowerRaw === 'vmaps' || lowerRaw === 'vmap';
+        if (isOnlyWake || !stripped) {
             triggerVoiceAssistant();
             return;
         }
 
-        if (assistantActive || /^(dẫn đường|chỉ đường|tìm đường|trạm sạc|tốc độ|camera|phạt nguội|bản đồ)/i.test(lower)) {
-            handleAssistantIntent(q);
-            return;
-        }
-
-        $('searchInput').value = q;
-        renderSearchClear();
-        doSearch();
+        handleAssistantIntent(stripped);
     }
     function onVoiceError(msg) {
         micBusy(false);
