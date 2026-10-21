@@ -644,6 +644,19 @@
             </div>
             </div>
 
+            <!-- CỤM NÚT TEST MÔ PHỎNG VỊ TRÍ BẢNG TÌM KIẾM (MỞ APP, ĐANG DẪN ĐƯỜNG, DỪNG DẪN ĐƯỜNG) -->
+            <div id="test-nav-state-bar" class="fixed top-2.5 left-1/2 -translate-x-1/2 z-[1100] flex items-center gap-1.5 p-1 rounded-full bg-slate-900/90 dark:bg-slate-800/95 border border-sky-500/40 shadow-2xl backdrop-blur-md select-none">
+                <button type="button" onclick="testSimulateState('init')" id="btn-test-init" class="px-3 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 transition flex items-center gap-1 active:scale-95 shadow-sm">
+                    <span>🚀 Mở app</span>
+                </button>
+                <button type="button" onclick="testSimulateState('nav')" id="btn-test-nav" class="px-3 py-1.5 rounded-full text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 active:scale-95">
+                    <span>🧭 Đang dẫn</span>
+                </button>
+                <button type="button" onclick="testSimulateState('stop')" id="btn-test-stop" class="px-3 py-1.5 rounded-full text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1 active:scale-95">
+                    <span>⏹️ Dừng dẫn</span>
+                </button>
+            </div>
+
             <!-- Toast: phủ cả hàng giữa, bám ngay dưới hàng trên -->
             <div id="toast-host" style="grid-area: 2 / 1 / 3 / 4; display: flex; flex-direction: column; align-items: center;">
                 <div id="offlineBadge" role="status" aria-live="polite"
@@ -1666,7 +1679,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '48c73fc';
+    const BUILD_TAG = '9846b60';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3216,7 +3229,7 @@
         const url = 'https://api.mapbox.com/search/searchbox/v1/forward'
             + `?q=${encodeURIComponent(query)}`
             + `&proximity=${here[1].toFixed(5)},${here[0].toFixed(5)}`
-            + box + '&country=vn&language=vi&limit=10'
+            + box + '&country=vn&language=vi&limit=25'
             + `&access_token=${encodeURIComponent(mapboxToken())}`;
         const data = await mapboxFetch(url);
         const feats = Array.isArray(data && data.features) ? data.features : [];
@@ -3288,7 +3301,7 @@
         }
         const url = PHOTON_URL + '?q=' + encodeURIComponent(q)
             + `&lat=${here[0].toFixed(5)}&lon=${here[1].toFixed(5)}`
-            + box + '&limit=10&lang=default';
+            + box + '&limit=30&lang=default';
 
         const ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), PHOTON_TIMEOUT_MS);
@@ -3333,7 +3346,7 @@
             + `?q=${encodeURIComponent(query)}`
             + `&proximity=${here[1].toFixed(5)},${here[0].toFixed(5)}`
             + box
-            + '&country=vn&language=vi&limit=10'
+            + '&country=vn&language=vi&limit=25'
             + `&access_token=${encodeURIComponent(mapboxToken())}`;
         const data = await mapboxFetch(url);
         const feats = Array.isArray(data?.features) ? data.features : [];
@@ -3899,12 +3912,9 @@
      */
     // Số kết quả trả về khi tìm theo NHÓM.
     //
-    // Trước để 8 và sinh ra cảm giác "chỉ tìm trong 7km": bán kính quét đã là
-    // 30km, nhưng trong thành phố thì 8 chỗ gần nhất gom hết trong vài km đầu,
-    // nên mọi thứ xa hơn bị cắt trước khi kịp hiện ra. Danh sách có thanh cuộn
-    // nên để dài hơn không chật chội gì, mà người lái mới thấy được lựa chọn ở
-    // 10-20km — đúng cỡ một thành phố.
-    const CAT_LIST_SIZE = 25;
+    // Nâng lên 60 để thu thập đầy đủ các cơ sở quanh 30km, danh sách hiển thị
+    // sẽ ưu tiên hiện trọn vẹn trong 5-10km trước kèm nút "Xem thêm".
+    const CAT_LIST_SIZE = 60;
     const CHG_LIST_SIZE = CAT_LIST_SIZE;
 
     async function searchChargingLocal(here) {
@@ -9577,10 +9587,10 @@
         return (kept.length ? kept : parts).join(', ');
     }
 
-    function renderSearchResults(results) {
+    function renderSearchResults(results, limitCount) {
         const resultsEl = $('searchResults');
         if (!resultsEl) return;
-        if (!results.length) {
+        if (!results || !results.length) {
             /*
              * Phân biệt "tìm không ra" với "không hỏi được".
              *
@@ -9594,14 +9604,25 @@
             resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center">${msg}</p>`;
             return;
         }
-        // Mốc khoảng cách. Danh sách đã xếp gần trước, nhưng không có mốc thì
-        // người dùng tưởng app chỉ tìm được trong vài km đầu rồi thôi — đúng
-        // cảm giác đã gặp thật. Có mốc thì thấy rõ nó đi tới đâu.
+
+        // Mốc khoảng cách chia theo dải thực tế: Trong 5 km, 5 - 10 km, 10 - 20 km, Xa hơn 20 km
         const BANDS = [
             [5000, 'Trong 5 km'],
-            [15000, '5 – 15 km'],
-            [Infinity, 'Xa hơn 15 km']
+            [10000, '5 – 10 km'],
+            [20000, '10 – 20 km'],
+            [Infinity, 'Xa hơn 20 km']
         ];
+
+        // Ưu tiên hiện trọn vẹn toàn bộ các điểm trong bán kính 10 km trước.
+        // Nếu số lượng trong 10km ít hơn 10 thì hiển thị tối thiểu 10 điểm đầu tiên.
+        // Phần còn lại nằm sau nút "Xem thêm" để người dùng mở rộng khi cần.
+        const within10Km = results.filter((r) => Number.isFinite(r._dist) && r._dist <= 10000).length;
+        const defaultShow = Math.max(within10Km, 10);
+        const visibleLimit = limitCount || defaultShow;
+        const visibleRows = results.slice(0, visibleLimit);
+        const hasMore = results.length > visibleLimit;
+        const remaining = results.length - visibleLimit;
+
         let band = -1;
         const bandHeader = (r) => {
             if (!Number.isFinite(r._dist)) return '';
@@ -9612,22 +9633,40 @@
         };
 
         // Dùng data-* + listener thay cho onclick nội tuyến (tên địa điểm có dấu nháy sẽ làm hỏng onclick)
-        resultsEl.innerHTML = results.map((r) => bandHeader(r) + `
+        let html = visibleRows.map((r) => bandHeader(r) + `
             <button type="button" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${escapeHtml(r.display_name)}"
                     data-kind="${escapeHtml(r.addresstype || r.type || '')}"
-                    class="search-hit w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                    class="search-hit w-full text-left p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                 <div class="flex items-baseline gap-2">
                     <span class="text-sm font-semibold text-slate-800 dark:text-white truncate">${escapeHtml(hitTitle(r))}</span>
                     <span class="ml-auto shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400">${fmtDist(r._dist)}</span>
                 </div>
                 ${hitAddress(r) ? `<div class="text-xs text-slate-500 truncate">${escapeHtml(hitAddress(r))}</div>` : ''}
             </button>`).join('');
+
+        if (hasMore) {
+            html += `
+                <div class="p-2">
+                    <button type="button" id="btnSearchShowMore"
+                            class="w-full py-3 px-4 text-center text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-xl transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-chevron-down"></i>Xem thêm (còn ${remaining} địa điểm nữa)
+                    </button>
+                </div>`;
+        }
+
+        resultsEl.innerHTML = html;
         resultsEl.querySelectorAll('.search-hit').forEach((btn) => {
             btn.addEventListener('click', () => selectSearchResult(
                 parseFloat(btn.dataset.lat), parseFloat(btn.dataset.lon),
                 btn.dataset.name, btn.dataset.kind
             ));
         });
+        const moreBtn = resultsEl.querySelector('#btnSearchShowMore');
+        if (moreBtn) {
+            moreBtn.addEventListener('click', () => {
+                renderSearchResults(results, visibleLimit + 15);
+            });
+        }
     }
 
     // Chọn một kết quả KHÔNG lao thẳng vào dẫn đường nữa: hiện bước xác nhận.
@@ -10084,6 +10123,8 @@
         // Dọn luôn HUD, nếu không thì mũi tên rẽ và số phút của chuyến vừa
         // kết thúc còn nằm lại trên màn hình.
         resetNavState();
+        // Bảng tìm kiếm tự động quay về vị trí cao (340px)
+        setSheetPosition('mid');
     }
 
     // ---------------------------------------------------------------------
@@ -11801,6 +11842,77 @@
         }, 320);
     }
 
+    /** Test mô phỏng tự động lên xuống của bảng tìm kiếm */
+    function testSimulateState(stateName) {
+        const btnInit = $('btn-test-init');
+        const btnNav = $('btn-test-nav');
+        const btnStop = $('btn-test-stop');
+        
+        [btnInit, btnNav, btnStop].forEach(b => {
+            if (b) {
+                b.classList.remove('bg-blue-600', 'text-white');
+                b.classList.add('text-slate-300');
+            }
+        });
+
+        if (stateName === 'init') {
+            if (btnInit) {
+                btnInit.classList.add('bg-blue-600', 'text-white');
+                btnInit.classList.remove('text-slate-300');
+            }
+            if (nav.active) {
+                clearRoute();
+            }
+            nav.active = false;
+            setSheetPosition('mid');
+            $('bottom-bar')?.classList.add('hidden');
+            $('home-chips-row')?.classList.remove('hidden');
+            $('home-recent-list')?.classList.remove('hidden');
+            renderNav();
+            showToast('1. Mở app: Bảng tìm kiếm ở vị trí cao (340px)');
+        } else if (stateName === 'nav') {
+            if (btnNav) {
+                btnNav.classList.add('bg-blue-600', 'text-white');
+                btnNav.classList.remove('text-slate-300');
+            }
+            nav.active = true;
+            nav.destName = 'Đảo Vũ Yên, Thuỷ Nguyên';
+            navState.remainingKm = 18.5;
+            navState.etaMin = 28;
+            navState.turn = { dir: 'right', dist: 200, street: 'Lê Hồng Phong' };
+            setSheetPosition('low');
+            $('bottom-bar')?.classList.remove('hidden');
+            $('home-chips-row')?.classList.add('hidden');
+            $('home-recent-list')?.classList.add('hidden');
+            renderNav();
+            showToast('2. Đang dẫn đường: Bảng tìm kiếm tự động tụt xuống (76px), còn lại ô tìm kiếm');
+        } else if (stateName === 'stop') {
+            if (btnStop) {
+                btnStop.classList.add('bg-blue-600', 'text-white');
+                btnStop.classList.remove('text-slate-300');
+            }
+            if (nav.active) {
+                clearRoute();
+            }
+            nav.active = false;
+            setSheetPosition('mid');
+            $('bottom-bar')?.classList.add('hidden');
+            $('home-chips-row')?.classList.remove('hidden');
+            $('home-recent-list')?.classList.remove('hidden');
+            renderNav();
+            showToast('3. Dừng dẫn đường: Bảng tìm kiếm tự động quay về vị trí cao (340px)');
+            setTimeout(() => {
+                if (btnInit && !nav.active) {
+                    btnStop?.classList.remove('bg-blue-600', 'text-white');
+                    btnStop?.classList.add('text-slate-300');
+                    btnInit.classList.add('bg-blue-600', 'text-white');
+                    btnInit.classList.remove('text-slate-300');
+                }
+            }, 1800);
+        }
+    }
+    window.testSimulateState = testSimulateState;
+
     function initBottomSheetDrag() {
         const handle = $('sheet-drag-handle');
         const sheet = $('home-bottom-sheet');
@@ -13451,6 +13563,9 @@
             $('home-search-container')?.classList.remove('hidden');
             $('home-chips-row')?.classList.remove('hidden');
             $('home-recent-list')?.classList.remove('hidden');
+            if (currentSheetHeight < 200) {
+                setSheetPosition('mid');
+            }
         }
 
         // Không dẫn đường thì ẩn hẳn ô rẽ.
