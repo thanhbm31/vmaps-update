@@ -1433,7 +1433,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '5bfaf0f';
+    const BUILD_TAG = 'ddffbd9';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1624,10 +1624,13 @@
      * đang chạy — để đó cho lúc tìm chỗ đỗ hoặc xem địa hình.
      */
     const MAP_STYLES = [
-        { id: 'auto', label: 'Dẫn đường (tự ngày/đêm)', icon: 'fa-route' },
-        { id: 'streets', label: 'Đường phố', icon: 'fa-road', style: 'mapbox/streets-v12' },
-        { id: 'satellite', label: 'Vệ tinh', icon: 'fa-satellite', style: 'mapbox/satellite-streets-v12' },
-        { id: 'outdoors', label: 'Địa hình', icon: 'fa-mountain-sun', style: 'mapbox/outdoors-v12' },
+        { id: 'google_traffic', label: 'Google Giao thông (Báo kẹt xe)', icon: 'fa-traffic-light' },
+        { id: 'google_streets', label: 'Google Bản đồ (Đường phố)', icon: 'fa-road' },
+        { id: 'google_hybrid', label: 'Google Vệ tinh (Tên đường)', icon: 'fa-satellite' },
+        { id: 'auto', label: 'Dẫn đường Mapbox (Tự ngày/đêm)', icon: 'fa-route' },
+        { id: 'streets', label: 'Mapbox Đường phố', icon: 'fa-street-view', style: 'mapbox/streets-v12' },
+        { id: 'satellite', label: 'Mapbox Vệ tinh', icon: 'fa-earth-asia', style: 'mapbox/satellite-streets-v12' },
+        { id: 'outdoors', label: 'Mapbox Địa hình', icon: 'fa-mountain-sun', style: 'mapbox/outdoors-v12' },
         { id: 'osm', label: 'OpenStreetMap', icon: 'fa-map', style: null }
     ];
     const MAP_STYLE_KEY = 'vietnav.mapStyle';
@@ -1637,7 +1640,7 @@
             const v = localStorage.getItem(MAP_STYLE_KEY);
             if (v && MAP_STYLES.some((s) => s.id === v)) return v;
         } catch (e) { }
-        return 'auto';
+        return useMapbox() ? 'auto' : 'google_traffic';
     }
 
     /** Lý do đang không dùng Mapbox, rỗng nghĩa là vẫn đang dùng. */
@@ -8959,7 +8962,8 @@
         const token = mapboxToken();
         const pick = MAP_STYLES.find((s) => s.id === mapStyleId()) || MAP_STYLES[0];
         // Chọn tay "OpenStreetMap" thì tôn trọng, dù có khoá Mapbox
-        const onMapbox = useMapbox() && pick.id !== 'osm';
+        const isGoogle = pick.id.startsWith('google_');
+        const onMapbox = useMapbox() && pick.id !== 'osm' && !isGoogle;
 
         const common = {
             // Giữ sẵn nhiều vòng tile quanh khung nhìn để đi tới đâu đã có sẵn
@@ -8977,7 +8981,19 @@
         };
 
         let layer;
-        if (onMapbox) {
+        if (isGoogle) {
+            let lyrs = 'm';
+            if (pick.id === 'google_traffic') lyrs = 'm,traffic';
+            else if (pick.id === 'google_streets') lyrs = 'm';
+            else if (pick.id === 'google_hybrid') lyrs = 'y';
+
+            layer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=' + lyrs + '&x={x}&y={y}&z={z}',
+                Object.assign({}, common, {
+                    subdomains: ['0', '1', '2', '3'],
+                    maxZoom: 20,
+                    attribution: '&copy; Google Maps'
+                }));
+        } else if (onMapbox) {
             // 'auto' mới theo ngày/đêm; các kiểu còn lại là người dùng chọn rõ
             const style = pick.style || (dark ? MAPBOX_STYLE_NIGHT : MAPBOX_STYLE_DAY);
             layer = L.tileLayer(
@@ -8995,9 +9011,8 @@
                 }));
         }
 
-        // Mapbox có style ban đêm thật nên KHÔNG nghịch màu bằng CSS nữa.
-        // Bộ lọc CSS chính là thủ phạm của mảng xanh lá trước đây.
-        document.body.classList.toggle('map-dark', dark && !onMapbox);
+        const keepNaturalColors = onMapbox || pick.id === 'google_hybrid' || pick.id === 'google_traffic';
+        document.body.classList.toggle('map-dark', dark && !keepNaturalColors);
 
         // Nếu không tải được tile thì phải nói ra, chứ để màn hình trống thì
         // người dùng không biết là mất mạng hay app hỏng.
@@ -11476,9 +11491,10 @@
         const hasToken = !!mapboxToken();
 
         box.innerHTML = MAP_STYLES.map((s) => {
-            // Không có khoá thì chỉ còn OSM dùng được — các kiểu kia mờ đi
-            const off = !hasToken && s.id !== 'osm';
-            const on = s.id === cur || (!hasToken && s.id === 'osm');
+            const isGoogle = s.id.startsWith('google_');
+            const isOsm = s.id === 'osm';
+            const off = !hasToken && !isOsm && !isGoogle;
+            const on = s.id === cur;
             return `
             <button type="button" ${off ? 'disabled' : ''} data-style="${s.id}"
                 class="map-style-row w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left
@@ -11489,7 +11505,7 @@
                 ${on ? '<i class="fa-solid fa-check text-indigo-600 dark:text-indigo-400"></i>' : ''}
             </button>`;
         }).join('')
-            + (hasToken ? '' : '<p class="text-xs text-slate-500 px-3 pt-2">Cần khoá Mapbox trong Cài đặt mới dùng được các kiểu còn lại.</p>');
+            + (hasToken ? '' : '<p class="text-xs text-slate-500 px-3 pt-2">Google Maps &amp; OpenStreetMap hoàn toàn miễn phí. Cần khoá Mapbox trong Cài đặt mới dùng được các kiểu Mapbox.</p>');
 
         box.querySelectorAll('.map-style-row').forEach((b) =>
             b.addEventListener('click', () => setMapStyle(b.dataset.style)));
