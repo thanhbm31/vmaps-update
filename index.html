@@ -1414,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'e08c964';
+    const BUILD_TAG = '893d8e2';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3883,7 +3883,7 @@
      * khoá người dùng hay gõ, giữ tối đa 2 câu để không phình số lượt gọi.
      */
     async function searchCategoryByName(cat, here, km) {
-        if (!useMapbox() || !cat) return [];
+        if (!cat || !here) return [];
         const qs = [];
         const add = (t) => {
             const v = String(t || '').trim();
@@ -3891,23 +3891,77 @@
         };
         /*
          * Hỏi theo TỪNG CÁCH GỌI CẤP MỘT, không chỉ theo nhãn nhóm.
-         * Ưu tiên _subQuery (ví dụ: "trường tiểu học") nếu người dùng yêu cầu phân cấp cụ thể.
+         * Ưu tiên _subQuery (ví dụ: "trường tiểu học", "tiểu học") nếu người dùng yêu cầu phân cấp cụ thể.
          */
-        if (cat._subQuery) add(cat._subQuery);
+        if (cat._subQuery) {
+            add(cat._subQuery);
+            const acc = addVnAccents(cat._subQuery);
+            if (acc) add(acc);
+        }
         (cat.core || []).forEach(add);
         add(cat.label);
         (cat.brands || []).slice(0, 1).forEach(add);
+
+        const queries = qs.slice(0, 3);
+        const tasks = [];
+        for (const q of queries) {
+            if (useMapbox()) {
+                tasks.push(searchMapboxPoi(q, here, km));
+                tasks.push(searchMapbox(q, here, km));
+            }
+            // Thêm Photon: tra cứu toàn bộ cơ sở OSM địa phương theo bán kính km
+            tasks.push(searchPhoton(q, here, km));
+        }
+        const res = await Promise.allSettled(tasks);
         let out = [];
-        for (const q of qs.slice(0, 5)) {
-            out = out.concat(await searchMapboxPoi(q, here, km));
-            try {
-                out = out.concat(await searchMapbox(q, here, km));
-            } catch (e) {
-                console.warn('Mapbox category geocode:', e);
+        for (const r of res) {
+            if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                out = out.concat(r.value);
             }
         }
         out.forEach((r) => { r._cat = cat.label; });
         return out;
+    }
+
+    /**
+     * Quét nhanh Overpass cho các tiện ích OSM quanh vị trí (bán kính radius mét).
+     * Dùng overpassFast với timeout ngắn (6s) để không bao giờ làm treo ứng dụng.
+     */
+    async function searchCategoryOverpass(cat, here, radius = 3000) {
+        if (!cat || !cat.tags || !cat.tags.length || !here) return [];
+        const parts = [];
+        const at = `(around:${radius},${here[0]},${here[1]});`;
+        for (const t of cat.tags) {
+            parts.push(`node[${t}]${at}`);
+            parts.push(`way[${t}]${at}`);
+        }
+        if (cat.brands && cat.brands.length) {
+            const re = [...new Set(cat.brands)]
+                .map((b) => b.replace(/[\\"^$.|?*+()[\]{}]/g, '\\$&'))
+                .join('|');
+            parts.push(`node["name"~"${re}",i]${at}`);
+            parts.push(`way["name"~"${re}",i]${at}`);
+        }
+        try {
+            const data = await overpassFast(`[out:json][timeout:8];(${parts.join('')});out center 60;`, 6000);
+            return (data?.elements || []).map((el) => {
+                const lat = el.lat ?? el.center?.lat;
+                const lon = el.lon ?? el.center?.lon;
+                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+                const name = el.tags?.name || el.tags?.['name:vi'] || '';
+                if (!name) return null;
+                const where = el.tags?.['addr:street'] || el.tags?.['addr:district'] || el.tags?.['addr:city'] || '';
+                return {
+                    lat, lon,
+                    display_name: where ? `${name}, ${where}` : name,
+                    _dist: haversine(here[0], here[1], lat, lon),
+                    _cat: cat.label
+                };
+            }).filter(Boolean);
+        } catch (e) {
+            console.warn('Overpass fast category error:', e && e.message);
+            return [];
+        }
     }
 
     async function searchCategory(cat, gen) {
@@ -3931,14 +3985,36 @@
         }
 
         /* ------------------------------------------------------------------
-         * Phương án Hybrid: Kết hợp cả Google Places và Mapbox Search
-         * (Gộp kết quả để không bỏ sót các trường học, trạm y tế, tiện ích địa phương)
+         * Phương án Đa Tầng (Multi-Tier Proximity):
+         * TẦNG 1: Quét siêu gần (3km) bằng Mapbox & Photon & Overpass để BẮT TRỌN
+         * các tiện ích cơ sở xã/thôn/huyện (trường tiểu học, trạm y tế, chợ làng,
+         * cây xăng gần cách 200m - 1km). Tuyệt đối không bị che khuất bởi các cơ
+         * sở lớn ở thành phố cách 15km.
+         * TẦNG 2: Quét mở rộng (30km) để lấy các tiện ích khu vực và thành phố.
+         * TẦNG 3: Gộp kết quả, khử trùng, phân cấp (tier) và sắp xếp theo khoảng cách.
          * ------------------------------------------------------------------ */
-        const km = CATEGORY_MAX_KM;
-        let allHits = [];
+        const km = CATEGORY_MAX_KM;   // 30 km
+        const nearKm = 3;             // 3 km siêu gần
+        const tasks = [];
 
+        // 1. Quét siêu gần (3km): Mapbox Name/POI + Photon OSM
+        tasks.push(searchCategoryByName(cat, here, nearKm));
+        if (cat.mb && useMapbox()) {
+            tasks.push(searchMapboxCategory(cat, here, nearKm));
+        }
+
+        // 2. Quét Overpass siêu gần (3km)
+        tasks.push(searchCategoryOverpass(cat, here, 3000));
+
+        // 3. Quét mở rộng (30km): Mapbox Category & Mapbox + Photon
+        if (cat.mb && useMapbox()) {
+            tasks.push(searchMapboxCategory(cat, here, km));
+        }
+        tasks.push(searchCategoryByName(cat, here, km));
+
+        // 4. Google Places nếu có cấu hình
         if (useGoogle()) {
-            try {
+            tasks.push((async () => {
                 let gKeywords = [];
                 const sub = cat._subQuery ? String(cat._subQuery).toLowerCase() : '';
                 if (sub.includes('tieu hoc') || sub.includes('cap 1')) {
@@ -3954,113 +4030,53 @@
                 } else {
                     gKeywords = (cat.core && cat.core.length) ? cat.core.slice(0, 4) : [cat.label];
                 }
-
-                // Quét Google Places Nearby Search với rankby=distance trước để gom đủ tiện ích gần nhất
-                // (ví dụ: trường tiểu học Kim Thành cách 300m không bị bỏ sót)
+                let gHits = [];
                 for (const kw of gKeywords) {
-                    const nearbyRes = await searchGooglePlacesNearby(kw, here);
-                    if (nearbyRes && nearbyRes.length) allHits = allHits.concat(nearbyRes);
+                    try {
+                        const nearbyRes = await searchGooglePlacesNearby(kw, here);
+                        if (nearbyRes && nearbyRes.length) gHits = gHits.concat(nearbyRes);
+                    } catch (e) { }
                 }
                 for (const kw of gKeywords) {
-                    const res = await searchGooglePlaces(kw, here, km);
-                    if (res && res.length) allHits = allHits.concat(res);
+                    try {
+                        const res = await searchGooglePlaces(kw, here, km);
+                        if (res && res.length) gHits = gHits.concat(res);
+                    } catch (e) { }
                 }
-            } catch (e) {
-                console.warn('Google Places tìm nhóm:', e);
-            }
+                return gHits;
+            })());
         }
 
-        if (useMapbox()) {
-            try {
-                let mb = await searchMapboxCategory(cat, here, km);
-                if (searchStale(gen)) return [];
-                try {
-                    mb = mb.concat(await searchCategoryByName(cat, here, km));
-                } catch (e) {
-                    console.warn('Mapbox tra tên nhóm:', e);
-                }
-                if (mb && mb.length) allHits = allHits.concat(mb);
-            } catch (e) {
-                console.warn('Mapbox tìm nhóm:', e);
-            }
-        }
-
+        const results = await Promise.allSettled(tasks);
         if (searchStale(gen)) return [];
-        if (allHits.length) {
-            allHits = dedupeByCoord(allHits).filter((r) => r._dist <= km * 1000);
-            const kept = strictFilter(allHits, cat);
-            rankCategoryRows(kept, cat);
-            if (kept.length) return kept.slice(0, CAT_LIST_SIZE);
+
+        let allHits = [];
+        for (const r of results) {
+            if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+                allHits = allHits.concat(r.value);
+            }
         }
 
-        let rows = [];
-        for (const R of CATEGORY_RADII) {
-            const parts = [];
-            const at = `(around:${R},${here[0]},${here[1]});`;
-            for (const t of cat.tags) {
-                // Vừa node vừa way: bệnh viện, trường học, bãi xe thường được
-                // vẽ thành vùng (way) chứ không phải một điểm.
-                parts.push(`node[${t}]${at}`);
-                parts.push(`way[${t}]${at}`);
-            }
-            // Tra thêm theo TÊN hệ thống: nhiều điểm trong OSM chỉ có tên
-            // "Vincom Plaza" mà thiếu hẳn thẻ shop=mall.
-            if (cat.brands && cat.brands.length) {
-                const re = [...new Set(cat.brands)]
-                    .map((b) => b.replace(/[\\"^$.|?*+()[\]{}]/g, '\\$&'))
-                    .join('|');
-                parts.push(`node["name"~"${re}",i]${at}`);
-                parts.push(`way["name"~"${re}",i]${at}`);
-            }
-            let data;
+        allHits = dedupeByCoord(allHits).filter((r) => r._dist <= km * 1000);
+        const kept = strictFilter(allHits, cat);
+        rankCategoryRows(kept, cat);
+        if (!kept.length) {
+            // Lưới an toàn cuối cùng: Thử tìm theo tên bằng searchByName nếu cả hai tầng đều rỗng
             try {
-                // "out center" để way (vùng) cũng trả về một toạ độ tâm
-                data = await overpass(`[out:json][timeout:15];(${parts.join('')});out center 100;`);
-            } catch (e) {
-                // KHÔNG quy hết cho "mất mạng": máy chủ Overpass công cộng quá
-                // tải là chuyện thường ngày, nói sai thì người dùng đi kiểm tra
-                // wifi trong khi lỗi nằm ở chỗ khác.
-                console.warn('Overpass tìm nhóm:', e);
-                showToast(isOffline()
-                    ? 'Mất mạng — không tìm được tiện ích'
-                    : 'Máy chủ dữ liệu tiện ích đang quá tải, thử tìm theo tên', 'warn');
-                // Còn một đường nữa: tìm theo tên bằng Mapbox/Nominatim.
-                // CHẶN BÁN KÍNH ở đây là bắt buộc: tìm theo NHÓM mà trả về
-                // một nơi ở tỉnh khác là vô nghĩa. Đã có ca thật — bấm "siêu
-                // thị" ở Hải Phòng lại ra một kết quả ở Bắc Ninh, vì lượt
-                // cuối của thang bán kính bỏ khung và tìm cả nước.
                 let alt = await searchByName(cat.label, here, CATEGORY_MAX_KM);
                 alt = strictFilter(alt, cat);
                 rankCategoryRows(alt, cat);
                 if (!alt.length) {
-                    showToast(`Không thấy ${cat.label.toLowerCase()} nào trong `
-                        + `${CATEGORY_MAX_KM} km quanh bạn`, 'warn');
+                    showToast(`Không thấy ${cat.label.toLowerCase()} nào trong ${CATEGORY_MAX_KM} km quanh bạn`, 'warn');
+                    return [];
                 }
                 return alt.slice(0, CAT_LIST_SIZE);
+            } catch (e) {
+                showToast(`Không thấy ${cat.label.toLowerCase()} nào gần đây`, 'warn');
+                return [];
             }
-            rows = (data?.elements || []).map((el) => {
-                const lat = el.lat ?? el.center?.lat;
-                const lon = el.lon ?? el.center?.lon;
-                if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-                // Không tên thì bỏ hẳn dòng — xem lý do ở searchMapboxCategory
-                const name = el.tags?.name || el.tags?.['name:vi'] || '';
-                if (!name) return null;
-                const where = el.tags?.['addr:street'] || el.tags?.['addr:city'] || '';
-                return {
-                    lat, lon,
-                    display_name: where ? `${name}, ${where}` : name,
-                    _dist: haversine(here[0], here[1], lat, lon),
-                    _cat: cat.label
-                };
-            }).filter(Boolean);
-
-            if (rows.length >= CATEGORY_ENOUGH) break;
         }
-
-        rows = strictFilter(rows, cat);
-        rankCategoryRows(rows, cat);
-        if (!rows.length) showToast(`Không thấy ${cat.label.toLowerCase()} nào gần đây`, 'warn');
-        return rows.slice(0, CAT_LIST_SIZE);
+        return kept.slice(0, CAT_LIST_SIZE);
     }
 
     /* =====================================================================
