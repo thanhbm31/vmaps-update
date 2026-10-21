@@ -1414,7 +1414,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '9ea280e';
+    const BUILD_TAG = '4533682';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -3169,10 +3169,10 @@
            * 28 km vẫn tìm ra, không phụ thuộc vào việc quanh đây có bao
            * nhiêu phòng khám chen trước.
            */
-          core: ['bệnh viện', 'bệnh viện đa khoa', 'trung tâm y tế', 'hospital', 'viện'],
-          coreRe: /benh vien|hospital|trung tam y te|^vien |vien (da khoa|lao|phoi|tim|mat|nhi|huyet hoc|k)\b/,
-          prefer: /benh vien|bv |hospital|vien (da khoa|tim|mat|nhi|phoi|e |k$)/,
-          demote: /phong kham|tram y te|y te xa|nha thuoc|phong rang|nha khoa|thu y/ },
+          core: ['bệnh viện', 'bệnh viện đa khoa', 'trung tâm y tế', 'hospital', 'viện y học'],
+          coreRe: /benh vien|hospital|trung tam y te|^vien |vien (da khoa|lao|phoi|tim|mat|nhi|huyet hoc|k|bong|ung buou)\b/,
+          prefer: /benh vien|bv |hospital|vien (da khoa|tim|mat|nhi|phoi|e |k$)|bach mai|viet duc|cho ray|108|115|tu du|hung vuong|nhi dong|ung buou|tai mui hong|xanh pon|viet tiep|trung uong hue|da nang/,
+          demote: /phong kham|tram y te|y te xa|nha thuoc|phong rang|nha khoa|thu y|thu cung|pet|spa|tham my/ },
         { mb: 'clinic', label: 'Phòng khám', icon: 'fa-stethoscope',
           words: ['phong kham', 'tram y te', 'clinic', 'phong kham da khoa'],
           tags: ['amenity=clinic', 'amenity=doctors'],
@@ -3321,14 +3321,6 @@
           // Phòng giao dịch ngân hàng: cấp trên, hầu hết đều có ATM ngoài cửa
           below: /ngan hang|phong giao dich|chi nhanh|\bpgd\b/,
           demote: /hieu vang|cam do|chuyen tien|doi tien|bao hiem/ },
-        { mb: 'park', label: 'Công viên', icon: 'fa-tree',
-          words: ['cong vien', 'park', 'vuon hoa', 'quang truong'],
-          tags: ['leisure=park'],
-          core: ['công viên', 'vườn hoa', 'quảng trường', 'park'],
-          coreRe: /cong vien|vuon hoa|quang truong|\bpark\b|lam vien/,
-          prefer: /trung tam|sinh thai|cay xanh/,
-          below: /san choi|vuon uom|ho dieu hoa|bo ho/,
-          demote: /bai do|quan|cafe|khu do thi|chung cu|cong ty/ },
         { mb: 'toilet', label: 'Nhà vệ sinh', icon: 'fa-restroom',
           words: ['nha ve sinh', 've sinh', 'toilet', 'wc', 've sinh cong cong'],
           tags: ['amenity=toilets'],
@@ -3400,20 +3392,48 @@
          * túc xá Đại học Hàng Hải đứng trên Đại học Hải Phòng, vì cả hai đều
          * "có đủ chữ trong tên" nên cùng điểm, chỉ còn khoảng cách phân định.
          */
+        /*
+         * TRƯỜNG ĐẠI HỌC / HỌC VIỆN / CAO ĐẲNG (Higher Education)
+         * Phân tầng thứ bậc theo yêu cầu: Đại học -> Học viện chính quy -> Cao đẳng.
+         * Khắc phục lỗi: Lẫn "Học viện" tự xưng thương mại (học viện tóc, thẩm mỹ, spa,
+         * võ thuật, yoga, gym, livestream, bida...) và trường phổ thông, mầm non, gia sư.
+         * Chỉ công nhận các Học viện giáo dục chính quy thuộc hệ thống GD quốc gia.
+         */
         { mb: 'college', label: 'Trường đại học', icon: 'fa-graduation-cap',
-          words: ['truong dai hoc', 'dai hoc', 'cao dang', 'hoc vien', 'university', 'college'],
+          words: [
+              'truong dai hoc', 'dai hoc', 'university',
+              'hoc vien', 'academy',
+              'cao dang', 'college'
+          ],
           tags: ['amenity=university', 'amenity=college'],
           core: ['đại học', 'học viện', 'cao đẳng', 'university'],
           coreRe: /^(truong )?(dai hoc|hoc vien|cao dang)|dai hoc quoc gia|university|\bhvan\b/,
-          prefer: /phan hieu|co so \d|khoa |vien /,
-          below: /trung cap|truong nghe|day nghe|cao dang nghe/,
-          demote: /ky tuc xa|tieu hoc|thcs|thpt|trung hoc|mam non|mau giao|trung tam|cua hang|can tin/ },
+          prefer: /dai hoc|university|hoc vien tai chinh|hoc vien ngan hang|hoc vien bao chi|hoc vien buu chinh|hoc vien ngoai giao|hoc vien quan y|hoc vien ky thuat quan su|hoc vien an ninh|hoc vien canh sat|hoc vien nong nghiep|hoc vien hang khong|hoc vien hanh chinh|hoc vien am nhac|hoc vien mua|hoc vien san khau|hoc vien chinh tri|hoc vien y duoc|hoc vien chinh sach|hoc vien toa an|hoc vien phu nu|bach khoa|kinh te|ngoai thuong|y ha noi|y duoc|su pham|hang hai|can tho|da nang|hue|rmit|ton duc thang|xay dung|giao thong/,
+          below: /cao dang|college/,
+          demote: /hoc vien toc|tao mau toc|phun xam|tham my|spa|lam dep|nail|mi\b|vo thuat|vovinam|karate|taekwondo|yoga|gym|fitness|livestream|kinh doanh|bida|billiards|ky tuc xa|tieu hoc|thcs|thpt|trung hoc|mam non|mau giao|gia su|day them|luyen thi|cua hang|can tin/ },
+        /*
+         * TRƯỜNG DẠY NGHÈ & TRUNG CẤP (Vocational & Technical Training)
+         * Quy tắc: Khi tìm trường dạy nghề thì lấy thêm trung cấp (trung cấp nghề, trung cấp kỹ thuật...)
+         * Khắc phục lỗi: Lẫn tiệm cắt tóc, salon tóc, spa, nail nhận dạy nghề tự phát.
+         */
+        { mb: 'vocational_training', label: 'Trường dạy nghề', icon: 'fa-wrench',
+          words: [
+              'truong day nghe', 'day nghe', 'truong nghe', 'trung cap', 'cao dang nghe',
+              'trung cap nghe', 'trung cap chuyen nghiep', 'hoc nghe', 'dao tao nghe',
+              'trung tam day nghe', 'trung tam giao duc nghe nghiep', 'gdnn', 'gdtx'
+          ],
+          tags: ['amenity=college', 'amenity=school', 'amenity=training_centre'],
+          core: ['trường dạy nghề', 'trường nghề', 'trung cấp', 'cao đẳng nghề', 'trung cấp nghề', 'dạy nghề'],
+          coreRe: /day nghe|truong nghe|trung cap|cao dang nghe|gdnn|gdtx|dao tao lai xe|sat hach/,
+          prefer: /cao dang nghe|trung cap nghe|trung cap chuyen nghiep|trung cap y te|trung cap ky thuat|trung tam day nghe|giao duc nghe nghiep|sat hach lai xe/,
+          below: /lop day nghe|co so dao tao/,
+          demote: /salon|hair|cat toc|phun xam|tham my|spa|nail|quan an|cafe/ },
         { mb: 'bus_station', label: 'Bến xe', icon: 'fa-bus',
           words: ['ben xe', 'bus station', 'ben xe khach'],
           tags: ['amenity=bus_station'],
           core: ['bến xe', 'bến xe khách', 'bus station'],
           coreRe: /ben xe|bus station|ben tau|ben pha/,
-          prefer: /trung tam|lien tinh|phia (bac|nam|dong|tay)/,
+          prefer: /trung tam|lien tinh|phia (bac|nam|dong|tay)|my dinh|giap bat|nuoc ngam|gia lam|yen nghia|mien dong|mien tay|an suong|nga tu ga|vinh niem|cau rao/,
           below: /diem dung|nha cho|tram xe bus|tram buyt/,
           demote: /bai do|gui xe|cho thue xe|van tai|taxi/ },
         /*
@@ -3425,7 +3445,7 @@
           tags: ['aeroway=aerodrome', 'aeroway=terminal'],
           core: ['sân bay', 'cảng hàng không', 'airport', 'phi trường'],
           coreRe: /san bay|cang hang khong|airport|phi truong|aerodrome/,
-          prefer: /san bay|cang hang khong|airport|phi truong/,
+          prefer: /san bay|cang hang khong|airport|phi truong|noi bai|tan son nhat|da nang|cat bi|cam ranh|phu quoc|can tho|van don|lien khuong|long thanh/,
           demote: /dai ly|ve may bay|phong ve|khach san|taxi|bai do/ },
         /*
          * BẢO TÀNG — cơ sở văn hoá, lịch sử, nghệ thuật.
@@ -3467,7 +3487,55 @@
           coreRe: /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|vinwonders|asia park|sun world/,
           prefer: /thong nhat|cau giay|thu le|yen so|hoa binh|nghia do|bach thao|tuoi tre|linh dam|gia dinh|tao dan|hoang van thu|23 thang 9|le van tam|le thi rieng|tam bac|rong bien|kim dong|nguyen du|an duong|29 thang 3|bien dong|saigon zoo|hanoi zoo|safari|dam sen|suoi tien|asia park/,
           below: /vuon hoa|khu vui choi|quang truong/,
-          demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ }
+          demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ },
+        /*
+         * TÂM LINH & TÍN NGƯỠNG — Chùa, Nhà thờ, Đền, Miếu, Tu viện, Tòa thánh.
+         * Khắc phục lỗi: Lẫn quán cơm chay, cafe chùa, cửa hàng đồ thờ, phong thuỷ.
+         * Ưu tiên liệt kê các chùa cổ, nhà thờ lớn và công trình tín ngưỡng lịch sử của từng vùng.
+         */
+        { mb: 'place_of_worship', label: 'Chùa / Nhà thờ', icon: 'fa-place-of-worship',
+          words: [
+              'chua', 'nha tho', 'den', 'dinh', 'mieu', 'phu', 'tu vien', 'toa thanh',
+              'pagoda', 'temple', 'cathedral', 'church', 'shrine', 'monastery'
+          ],
+          tags: ['amenity=place_of_worship', 'historic=monastery', 'tourism=place_of_worship'],
+          core: ['chùa', 'nhà thờ', 'đền', 'đình', 'miếu', 'tu viện', 'tòa thánh', 'pagoda', 'cathedral', 'church'],
+          coreRe: /chua|nha tho|den|dinh|mieu|phu|tu vien|toa thanh|pagoda|cathedral|church|shrine|monastery/,
+          prefer: /tran quoc|mot cot|huong|nha tho lon|duc ba|tan dinh|vinh nghiem|ngoc hoang|linh ung|bai dinh|phat diem|yen tu|ba den|tay ninh|thien mu|quan su|ha|ngoc son|tay ho/,
+          below: /nha nguyen|am|tinh that/,
+          demote: /quan chay|com chay|cafe|ca phe|shop|cua hang|do tho|vang ma|phong thuy|duc dong|quan an/ },
+        /*
+         * SÂN VẬN ĐỘNG & THỂ THAO — Sân vận động, Cung thể thao, Nhà thi đấu, Sân golf.
+         * Khắc phục lỗi: Lẫn sân bóng mini cỏ nhân tạo cho thuê, quán bia quanh sân, shop đồ thể thao.
+         * Ưu tiên SVĐ cấp quốc gia, cấp tỉnh/thành phố và nhà thi đấu trung tâm.
+         */
+        { mb: 'stadium', label: 'Sân vận động', icon: 'fa-futbol',
+          words: [
+              'san van dong', 'svd', 'stadium', 'cung the thao', 'nha thi dau',
+              'sports centre', 'arena', 'khu lien hop the thao', 'san golf', 'golf club'
+          ],
+          tags: ['leisure=stadium', 'leisure=sports_centre', 'leisure=pitch'],
+          core: ['sân vận động', 'cung thể thao', 'nhà thi đấu', 'stadium', 'arena', 'sân golf'],
+          coreRe: /san van dong|\bsvd\b|cung the thao|nha thi dau|stadium|arena|san golf|golf club|sports centre/,
+          prefer: /my dinh|hang day|lach tray|thong nhat|thien truong|quan ngua|dien kinh|cam pha|hoa xuan|viet tri|tan son nhat|long thanh/,
+          below: /san bong|san tennis|san cau long|ho boi/,
+          demote: /san mini|co nhan tao|cho thue|quan bia|bia hoi|quan an|shop|cua hang/ },
+        /*
+         * GA TÀU & GA ĐƯỜNG SẮT & GA METRO (Train / Railway / Metro Stations)
+         * Khắc phục lỗi: Lẫn phòng vé, đại lý vé tàu hoả, quán ăn quán nước trước cửa ga.
+         * Ưu tiên ga hành khách trung tâm các tỉnh/thành phố và tuyến đường sắt quốc gia.
+         */
+        { mb: 'train_station', label: 'Ga tàu', icon: 'fa-train',
+          words: [
+              'ga tau', 'ga duong sat', 'ga xe lua', 'train station', 'railway station',
+              'ga metro', 'nha ga', 'ga hanh khach'
+          ],
+          tags: ['railway=station', 'amenity=station', 'railway=halt'],
+          core: ['ga tàu', 'ga đường sắt', 'ga xe lửa', 'train station', 'ga metro'],
+          coreRe: /ga tau|ga duong sat|ga xe lua|train station|railway|ga metro|\bga\b/,
+          prefer: /ga ha noi|ga sai gon|ga da nang|ga hai phong|ga nha trang|ga vinh|ga hue|ga dong hoi|ga thap cham|ga cat linh|ga ben thanh/,
+          below: /tram dung metro|diem dung/,
+          demote: /ve tau|phong ve|dai ly|quan an|quan nuoc|cafe|cua hang/ }
     ];
 
     /** Bỏ dấu để so khớp: "Bệnh Viện" và "benh vien" phải cùng một thứ. */
@@ -3475,6 +3543,18 @@
         return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
             .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
     }
+
+    /**
+     * Danh mục Học viện chính quy thuộc hệ thống GD quốc gia (Bộ GD&ĐT, Bộ LĐTBXH, các Bộ ngành).
+     * Dùng để nhận diện các cơ sở đào tạo đại học/sau đại học hợp chuẩn.
+     */
+    const FORMAL_ACADEMY_RE = /(?:hoc vien tai chinh|hoc vien ngan hang|hoc vien bao chi|hoc vien buu chinh|hoc vien ngoai giao|hoc vien quan y|hoc vien ky thuat quan su|hoc vien an ninh|hoc vien canh sat|hoc vien nong nghiep|hoc vien hang khong|hoc vien hanh chinh|hoc vien am nhac|hoc vien mua|hoc vien san khau|hoc vien chinh tri|hoc vien y duoc|hoc vien chinh sach|hoc vien toa an|hoc vien phu nu|hoc vien khoa hoc xa hoi|hoc vien bien phong|hoc vien hai quan|hoc vien phong khong|hoc vien luc quan|hoc vien hau can|hoc vien quoc phong|hoc vien thanh thieu nien|hoc vien phat giao)/i;
+
+    /**
+     * Danh mục các cơ sở thương mại, tư nhân tự xưng "Học viện" (tóc, spa, thẩm mỹ, võ thuật...).
+     * Phải loại bỏ hoặc đánh tụt điểm khi người dùng tìm kiếm trường học / cơ sở giáo dục chính quy.
+     */
+    const FAKE_ACADEMY_RE = /(?:hoc vien toc|vien toc|tao mau toc|phun xam|tham my|spa|lam dep|nail|noi mi|\bmi\b|vo thuat|vovinam|karate|taekwondo|judo|boxing|muay|kungfu|yoga|gym|fitness|livestream|kinh doanh online|bds|bat dong san|crypto|bida|billiards|hoc vien bong da tre|dao tao lai xe lau)/i;
 
     // Những chữ thêm vào không làm đổi ý: "siêu thị gần nhất" vẫn là nhóm
     // \b của JS không nhận ra chữ 'đ' nên dùng ranh giới \p{L}
@@ -3706,6 +3786,26 @@
                 if (/so thu|zoo|thao cam vien|vuon thu|safari/i.test(nm)) tier = 0;
                 else if (/cong vien|park/i.test(nm)) tier = 2;
                 else tier = 4;
+            } else if (cat.label === 'Trường đại học' || sub.includes('dai hoc') || sub.includes('hoc vien') || sub.includes('cao dang')) {
+                // Phân tầng thứ bậc giáo dục: Đại học (0) -> Học viện chính quy (1) -> Cao đẳng (2)
+                if (FAKE_ACADEMY_RE.test(nm)) {
+                    tier = 4; // Học viện tóc, spa, võ thuật... -> Loại bỏ
+                } else if (/(dai hoc|university)/i.test(nm)) {
+                    tier = 0;
+                } else if (FORMAL_ACADEMY_RE.test(nm) || (/(hoc vien|academy)/i.test(nm) && !FAKE_ACADEMY_RE.test(nm))) {
+                    tier = 1; // Lấy thêm Học viện chính quy
+                } else if (/(cao dang|college)/i.test(nm)) {
+                    tier = 2; // Rồi đến Cao đẳng
+                }
+            } else if (cat.label === 'Trường dạy nghề' || sub.includes('day nghe') || sub.includes('truong nghe') || sub.includes('trung cap')) {
+                // Phân tầng trường nghề: Trường dạy nghề / Cao đẳng nghề (0) -> Trung cấp (1)
+                if (/(salon|hair|cat toc|spa|nail|quan an)/i.test(nm)) {
+                    tier = 4;
+                } else if (/(day nghe|truong nghe|cao dang nghe|gdnn|gdtx|sat hach)/i.test(nm)) {
+                    tier = 0;
+                } else if (/(trung cap)/i.test(nm)) {
+                    tier = 1; // Lấy thêm Trung cấp
+                }
             }
 
             r._tier = tier;
@@ -5786,6 +5886,18 @@
         { words: ['cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'safari', 'vuon bach thao'],
           prefer: /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|dam sen|suoi tien|asia park|sun world/,
           demote: /khuon vien|khuon vien gia dinh|khuon vien nha|khuon vien cafe|cafe|quan an|quan bia|nghia trang|cong vien nghia trang|an tang|hoa vien|vinh hang|nha mo/ },
+        { words: ['chua', 'nha tho', 'den', 'dinh', 'mieu', 'tu vien', 'toa thanh', 'pagoda', 'temple', 'cathedral', 'church'],
+          prefer: /chua|nha tho|den|dinh|mieu|tu vien|toa thanh|pagoda|cathedral|church|shrine|monastery/,
+          demote: /quan chay|com chay|cafe|shop|cua hang|do tho|vang ma|phong thuy|duc dong|quan an/ },
+        { words: ['san van dong', 'svd', 'stadium', 'cung the thao', 'nha thi dau', 'san golf'],
+          prefer: /san van dong|svd|cung the thao|nha thi dau|stadium|arena|san golf|golf club/,
+          demote: /san mini|co nhan tao|cho thue|quan bia|bia hoi|quan an|shop/ },
+        { words: ['ga tau', 'ga duong sat', 'ga metro', 'train station', 'railway'],
+          prefer: /ga tau|ga duong sat|ga xe lua|train station|railway|metro/,
+          demote: /ve tau|quan an|quan nuoc|cua hang/ },
+        { words: ['ubnd', 'uy ban nhan dan', 'uy ban', 'toa an', 'vien kiem sat'],
+          prefer: /ubnd|uy ban nhan dan|hoi dong nhan dan|hdnd|toa an|vien kiem sat/,
+          demote: /quan nuoc|photo|cong chung tu|dich vu|cua hang/ },
         { words: ['bao tang', 'museum', 'vien bao tang'],
           prefer: /bao tang|museum|vien bao tang|di tich|lich su/,
           demote: /mu bao hiem|non bao hiem|bao hiem|cafe|quan bia|bia hoi|xuong|gara|cua hang/ },
@@ -5801,9 +5913,15 @@
         { words: ['showroom', 'dai ly', 'phong trung bay'],
           prefer: /showroom|dai ly|phong trung bay|3s/,
           demote: /nha may|factory|tram sac|charging|kho/ },
-        { words: ['benh vien'],
-          prefer: /benh vien|bv |hospital/,
-          demote: /phong kham|tram y te|nha thuoc|nha khoa|thu y/ },
+        { words: ['dai hoc', 'truong dai hoc', 'university', 'hoc vien', 'cao dang'],
+          prefer: /dai hoc|university|hoc vien tai chinh|hoc vien ngan hang|hoc vien bao chi|hoc vien buu chinh|hoc vien ngoai giao|hoc vien quan y|hoc vien ky thuat quan su|hoc vien an ninh|hoc vien canh sat|hoc vien nong nghiep|hoc vien hang khong|hoc vien hanh chinh|hoc vien am nhac|bach khoa|kinh te|ngoai thuong|y ha noi|y duoc|su pham|hang hai|cao dang/,
+          demote: /hoc vien toc|tao mau toc|phun xam|tham my|spa|lam dep|nail|vo thuat|vovinam|karate|taekwondo|yoga|gym|fitness|livestream|kinh doanh|bida|billiards|gia su|day them|luyen thi|tieu hoc|thcs|thpt|mam non/ },
+        { words: ['truong day nghe', 'day nghe', 'truong nghe', 'trung cap', 'cao dang nghe', 'trung cap nghe'],
+          prefer: /day nghe|truong nghe|cao dang nghe|trung cap|gdnn|gdtx|dao tao nghe|sat hach/,
+          demote: /salon|hair|cat toc|spa|nail|quan an|cafe/ },
+        { words: ['benh vien', 'hospital', 'vien y hoc', 'vien mat', 'vien k'],
+          prefer: /benh vien|bv |hospital|bach mai|viet duc|cho ray|108|115|tu du|hung vuong|nhi dong|ung buou|xanh pon|viet tiep|trung uong/,
+          demote: /phong kham|tram y te|nha thuoc|thu y|thu cung|pet|spa|tham my/ },
         { words: ['truong'],
           prefer: /truong|school|hoc vien|dai hoc/,
           demote: /cua hang|quan |cafe|shop/ },
@@ -6203,10 +6321,19 @@
      */
     const COMPOUND_TYPES = [
         { key: 'nha hat', re: /\bnha hat\b/i, conflict: /\b(nha hang|nha khoa|nha nghi|nha o|nha may|nha thuoc|nha xe|nha ban|nha rieng|nha kho|nha phan phoi)\b/i },
+        { key: 'chua', re: /\b(chua|pagoda)\b/i, conflict: /\b(quan chay|com chay|cafe|ca phe|shop phong thuy|tiem vang|quan an)\b/i },
+        { key: 'nha tho', re: /\b(nha tho|cathedral|church)\b/i, conflict: /\b(nha tho ho|nha tho toc|nha hang|nha khoa|nha nghi|nha o|nha may)\b/i },
         { key: 'bao tang', re: /\b(bao tang|vien bao tang|museum)\b/i, conflict: /\b(mu bao hiem|non bao hiem|bao hiem|quan bia|bia hoi|cafe|ca phe|xuong)\b/i },
         { key: 'cong vien', re: /\b(cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari)\b/i, conflict: /\b(cong ty|cong an|cong so|cong trinh|khuon vien gia dinh|khuon vien nha|khuon vien cafe|nghia trang|cong vien nghia trang|hoa vien nghia trang|an tang|vinh hang|nha mo)\b/i },
+        { key: 'san van dong', re: /\b(san van dong|stadium|svd|cung the thao|nha thi dau)\b/i, conflict: /\b(quan bia|bia hoi|quan an|quan nhau|shop the thao|san mini)\b/i },
         { key: 'san bay', re: /\b(san bay|airport|cang hang khong)\b/i, conflict: /\b(san bong|san golf|san van dong|san tennis)\b/i },
         { key: 'ben xe', re: /\b(ben xe|bus station)\b/i, conflict: /\b(ben pha|ben cang|ben tau|ben do)\b/i },
+        { key: 'ga tau', re: /\b(ga tau|ga duong sat|ga xe lua|train station|ga metro)\b/i, conflict: /\b(quan an|quan nuoc|ve tau)\b/i },
+        { key: 'ubnd', re: /\b(ubnd|uy ban nhan dan|toa an|vien kiem sat)\b/i, conflict: /\b(quan nuoc|photo|cong chung tu|dich vu giay to)\b/i },
+        { key: 'hoc vien', re: /\bhoc vien\b/i, conflict: /\b(hoc vien toc|tao mau toc|phun xam|tham my|spa|lam dep|nail|noi mi|mi|vo thuat|vovinam|karate|taekwondo|yoga|gym|fitness|livestream|kinh doanh|bida|billiards)\b/i },
+        { key: 'dai hoc', re: /\b(dai hoc|university)\b/i, conflict: /\b(tieu hoc|thcs|thpt|mam non|mau giao|gia su|day them|luyen thi)\b/i },
+        { key: 'truong nghe', re: /\b(truong day nghe|truong nghe|day nghe|trung cap)\b/i, conflict: /\b(salon|hair|cat toc|tiem|quan an)\b/i },
+        { key: 'benh vien', re: /\b(benh vien|hospital)\b/i, conflict: /\b(thu y|thu cung|pet|spa|tham my|massage|nha thuoc)\b/i },
         { key: 'truong hoc', re: /\b(truong|school)\b/i, conflict: /\b(cua hang|quan an|cafe|shop)\b/i }
     ];
 
@@ -6713,6 +6840,11 @@
         'chung cu', 'can ho', 'apartment', 'condo', 'residence', 'residences', 'toa nha', 'building',
         'bao tang', 'vien bao tang', 'museum', 'nha bao tang', 'di tich', 'khu di tich',
         'cong vien', 'park', 'so thu', 'zoo', 'thao cam vien', 'vuon thu', 'vuon bach thao', 'safari',
+        'chua', 'pagoda', 'nha tho', 'cathedral', 'church', 'den', 'dinh', 'mieu', 'tu vien', 'toa thanh',
+        'san van dong', 'svd', 'stadium', 'cung the thao', 'nha thi dau', 'san golf', 'arena',
+        'ga tau', 'ga duong sat', 'train station', 'ga metro', 'ubnd', 'uy ban nhan dan', 'toa an', 'vien kiem sat',
+        'dai hoc', 'university', 'hoc vien', 'academy', 'cao dang', 'college',
+        'truong day nghe', 'day nghe', 'truong nghe', 'trung cap', 'cao dang nghe',
         'nha hat', 'opera house', 'theatre',
         'benh vien', 'phong kham',
         'tram y te', 'nha hang', 'quan an', 'cua hang', 'sieu thi', 'cho',
@@ -6881,6 +7013,12 @@
         const isMuseum = /bao tang|vien bao tang|museum/i.test(qNorm) || (scope && /bao tang|vien bao tang|museum/i.test(scope.restRaw));
         const isParkOrZoo = /cong vien|park|so thu|zoo|thao cam vien|vuon thu|vuon bach thao|safari|theme park/i.test(qNorm) || (scope && /cong vien|park|so thu|zoo|thao cam vien|vuon thu|safari/i.test(scope.restRaw));
         const isResidential = /chung cu|can ho|apartment|condo|residence|residences|khu dan cu|kdc|khu do thi|kdt/i.test(qNorm) || (scope && /chung cu|can ho|apartment|condo|residence|khu dan cu|kdc/i.test(scope.restRaw));
+        const isSpiritual = /chua|nha tho|den|dinh|mieu|phu|tu vien|toa thanh|pagoda|temple|cathedral|church|shrine|monastery/i.test(qNorm) || (scope && /chua|nha tho|den|dinh|mieu|tu vien|toa thanh|pagoda|cathedral|church/i.test(scope.restRaw));
+        const isStadiumOrSports = /san van dong|svd|stadium|cung the thao|nha thi dau|san golf|sports centre|arena/i.test(qNorm) || (scope && /san van dong|svd|stadium|cung the thao|nha thi dau|san golf/i.test(scope.restRaw));
+        const isTransportHub = /san bay|airport|cang hang khong|ga tau|ga duong sat|ga xe lua|train station|ben xe|bus station/i.test(qNorm) || (scope && /san bay|airport|ga tau|ben xe/i.test(scope.restRaw));
+        const isUniversity = /dai hoc|hoc vien|cao dang|university|college|academy/i.test(qNorm) || (scope && /dai hoc|hoc vien|cao dang|university|academy/i.test(scope.restRaw));
+        const isVocational = /truong day nghe|day nghe|truong nghe|trung cap|cao dang nghe|trung cap nghe|dao tao nghe|gdnn|gdtx/i.test(qNorm) || (scope && /truong day nghe|day nghe|truong nghe|trung cap|cao dang nghe/i.test(scope.restRaw));
+        const isHospital = /benh vien|bv |hospital|vien y hoc|vien huyet hoc|vien mat|vien k\b|vien bong|vien tim/i.test(qNorm) || (scope && /benh vien|hospital/i.test(scope.restRaw));
 
         const coreName = corePhrase(query) || qNorm;
 
@@ -7015,6 +7153,129 @@
                     }
                 }
             }
+
+            // Quy tắc Tâm linh & Tín ngưỡng (Chùa, Nhà thờ, Đền, Miếu, Tu viện, Tòa thánh):
+            if (isSpiritual) {
+                const isFakeSpiritual = /(?:quan chay|com chay|an chay|tiem chay|cafe|ca phe|shop|cua hang|do tho|vang ma|phong thuy|duc dong|quan an|quan nhua|quan bia)/i.test(cFull);
+                const isAncestral = /(?:nha tho ho|nha tho toc|tu duong ho|tu duong toc)/i.test(cFull);
+                const isReal = /(?:chua|nha tho|den|dinh|mieu|phu|tu vien|toa thanh|pagoda|cathedral|church|shrine|monastery)/i.test(cFull);
+                const isFamous = /(?:tran quoc|mot cot|huong|nha tho lon|duc ba|tan dinh|vinh nghiem|ngoc hoang|linh ung|bai dinh|phat diem|yen tu|ba den|tay ninh|thien mu|quan su|ha\b|ngoc son|tay ho|tam chuc|den hung|cho quan|khanh an|som rong|giac lam)/i.test(cFull);
+
+                if (isAncestral) {
+                    r._isAncestralChapel = true;
+                    r._score -= 250; // Nhà thờ họ tộc không phải nhà thờ công giáo/tin lành công cộng
+                } else if (isFakeSpiritual) {
+                    r._isFakeSpiritual = true;
+                    r._score -= 200; // Quán cơm chay, đồ thờ, phong thuỷ
+                } else if (isReal) {
+                    r._isRealSpiritual = true;
+                    r._score += 90;
+                    if (isFamous) {
+                        r._isFamousSpiritual = true;
+                        r._score += 45; // Các chùa cổ, nhà thờ lớn nổi tiếng của từng khu vực
+                    }
+                }
+            }
+
+            // Quy tắc Sân vận động & Thể thao phức hợp (SVĐ, Cung thể thao, Nhà thi đấu, Sân golf):
+            if (isStadiumOrSports) {
+                const isFakeStadium = /(?:san mini|co nhan tao|cho thue|quan bia|bia hoi|quan an|quan nhau|shop the thao|cua hang)/i.test(cFull);
+                const isReal = /(?:san van dong|\bsvd\b|cung the thao|nha thi dau|stadium|arena|san golf|golf club|sports centre|khu lien hop the thao)/i.test(cFull);
+                const isFamous = /(?:my dinh|hang day|lach tray|thong nhat|thien truong|quan ngua|dien kinh|cam pha|hoa xuan|viet tri|tan son nhat|long thanh|quan khu 7|phu tho|go dau|can tho)/i.test(cFull);
+
+                if (isFakeStadium) {
+                    r._isFakeStadium = true;
+                    r._score -= 150;
+                } else if (isReal) {
+                    r._isRealStadium = true;
+                    r._score += 90;
+                    if (isFamous) {
+                        r._isFamousStadium = true;
+                        r._score += 45; // SVĐ cấp quốc gia/thành phố lớn
+                    }
+                }
+            }
+
+            // Quy tắc Đầu mối giao thông (Sân bay, Ga tàu, Bến xe):
+            if (isTransportHub) {
+                const isFakeTransport = /(?:dai ly|phong ve|ve may bay|ve tau|ve xe|chanh xe|gui hang|nha xe gui hang|quan an|quan nuoc|cafe|tram buyt|tram bus|bus stop)/i.test(cFull);
+                const isReal = /(?:san bay|airport|cang hang khong|ga tau|ga duong sat|ga xe lua|train station|ben xe|bus station|ben pha)/i.test(cFull);
+                const isFamous = /(?:noi bai|tan son nhat|da nang|cat bi|cam ranh|phu quoc|ga ha noi|ga sai gon|ga da nang|ga hai phong|my dinh|giap bat|nuoc ngam|gia lam|yen nghia|mien dong|mien tay|an suong|nga tu ga|vinh niem)/i.test(cFull);
+
+                if (isFakeTransport) {
+                    r._isFakeTransport = true;
+                    r._score -= 180;
+                } else if (isReal) {
+                    r._isRealTransport = true;
+                    r._score += 90;
+                    if (isFamous) {
+                        r._isFamousTransport = true;
+                        r._score += 45;
+                    }
+                }
+            }
+
+            // Quy tắc Đại học & Học viện & Cao đẳng:
+            // Thứ tự ưu tiên: Đại học -> Học viện chính quy -> Cao đẳng.
+            // Loại bỏ các cơ sở thương mại tự xưng Học viện (học viện tóc, spa, thẩm mỹ, võ thuật...).
+            if (isUniversity) {
+                if (FAKE_ACADEMY_RE.test(cFull)) {
+                    r._isFakeAcademy = true;
+                    r._score -= 300; // Học viện tóc, spa, võ thuật...
+                } else if (/(?:tieu hoc|thcs|thpt|mam non|mau giao|gia su|day them|luyen thi|ky tuc xa|can tin)/i.test(cFull)) {
+                    r._isFakeUniv = true;
+                    r._score -= 200;
+                } else if (/(?:dai hoc|university)/i.test(cFull)) {
+                    r._isRealUniv = true;
+                    r._score += 90; // Đại học là ưu tiên số 1
+                    if (/(?:bach khoa|kinh te quoc dan|ngoai thuong|y ha noi|y duoc|su pham|quoc gia|hang hai|can tho|da nang|hue|tai chinh|ngan hang|rmit|ton duc thang|xay dung|giao thong van tai|nong nghiep|luat)/i.test(cFull)) {
+                        r._isFamousUniv = true;
+                        r._score += 45; // Đại học trọng điểm
+                    }
+                } else if (FORMAL_ACADEMY_RE.test(cFull) || (/(?:hoc vien|academy)/i.test(cFull) && /(?:quoc gia|nhan dan|trung uong|chinh tri|vien nghien cuu|khoa hoc|giao duc)/i.test(cFull))) {
+                    r._isFormalAcademy = true;
+                    r._score += 85; // Lấy thêm Học viện chính quy (bậc 1)
+                } else if (/(?:cao dang|college)/i.test(cFull)) {
+                    r._isCollege = true;
+                    r._score += 55; // Rồi đến Cao đẳng (bậc 2)
+                } else if (/(?:hoc vien|academy)/i.test(cFull)) {
+                    r._score += 25;
+                }
+            }
+
+            // Quy tắc Trường dạy nghề & Trung cấp:
+            // Khi tìm trường dạy nghề thì lấy thêm Trung cấp (trung cấp nghề, trung cấp kỹ thuật...).
+            if (isVocational) {
+                if (/(?:salon|hair|cat toc|spa|phun xam|nail|tiem|quan an|cafe)/i.test(cFull)) {
+                    r._isFakeVocational = true;
+                    r._score -= 200;
+                } else if (/(?:truong day nghe|truong nghe|cao dang nghe|gdnn|gdtx|sat hach|dao tao lai xe)/i.test(cFull)) {
+                    r._isVocational = true;
+                    r._score += 85;
+                } else if (/(?:trung cap)/i.test(cFull)) {
+                    r._isVocational = true;
+                    r._score += 80; // Lấy thêm Trung cấp
+                }
+            }
+
+            // Quy tắc Bệnh viện & Viện chuyên khoa:
+            if (isHospital) {
+                const isFakeHospital = /(?:phong kham|nha thuoc|hieu thuoc|quay thuoc|thu y|thu cung|pet|spa|tham my vien|lam dep|massage)/i.test(cFull);
+                const isReal = /(?:benh vien|\bbv\b|hospital|trung tam y te|vien y hoc|vien huyet hoc|vien mat|vien k\b|vien bong|vien tim|vien pasteur)/i.test(cFull);
+                const isFamous = /(?:bach mai|viet duc|cho ray|108|115|tu du|hung vuong|nhi dong|ung buou|tai mui hong|xanh pon|saint paul|viet tiep|trung uong hue|da khoa da nang|da khoa trung uong can tho|vien tim|nhi trung uong|phu san trung uong)/i.test(cFull);
+
+                if (isFakeHospital) {
+                    r._isFakeHospital = true;
+                    r._score -= 140;
+                } else if (isReal) {
+                    r._isRealHospital = true;
+                    r._score += 85;
+                    if (isFamous) {
+                        r._isFamousHospital = true;
+                        r._score += 45; // Tuyến trung ương / tuyến đầu
+                    }
+                }
+            }
         });
 
         // Loại bỏ kết quả xung đột từ ghép (ví dụ: "nhà khoa", "nhà hàng" khi tìm "nhà hát")
@@ -7039,6 +7300,42 @@
         if (isMallBrand && rows.some((r) => r._isMainMall)) {
             const mallsOnly = rows.filter((r) => !r._isTenant);
             if (mallsOnly.length) rows = mallsOnly;
+        }
+
+        // Lọc bỏ quán cơm chay, đồ thờ, nhà thờ họ khi tìm Chùa / Nhà thờ
+        if (isSpiritual && rows.some((r) => r._isRealSpiritual)) {
+            const spiritualOnly = rows.filter((r) => !r._isFakeSpiritual && !r._isAncestralChapel);
+            if (spiritualOnly.length) rows = spiritualOnly;
+        }
+
+        // Lọc bỏ sân mini cỏ nhân tạo, quán bia khi tìm Sân vận động
+        if (isStadiumOrSports && rows.some((r) => r._isRealStadium)) {
+            const stadiumOnly = rows.filter((r) => !r._isFakeStadium);
+            if (stadiumOnly.length) rows = stadiumOnly;
+        }
+
+        // Lọc bỏ đại lý vé, chành xe khi tìm Đầu mối giao thông
+        if (isTransportHub && rows.some((r) => r._isRealTransport)) {
+            const transportOnly = rows.filter((r) => !r._isFakeTransport);
+            if (transportOnly.length) rows = transportOnly;
+        }
+
+        // Lọc bỏ học viện tự xưng (tóc, spa, võ thuật...) và trường phổ thông khi tìm Đại học / Học viện
+        if (isUniversity && rows.some((r) => r._isRealUniv || r._isFormalAcademy || r._isCollege)) {
+            const univOnly = rows.filter((r) => !r._isFakeAcademy && !r._isFakeUniv);
+            if (univOnly.length) rows = univOnly;
+        }
+
+        // Lọc bỏ tiệm cắt tóc, spa khi tìm Trường dạy nghề / Trung cấp
+        if (isVocational && rows.some((r) => r._isVocational)) {
+            const vocOnly = rows.filter((r) => !r._isFakeVocational);
+            if (vocOnly.length) rows = vocOnly;
+        }
+
+        // Lọc bỏ phòng khám tư nhân, nhà thuốc khi tìm Bệnh viện lớn
+        if (isHospital && rows.some((r) => r._isRealHospital)) {
+            const hospOnly = rows.filter((r) => !r._isFakeHospital);
+            if (hospOnly.length) rows = hospOnly;
         }
 
         // Bỏ trùng theo tên cùng khoảng cách
@@ -7360,6 +7657,54 @@
                 addAsk(`Chung cư ${scope.restRaw}, ${scope.name}`);
                 addAsk(`Căn hộ ${scope.restRaw}, ${scope.name}`);
                 addAsk(`Apartment ${scope.restRaw}, ${scope.name}`);
+            }
+            // Mở rộng Đại học / Học viện / Cao đẳng (Thứ bậc: Đại học -> Học viện -> Cao đẳng)
+            if (/(đại học|dai hoc|học viện|hoc vien|cao đẳng|cao dang|university|college|academy)/i.test(lowerRest)) {
+                addAsk(`Trường Đại học, ${scope.name}`);
+                addAsk(`Đại học, ${scope.name}`);
+                addAsk(`Học viện, ${scope.name}`);
+                addAsk(`Cao đẳng, ${scope.name}`);
+                addAsk(`University, ${scope.name}`);
+            }
+            // Mở rộng Trường dạy nghề & Trung cấp (Trường dạy nghề -> Trung cấp)
+            if (/(trường dạy nghề|truong day nghe|trường nghề|truong nghe|dạy nghề|day nghe|trung cấp|trung cap|cao đẳng nghề|cao dang nghe)/i.test(lowerRest)) {
+                addAsk(`Trường dạy nghề, ${scope.name}`);
+                addAsk(`Trường nghề, ${scope.name}`);
+                addAsk(`Trường Trung cấp, ${scope.name}`);
+                addAsk(`Trường Cao đẳng nghề, ${scope.name}`);
+                addAsk(`Trung tâm dạy nghề, ${scope.name}`);
+            }
+            // Mở rộng Tâm linh & Tín ngưỡng
+            if (/(chùa|chua|nhà thờ|nha tho|đền|den|đình|dinh|miếu|mieu|tu viện|tu vien|tòa thánh|toa thanh|pagoda|cathedral|church)/i.test(lowerRest)) {
+                addAsk(`Chùa, ${scope.name}`);
+                addAsk(`Nhà thờ, ${scope.name}`);
+                addAsk(`Đền, ${scope.name}`);
+                addAsk(`Pagoda, ${scope.name}`);
+                addAsk(`Cathedral, ${scope.name}`);
+                addAsk(`Church, ${scope.name}`);
+            }
+            // Mở rộng Sân vận động & Nhà thi đấu
+            if (/(sân vận động|san van dong|svd|stadium|cung thể thao|cung the thao|nhà thi đấu|nha thi dau|sân golf|san golf)/i.test(lowerRest)) {
+                addAsk(`Sân vận động, ${scope.name}`);
+                addAsk(`Stadium, ${scope.name}`);
+                addAsk(`Cung thể thao, ${scope.name}`);
+                addAsk(`Nhà thi đấu, ${scope.name}`);
+                addAsk(`Sân golf, ${scope.name}`);
+            }
+            // Mở rộng Đầu mối giao thông (Sân bay, Ga tàu, Bến xe)
+            if (/(sân bay|san bay|airport|ga tàu|ga tau|ga đường sắt|ga duong sat|train station|bến xe|ben xe|bus station)/i.test(lowerRest)) {
+                addAsk(`Sân bay, ${scope.name}`);
+                addAsk(`Airport, ${scope.name}`);
+                addAsk(`Ga tàu, ${scope.name}`);
+                addAsk(`Train station, ${scope.name}`);
+                addAsk(`Bến xe, ${scope.name}`);
+                addAsk(`Bus station, ${scope.name}`);
+            }
+            // Mở rộng Bệnh viện & Viện chuyên khoa
+            if (/(bệnh viện|benh vien|hospital|viện y học|trung tâm y tế)/i.test(lowerRest)) {
+                addAsk(`Bệnh viện, ${scope.name}`);
+                addAsk(`Hospital, ${scope.name}`);
+                addAsk(`Bệnh viện đa khoa, ${scope.name}`);
             }
         } else {
             if (cleanedRaw) addAsk(cleanedRaw);
@@ -8290,6 +8635,95 @@
                 openModal('searchModal');
                 const resultsEl = $('searchResults');
                 if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm bãi đỗ xe gần nhất...</p>`;
+                searchCategory(c).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 8a. Tìm trường đại học / học viện / cao đẳng gần nhất
+        if (/(đại học|học viện|cao đẳng|university)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            const sub = /(học viện)/i.test(lower) ? 'Học viện' : (/(cao đẳng)/i.test(lower) ? 'Cao đẳng' : 'Đại học');
+            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường đại học');
+            if (c) {
+                $('searchInput').value = sub;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 8b. Tìm trường dạy nghề / trung cấp gần nhất
+        if (/(trường dạy nghề|trường nghề|dạy nghề|trung cấp|cao đẳng nghề)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            const sub = /(trung cấp)/i.test(lower) ? 'Trường trung cấp' : 'Trường dạy nghề';
+            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Trường dạy nghề');
+            if (c) {
+                $('searchInput').value = sub;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 8c. Tìm chùa / nhà thờ gần nhất
+        if (/(chùa|nhà thờ|đền|miếu|tu viện)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            const sub = /(nhà thờ)/i.test(lower) ? 'Nhà thờ' : (/(đền)/i.test(lower) ? 'Đền' : 'Chùa');
+            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Chùa / Nhà thờ');
+            if (c) {
+                $('searchInput').value = sub;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 8d. Tìm sân vận động / nhà thi đấu gần nhất
+        if (/(sân vận động|nhà thi đấu|cung thể thao|sân golf)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            const sub = /(nhà thi đấu)/i.test(lower) ? 'Nhà thi đấu' : (/(sân golf)/i.test(lower) ? 'Sân golf' : 'Sân vận động');
+            speakAssistant(`Đang tìm ${sub.toLowerCase()} gần bạn nhất.`);
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Sân vận động');
+            if (c) {
+                $('searchInput').value = sub;
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ${sub.toLowerCase()} gần nhất...</p>`;
+                searchCategory({ ...c, _subQuery: noAccent(sub) }).then(renderSearchResults);
+                return;
+            }
+        }
+
+        // 8e. Tìm ga tàu gần nhất
+        if (/(ga tàu|ga đường sắt|ga xe lửa|ga metro)/i.test(lower) && /(gần|quanh|ở đâu|chỗ nào|đâu)/i.test(lower)) {
+            closeAssistantUI();
+            speakAssistant('Đang tìm ga tàu gần bạn nhất.');
+            const c = PLACE_CATEGORIES.find((x) => x.label === 'Ga tàu');
+            if (c) {
+                $('searchInput').value = 'Ga tàu';
+                renderSearchClear();
+                setActiveCategory(c.label);
+                openModal('searchModal');
+                const resultsEl = $('searchResults');
+                if (resultsEl) resultsEl.innerHTML = `<p class="p-4 text-slate-400 text-center flex items-center justify-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i>Đang tìm ga tàu gần nhất...</p>`;
                 searchCategory(c).then(renderSearchResults);
                 return;
             }
