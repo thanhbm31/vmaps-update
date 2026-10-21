@@ -50,6 +50,10 @@
     </script>
 
     <style>
+        /* Fallback tá»± thÃ¢n phÃ²ng khi Tailwind CDN bá»‹ cháº·n bá»Ÿi sandbox/CSP hoáº·c khÃ´ng cÃ³ máº¡ng */
+        .hidden { display: none !important; }
+        html.dark, body.dark, body { background-color: #0f172a; color: #f8fafc; }
+
         :root {
             --sat: env(safe-area-inset-top, 0px);
             --sab: env(safe-area-inset-bottom, 0px);
@@ -265,36 +269,52 @@
         .car-pulse { animation: carPulse 2.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
         @media (prefers-reduced-motion: reduce) { .car-pulse { animation: none; } }
 
-        /* Nút micro trong ô tìm kiếm.
-           Viết CSS thẳng thay vì dùng tiện ích Tailwind: bản tailwind.css được
-           sinh bằng cách quét index.html, nên một class ít dùng có thể không
-           được sinh ra và nút sẽ rơi sai chỗ. Bố cục quan trọng không nên phụ
-           thuộc vào việc trình quét có bắt được class hay không. */
-        #micBtn {
-            position: absolute; right: 6px; top: 50%;
-            transform: translateY(-50%);
-            width: 38px; height: 38px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 10px; font-size: 16px; color: #64748b;
+        /* Hiệu ứng camera phạt nguội nhấp nháy tại đúng toạ độ */
+        @keyframes cameraBlink {
+            0%, 100% { transform: scale(1); opacity: 1; filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.8)); }
+            50% { transform: scale(1.22); opacity: 0.85; filter: drop-shadow(0 0 10px rgba(239, 68, 68, 1)); }
         }
-        #micBtn:active { background: rgba(148, 163, 184, 0.2); }
-        .dark #micBtn { color: #94a3b8; }
+        .camera-blink {
+            animation: cameraBlink 1.2s ease-in-out infinite;
+            transform-origin: center;
+        }
 
-        /* Nút xoá nhanh cả dòng chữ, nằm NGAY TRONG ô nhập, bên trái nút mic.
-           Dấu X trước đây ở ngoài cùng là nút đóng bảng, nên gõ sai một chữ
-           là phải xoá tay từng ký tự — hoặc bấm nhầm và mất cả bảng. */
-        #searchClear {
-            position: absolute; right: 48px; top: 50%;
+        /* Nút micro to gấp đôi trong ô tìm kiếm, đè lên mép khung */
+        #micBtn {
+            position: absolute; right: -6px; top: 50%;
             transform: translateY(-50%);
-            width: 32px; height: 32px;
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 16px; font-size: 20px;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45);
+            border: 2.5px solid #ffffff;
+            z-index: 10;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .dark #micBtn {
+            border-color: #1e293b;
+            color: #ffffff;
+        }
+        #micBtn:active {
+            transform: translateY(-50%) scale(0.92);
+        }
+
+        /* Nút xoá nhanh cả dòng chữ, nằm NGAY TRONG ô nhập, bên trái nút mic. */
+        #searchClear {
+            position: absolute; right: 52px; top: 50%;
+            transform: translateY(-50%);
+            width: 30px; height: 30px;
             display: none; align-items: center; justify-content: center;
             border-radius: 999px; font-size: 13px;
             color: #64748b; background: rgba(148, 163, 184, 0.18);
+            z-index: 9;
         }
         #searchClear.show { display: flex; }
         #searchClear:active { background: rgba(148, 163, 184, 0.38); }
         .dark #searchClear { color: #cbd5e1; background: rgba(148, 163, 184, 0.25); }
-
         /* Chip địa điểm đã lưu: nền rõ để phân biệt "đã đặt" và "chưa đặt" */
         .place-chip.is-set {
             background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;
@@ -464,6 +484,21 @@
         }
         .dark .leaflet-control-attribution { background: rgba(15, 23, 42, 0.6) !important; }
         .dark .leaflet-control-attribution a { color: #93c5fd; }
+
+        /* Hiệu ứng nhấp nháy cho icon camera phạt nguội trên toạ độ bản đồ */
+        @keyframes camBlink {
+            0%, 100% {
+                transform: scale(1);
+                filter: drop-shadow(0 0 2px rgba(239, 68, 68, 0.4));
+            }
+            50% {
+                transform: scale(1.22);
+                filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.95));
+            }
+        }
+        .cam-blinking {
+            animation: camBlink 1.4s infinite ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white duration-300">
@@ -478,76 +513,112 @@
     <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none">
 
         <!-- ================= LƯỚI HUD ================= -->
-        <div id="hud-grid">
+        <!-- ================= LƯỚI HUD ================= -->
+        <div id="hud-grid" style="transition: bottom 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);">
             <!-- Hàng trên -->
-            <div class="hud-cell col-left row-top" style="grid-area: 1 / 1"><div id="hud-top-left" class="hud-slot"></div></div>
-            <div class="hud-cell col-center row-top" style="grid-area: 1 / 2"><div id="hud-top-center" class="hud-slot"></div></div>
-            <div class="hud-cell col-right row-top" style="grid-area: 1 / 3">
-                <!-- Cài đặt + La bàn luôn ở góc phải trên -->
-                <div id="comp-controls" class="pointer-events-auto flex flex-col items-center gap-3">
-                    <button onclick="toggleModal('settingsModal')" aria-label="Cài đặt" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
-                        <i class="fa-solid fa-gear text-xl"></i>
+            <div class="hud-cell col-left row-top" style="grid-area: 1 / 1">
+                <div id="comp-controls-left" class="pointer-events-auto flex flex-col items-center gap-2.5">
+                    <!-- 1. Menu Hamburger / Cài đặt -->
+                    <button onclick="toggleModal('settingsModal')" aria-label="Cài đặt & Menu" class="fab glass-panel rounded-2xl shadow-lg relative flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 transition">
+                        <i class="fa-solid fa-bars text-xl"></i>
                     </button>
-                    <button onclick="toggleMapRotation()" aria-label="La bàn: đổi giữa hướng Bắc và hướng xe"
-                            class="fab glass-panel rounded-full shadow-lg relative flex items-center justify-center cursor-pointer">
-                        <!-- Vòng chữ quay theo bản đồ, B luôn chỉ Bắc thật -->
-                        <div id="compass-ring" class="absolute inset-0">
-                            <div class="absolute left-0 right-0 text-[8px] font-bold text-red-500 top-1 text-center">B</div>
-                            <div class="absolute left-0 right-0 text-[8px] font-bold text-slate-400 bottom-1 text-center">N</div>
-                            <div class="absolute top-0 bottom-0 text-[8px] font-bold text-slate-400 right-1 flex items-center">Đ</div>
-                            <div class="absolute top-0 bottom-0 text-[8px] font-bold text-slate-400 left-1 flex items-center">T</div>
+                    <!-- 2. La bàn xoay tròn có ĐÔNG TÂY NAM BẮC (Tiếng Việt, viết tắt B - N - Đ - T) -->
+                    <button onclick="toggleMapRotation()" aria-label="La bàn: B (Bắc), N (Nam), Đ (Đông), T (Tây)"
+                            class="fab glass-panel rounded-full shadow-lg relative flex items-center justify-center cursor-pointer active:scale-95 transition">
+                        <div id="compass-ring" class="absolute inset-0 rounded-full border border-white/20">
+                            <div class="absolute left-0 right-0 text-[10px] font-black text-rose-500 top-0.5 text-center leading-none tracking-tighter">B</div>
+                            <div class="absolute left-0 right-0 text-[10px] font-black text-slate-300 dark:text-slate-200 bottom-0.5 text-center leading-none tracking-tighter">N</div>
+                            <div class="absolute top-0 bottom-0 text-[10px] font-black text-slate-300 dark:text-slate-200 right-1 flex items-center leading-none">Đ</div>
+                            <div class="absolute top-0 bottom-0 text-[10px] font-black text-slate-300 dark:text-slate-200 left-1 flex items-center leading-none">T</div>
                         </div>
-                        <!-- fa-regular location-arrow chỉ có bản Pro → dùng fa-solid -->
                         <i id="compass-needle" class="fa-solid fa-location-arrow text-blue-500 text-base -rotate-45"></i>
                     </button>
+                    <!-- 3. Chế độ view bản đồ (Vệ tinh, Lớp bản đồ...) ĐẶT DƯỚI LA BÀN -->
+                    <button id="mapStyleBtn" onclick="openMapStyle()" aria-label="Chế độ view bản đồ"
+                            class="fab glass-panel rounded-2xl shadow-lg flex items-center justify-center text-teal-500 hover:text-teal-400 active:scale-95 transition">
+                        <i class="fa-solid fa-layer-group text-lg"></i>
+                    </button>
                 </div>
+                <div id="hud-top-left" class="hud-slot mt-2"></div>
+            </div>
+            
+            <!-- Hàng trên giữa: Tốc độ km/h và Biển báo giới hạn tốc độ -->
+            <div class="hud-cell col-center row-top" style="grid-area: 1 / 2">
+                <div id="hud-top-center" class="hud-slot"></div>
+            </div>
+            
+            <!-- Hàng trên phải: Trợ lý ảo (thay icon nghe nhạc) và Loa âm thanh -->
+            <div class="hud-cell col-right row-top" style="grid-area: 1 / 3">
                 <div id="hud-top-right" class="hud-slot"></div>
+                <div id="comp-controls-right" class="pointer-events-auto flex flex-col items-center gap-2.5">
+                    <!-- 1. Nút Trợ lý ảo (Voice Assistant) THAY CHO ICON NGHE NHẠC -->
+                    <button id="assistantFabBtn" onclick="triggerVoiceAssistant()" aria-label="Trợ lý ảo VMaps"
+                            class="fab rounded-full shadow-xl flex items-center justify-center text-white active:scale-95 transition bg-gradient-to-tr from-indigo-700 via-indigo-600 to-violet-500 border-2 border-indigo-300/60"
+                            style="width: 44px; height: 44px;">
+                        <svg class="w-5 h-5 fill-white" viewBox="0 0 36 36" aria-hidden="true">
+                            <path fill="#ffffff" d="M35.838 23.159c.003.553-.443 1.002-.998 1.003l-5 .013c-.552.002-.999-.446-1-.997-.003-.555.444-1.002.995-1.004l5-.013c.553 0 1.002.445 1.003.998zm-1.587-5.489c.238.499.025 1.095-.475 1.333l-4.517 2.145c-.498.236-1.094.023-1.33-.476-.239-.498-.025-1.094.474-1.333l4.516-2.144c.5-.236 1.095-.024 1.332.475zm.027 10.987c.234-.501.02-1.096-.48-1.33l-4.527-2.122c-.501-.235-1.095-.02-1.33.48-.234.501-.019 1.096.482 1.33l4.526 2.123c.499.234 1.096.019 1.329-.481z"/>
+                            <path fill="#ffffff" d="M27.979 14.875c-1.42-.419-2.693-1.547-3.136-2.25-.76-1.208.157-1.521-.153-4.889C24.405 4.653 20.16 1.337 15 1c-2.346-.153-4.786.326-7.286 1.693-6.42 3.511-8.964 10.932-4.006 18.099 4.47 6.46.276 9.379.276 9.379s.166 1.36 2.914 3.188c2.749 1.827 6.121.588 6.121.588s1.112-3.954 4.748-3.59c2.606.384 6.266-.129 7.191-1.024.865-.837-.151-1.886.539-4.224-2.365-.232-3.665-1.359-3.79-2.948 2.625.255 3.708-.578 4.458-1.495-.021-.54-.075-1.686-.127-2.454 2.322-.672 3.212-2.962 1.941-3.337z"/>
+                        </svg>
+                    </button>
+                    <!-- 2. Chế độ âm thanh (Loa) -->
+                    <button id="soundBtn" onclick="toggleSoundMode()" aria-label="Chế độ âm thanh" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition">
+                        <i id="soundIcon" class="fa-solid fa-volume-high text-lg"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Hàng giữa -->
             <div class="hud-cell col-left row-middle" style="grid-area: 2 / 1"><div id="hud-middle-left" class="hud-slot"></div></div>
             <div class="hud-cell col-right row-middle" style="grid-area: 2 / 3"><div id="hud-middle-right" class="hud-slot"></div></div>
 
-            <!-- Hàng dưới: có ô riêng cho các nút thao tác nên HUD không thể đè lên nút -->
+            <!-- Hàng dưới: Co lên xuống theo thanh tìm kiếm đáy -->
             <div class="hud-cell col-left row-bottom" style="grid-area: 3 / 1">
                 <div id="hud-bottom-left" class="hud-slot"></div>
                 <div class="action-stack items-start">
-                    <button id="mapStyleBtn" onclick="openMapStyle()" aria-label="Kiểu bản đồ" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-indigo-500 transition-transform">
-                        <i id="mapStyleIcon" class="fa-solid fa-route text-lg"></i>
-                    </button>
-                    <!-- Nút gọi Trợ lý ảo cưỡng bức (Mở Mic ngay lập tức) PHÍA TRÊN nút dấu cộng -->
-                    <button id="forceVoiceBtn" onclick="forceVoiceAssistant()" aria-label="Trợ lý ảo (Nói ngay)"
-                        class="fab rounded-full shadow-xl flex items-center justify-center transition-transform active:scale-95 border-2 border-white/80"
-                        style="background: #4f46e5 !important; width: 48px; height: 48px;">
-                        <svg class="w-6 h-6" viewBox="0 0 36 36" aria-hidden="true" style="fill: #ffffff !important;">
-                            <!-- Sóng loa / âm thanh phát ra từ miệng -->
-                            <path fill="#ffffff" d="M35.838 23.159c.003.553-.443 1.002-.998 1.003l-5 .013c-.552.002-.999-.446-1-.997-.003-.555.444-1.002.995-1.004l5-.013c.553 0 1.002.445 1.003.998zm-1.587-5.489c.238.499.025 1.095-.475 1.333l-4.517 2.145c-.498.236-1.094.023-1.33-.476-.239-.498-.025-1.094.474-1.333l4.516-2.144c.5-.236 1.095-.024 1.332.475zm.027 10.987c.234-.501.02-1.096-.48-1.33l-4.527-2.122c-.501-.235-1.095-.02-1.33.48-.234.501-.019 1.096.482 1.33l4.526 2.123c.499.234 1.096.019 1.329-.481z"/>
-                            <!-- Hình mặt người nhìn nghiêng -->
-                            <path fill="#ffffff" d="M27.979 14.875c-1.42-.419-2.693-1.547-3.136-2.25-.76-1.208.157-1.521-.153-4.889C24.405 4.653 20.16 1.337 15 1c-2.346-.153-4.786.326-7.286 1.693-6.42 3.511-8.964 10.932-4.006 18.099 4.47 6.46.276 9.379.276 9.379s.166 1.36 2.914 3.188c2.749 1.827 6.121.588 6.121.588s1.112-3.954 4.748-3.59c2.606.384 6.266-.129 7.191-1.024.865-.837-.151-1.886.539-4.224-2.365-.232-3.665-1.359-3.79-2.948 2.625.255 3.708-.578 4.458-1.495-.021-.54-.075-1.686-.127-2.454 2.322-.672 3.212-2.962 1.941-3.337z"/>
-                        </svg>
-                    </button>
-                    <button onclick="toggleModal('reportModal')" aria-label="Báo cáo cho cộng đồng" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-yellow-500 transition-transform border border-yellow-500/30">
-                        <i class="fa-solid fa-plus text-2xl"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="hud-cell col-center row-bottom" style="grid-area: 3 / 2"><div id="hud-bottom-center" class="hud-slot"></div></div>
-            <div class="hud-cell col-right row-bottom" style="grid-area: 3 / 3">
-                <div id="hud-bottom-right" class="hud-slot"></div>
-                <div class="action-stack items-end">
-                    <button id="soundBtn" onclick="toggleSoundMode()" aria-label="Chế độ âm thanh" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 transition-transform">
-                        <i id="soundIcon" class="fa-solid fa-volume-high text-lg"></i>
-                    </button>
-                    <button onclick="openUtilities()" aria-label="Tiện ích" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-teal-500 transition-transform border border-teal-500/30">
-                        <i class="fa-solid fa-layer-group text-lg"></i>
-                    </button>
-                    <button id="assistantFabBtn" onclick="triggerVoiceAssistant()" aria-label="Trợ lý ảo VMaps" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-indigo-500 hover:text-indigo-600 transition-transform border border-indigo-500/30">
-                        <i class="fa-solid fa-wand-magic-sparkles text-lg"></i>
-                    </button>
-                    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <!-- Nút về vị trí xe -->
+                    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition">
                         <i class="fa-solid fa-location-crosshairs text-xl"></i>
                     </button>
                 </div>
+            </div>
+            
+            <div class="hud-cell col-center row-bottom" style="grid-area: 3 / 2">
+                <div id="hud-bottom-center" class="hud-slot"></div>
+                <!-- Viên thuốc cảnh báo 26 báo cáo quanh bạn -->
+                <button id="hazardPillBtn" onclick="toggleModal('reportModal')" class="pointer-events-auto flex items-center gap-2 px-4 py-2 rounded-full bg-black/90 dark:bg-black/95 backdrop-blur-md border border-white/20 shadow-2xl text-white active:scale-95 transition">
+                    <div class="w-6 h-4.5 rounded bg-blue-900 border border-blue-400 flex items-center justify-center text-[10px]">
+                        🚗
+                    </div>
+                    <span class="text-xs font-extrabold tracking-wide text-white">26 báo cáo Xung quanh bạn</span>
+                </button>
+            </div>
+            
+            <div class="hud-cell col-right row-bottom" style="grid-area: 3 / 3">
+                <div id="hud-bottom-right" class="hud-slot"></div>
+                <div class="action-stack items-end flex flex-col gap-2">
+                    <!-- 1. Tam giác báo cáo cảnh báo (sạt lở, cảnh sát..) CHO NHỎ GỌN HƠN (w-10 h-10) -->
+                    <button id="hazardReportBtn" onclick="toggleModal('reportModal')" aria-label="Báo cáo cảnh báo"
+                            class="rounded-xl bg-[#524419]/90 border border-[#eab308] shadow-lg flex items-center justify-center text-[#facc15] hover:bg-[#63531e] active:scale-95 transition"
+                            style="width: 42px; height: 42px;">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </button>
+                    <!-- 2. Chế độ lọc đường / tránh đường ĐẶT DƯỚI TAM GIÁC BÁO CÁO: BIỂU TƯỢNG TRÁNH MÔ TẢ ĐI ĐƯỜNG RẼ VÀ MỘT BÊN TRÁNH -->
+                    <button id="routeFilterBtn" onclick="openRouteSettings()" aria-label="Chế độ lọc và tránh đường"
+                            class="rounded-xl bg-slate-900/90 border border-indigo-400/50 shadow-xl flex items-center justify-center text-indigo-400 hover:text-indigo-300 active:scale-95 transition"
+                            style="width: 42px; height: 42px;">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <!-- Đường chính từ dưới lên -->
+                            <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
+                            <!-- Nhánh thẳng bị tránh/chặn: nét đứt và thanh chắn cấm đỏ -->
+                            <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
+                            <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+                            <!-- Nhánh rẽ tránh sang một bên lượn mượt mà đi tiếp -->
+                            <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
+                            <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
 
             <!-- Trợ lý ảo Voice Assistant Floating Bar -->
             <div id="assistantBanner" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-[1000] bg-slate-900/95 backdrop-blur-md text-white rounded-2xl shadow-2xl border border-indigo-500/40 p-4 transition-all duration-300">
@@ -567,7 +638,7 @@
             </div>
 
             <!-- Toast: phủ cả hàng giữa, bám ngay dưới hàng trên -->
-            <div id="toast-host" style="grid-area: 2 / 1 / 3 / 4">
+            <div id="toast-host" style="grid-area: 2 / 1 / 3 / 4; display: flex; flex-direction: column; align-items: center;">
                 <div id="offlineBadge" role="status" aria-live="polite"
                      class="hidden items-center gap-2 bg-amber-500 text-white px-3 py-1.5 rounded-full shadow-lg text-xs font-bold mb-2">
                     <i class="fa-solid fa-plug-circle-xmark"></i>
@@ -582,21 +653,13 @@
         <div id="comp-pool" class="hidden">
             <!-- COMPONENT 1: Phạt nguội & Rẽ tiếp theo -->
             <div id="comp-warning" class="pointer-events-auto flex flex-col gap-3 items-center">
-                <!-- Nhãn một dòng ngang + icon nhỏ: khối này trước cao gần gấp
-                     đôi, mà fa-camera lại giống máy chụp ảnh du lịch. -->
-                <div onclick="demoCamera()" class="glass-panel px-2.5 py-2 rounded-2xl shadow-lg flex flex-col items-center justify-center cursor-pointer">
-                    <div class="flex items-center gap-1.5">
-                        <i class="fa-solid fa-video text-red-600 dark:text-red-400 text-[13px]"></i>
-                        <span class="whitespace-nowrap text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Phạt nguội</span>
-                    </div>
-                    <span id="camDist" class="text-lg font-extrabold text-slate-800 dark:text-white leading-none mt-0.5">–</span>
-                </div>
-                <div id="turnCard" onclick="demoTurn()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[80px] cursor-pointer">
+                <!-- Rẽ tiếp theo: chỉ hiện khi đang điều hướng, mặc định ẩn -->
+                <div id="turnCard" onclick="demoTurn()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[80px] cursor-pointer hidden">
                     <div class="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mb-1">
                         <i id="turnIcon" class="fa-solid fa-arrow-turn-right text-blue-600 dark:text-blue-400 text-xl"></i>
                     </div>
-                    <span id="turnLabel" class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">–</span>
-                    <span id="turnDist" class="text-lg font-extrabold text-slate-800 dark:text-white leading-none mt-1">–</span>
+                    <span id="turnLabel" class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">-</span>
+                    <span id="turnDist" class="text-lg font-extrabold text-slate-800 dark:text-white leading-none mt-1">-</span>
                     <span id="turnStreet" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center"></span>
                 </div>
             </div>
@@ -635,35 +698,98 @@
             <div id="street-pill" class="hidden">
                 <span id="curStreet">–</span>
             </div>
-            <div id="bottom-bar" class="glass-panel shadow-2xl">
-                <button id="barSearch" onclick="openSearchModal()" data-needs-network aria-label="Tìm kiếm địa điểm"
-                        class="bar-btn text-emerald-500">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <span id="barSearchLabel">Tìm địa điểm, địa chỉ…</span>
-                </button>
 
-                <div id="bar-center" onclick="openNavActions()">
-                    <div id="destName" class="text-slate-800 dark:text-white">Chưa dẫn đường</div>
-                    <div id="bar-sub">
-                        <span id="etaArrive">–</span>
-                        <span class="bar-dot">•</span>
-                        <span id="etaMin">–</span>
-                        <span class="bar-dot">•</span>
-                        <span id="etaDist">–</span>
-                        <!-- Chỉ hiện với xe điện -->
-                        <span id="batteryBlock">
-                            <span class="bar-dot">•</span>
-                            <i class="fa-solid fa-car-battery text-blue-500"></i>
-                            <span id="battNow">–</span>
-                            <span id="battArriveWrap">→ <span id="battArrive" class="text-orange-500 font-bold">–</span></span>
-                        </span>
+            <!-- HOME BOTTOM SHEET: Kéo co lên xuống, mặc định ở vị trí cao (~340px) để không bị bấm nhầm vào thanh Home ảo -->
+            <div id="home-bottom-sheet" class="w-full bg-white dark:bg-[#1e232f] rounded-t-[28px] border-t border-slate-200 dark:border-white/15 shadow-[0_-10px_35px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden transition-[height] duration-200" style="height: 340px;">
+                
+                <!-- Thanh kéo Handle -->
+                <div id="sheet-drag-handle" class="w-full pt-2.5 pb-1 flex justify-center cursor-grab active:cursor-grabbing select-none touch-none">
+                    <div class="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                </div>
+
+                <!-- Ô tìm kiếm ngoài trang chủ: Nút Micro to gấp đôi đè lên mép khung -->
+                <div id="home-search-container" class="px-4 pt-1 pb-2">
+                    <div class="relative w-full flex items-center">
+                        <div onclick="openSearchModal()" class="w-full h-12 py-2.5 pl-4 pr-14 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex items-center gap-3 cursor-pointer active:bg-slate-200 dark:active:bg-slate-700 transition">
+                            <i class="fa-solid fa-magnifying-glass text-slate-400 text-base"></i>
+                            <span class="text-sm font-medium text-slate-400">Bạn muốn đi đâu?</span>
+                        </div>
+                        <!-- Nút Micro to gấp đôi, đè lên mép khung bên phải -->
+                        <button type="button" onclick="startVoiceSearch()" aria-label="Nói để tìm kiếm"
+                            class="absolute -right-2 top-1/2 -translate-y-1/2 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 hover:from-indigo-500 hover:to-violet-400 text-white shadow-lg shadow-indigo-500/35 flex items-center justify-center active:scale-95 transition z-10 border-2 border-white dark:border-slate-900"
+                            style="width: 48px; height: 48px;">
+                            <i class="fa-solid fa-microphone text-xl"></i>
+                        </button>
                     </div>
                 </div>
 
-                <button onclick="openRouteSettings()" aria-label="Tuỳ chọn tuyến đường"
-                        class="bar-btn text-indigo-500">
-                    <i class="fa-solid fa-code-branch"></i>
-                </button>
+                <!-- Hàng chip lối tắt nhanh (Nhà riêng, Cơ quan, Đã lưu) -->
+                <div id="home-chips-row" class="px-4 pb-2.5 flex items-center gap-2 overflow-x-auto no-scrollbar">
+                    <button type="button" onclick="startNavigationHome()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <div class="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-500 flex items-center justify-center text-xs">🏠</div>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Nhà riêng</span>
+                    </button>
+                    <button type="button" onclick="startNavigationWork()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <div class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">💼</div>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Cơ quan</span>
+                    </button>
+                    <button type="button" onclick="openSearchModal()" class="shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 active:scale-95 transition">
+                        <div class="w-6 h-6 rounded-lg bg-orange-500/20 text-orange-500 flex items-center justify-center text-xs">🔖</div>
+                        <span class="text-xs font-bold text-slate-800 dark:text-white">Đã lưu</span>
+                    </button>
+                </div>
+
+                <!-- Danh sách lịch sử "Gần đây" -->
+                <div id="home-recent-list" class="px-4 flex-1 overflow-y-auto no-scrollbar pb-3">
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Gần đây</div>
+                    <div id="homeRecentItems" class="space-y-1">
+                        <!-- JS render các mục gần đây -->
+                    </div>
+                </div>
+
+                <!-- THANH DẪN ĐƯỜNG KHI ĐANG ĐIỀU HƯỚNG (Co lại hết cỡ chỉ còn 1 ô) -->
+                <div id="bottom-bar" onclick="openNavActions()" class="glass-panel shadow-2xl hidden cursor-pointer" style="border-radius: 0;">
+                    <button id="barSearch" onclick="event.stopPropagation(); openSearchModal()" data-needs-network aria-label="Tìm kiếm địa điểm"
+                            class="bar-btn text-emerald-500">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <span id="barSearchLabel">Tìm địa điểm, địa chỉ...</span>
+                    </button>
+
+                    <div id="bar-center">
+                        <div id="destName" class="text-slate-800 dark:text-white font-bold truncate">Chưa dẫn đường</div>
+                        <div id="bar-sub">
+                            <span id="etaArrive">-</span>
+                            <span class="bar-dot"> • </span>
+                            <span id="etaMin">-</span>
+                            <span class="bar-dot"> • </span>
+                            <span id="etaDist">-</span>
+                            <span id="batteryBlock">
+                                <span class="bar-dot"> • </span>
+                                <i class="fa-solid fa-car-battery text-blue-500"></i>
+                                <span id="battNow">-</span>
+                                <span id="battArriveWrap"> ➔ <span id="battArrive" class="text-orange-500 font-bold">-</span></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="event.stopPropagation(); openRouteSettings()" aria-label="Tuỳ chọn tuyến đường"
+                                class="bar-btn text-indigo-500">
+                            <!-- Biểu tượng tránh icon mô tả đi đường rẽ và một bên tránh -->
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
+                                <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
+                                <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+                                <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
+                                <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="w-7 h-7 rounded-full bg-slate-200/50 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                            <i class="fa-solid fa-chevron-up text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -1283,17 +1409,31 @@
             <!-- Toàn bộ lộ trình theo từng chặng. Chạm vào tên đích ở thanh
                  dưới là ra đây, kèm hai nút dừng / đổi tuyến ngay bên dưới. -->
             <div id="navActionsSteps" class="px-3 pb-2 overflow-y-auto" style="max-height: 46dvh;"></div>
-            <div class="px-5 pb-5 space-y-2">
+            <div class="px-5 pb-5 space-y-2.5">
+                <!-- 1. Định tuyến lại / Tìm tuyến khác -->
                 <button onclick="restartNavigation()" data-needs-network
-                        class="w-full bg-blue-600 text-white rounded-xl px-4 py-3.5 font-bold">
-                    <i class="fa-solid fa-rotate-right mr-2"></i>Bắt đầu lại / Tìm tuyến khác
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-md active:scale-98 transition">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Định tuyến lại</span>
                 </button>
-                <p class="text-[11px] text-slate-400 px-1">
-                    Tính lại tuyến từ vị trí hiện tại và đổi sang phương án khác nếu có.
-                </p>
+                <!-- 2. Thay đổi hướng / Tuỳ chọn lộ trình tránh đường -->
+                <button onclick="closeModal('navActionsModal'); openRouteSettings()"
+                        class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-sm active:scale-98 transition">
+                    <!-- Icon tránh đường: đường rẽ và một bên tránh -->
+                    <svg class="w-5 h-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="M12 21V14" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M12 14V8" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" stroke="currentColor" opacity="0.35"/>
+                        <line x1="8.5" y1="9" x2="15.5" y2="9" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M12 14C12 11 18 11 18 6V3" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M15 5.5L18 2.5L21 5.5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Thay đổi hướng & Tuỳ chọn tránh</span>
+                </button>
+                <!-- 3. Kết thúc dẫn đường (Chỉ xuất hiện khi mở rộng thanh dẫn đường, tránh bấm nhầm khi đi xe) -->
                 <button onclick="endNavigation()"
-                        class="w-full border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl px-4 py-3 font-bold">
-                    <i class="fa-solid fa-xmark mr-2"></i>Kết thúc dẫn đường
+                        class="w-full bg-rose-600 hover:bg-rose-700 text-white rounded-xl px-4 py-3.5 font-bold flex items-center justify-center gap-2 shadow-md active:scale-98 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                    <span>Kết thúc dẫn đường</span>
                 </button>
             </div>
         </div>
@@ -1363,41 +1503,136 @@
             chẳng để làm gì vì bảng che gần kín rồi. Nền đục kín thì trình
             duyệt bỏ qua được phần bản đồ bên dưới. -->
     <div id="searchModal" class="modal fixed inset-0 z-50 hidden flex-col">
-        <!-- CHỪA LỀ TRÊN theo vùng an toàn của máy.
-             Bảng cũ neo ở đáy nên không bao giờ chạm mép trên. Cho cao hết
-             màn hình mà quên lề trên thì ô tìm kiếm nằm đè lên thanh trạng
-             thái (giờ, pin, sóng) — bấm vào ô là trúng thanh kéo xuống của
-             hệ điều hành. var(--sat) là vùng an toàn trên; cộng thêm một
-             khoảng cho chỗ bấm thoải mái.
-
-             28px CỘNG THÊM, không phải chỉ var(--sat): app chạy ở chế độ toàn
-             màn hình (immersive) nên trên máy không có tai thỏ, env(safe-area-
-             inset-top) trả về 0 — chừa lề theo nó thôi thì vẫn dính mép trên,
-             đúng như đang bị. Mà thanh trạng thái vẫn hiện đè lên khi bàn
-             phím bật. 28px đủ qua thanh trạng thái Android (~24dp). -->
         <div class="bg-white dark:bg-slate-900 w-full shadow-2xl flex flex-col"
              style="padding-top: calc(var(--sat) + 28px);
                     padding-bottom: calc(var(--sab) + 0.5rem);
                     box-sizing: border-box; flex: 1 1 auto; min-height: 0;">
             <div class="p-4 border-b border-slate-200 dark:border-slate-700">
                 <div class="flex items-center gap-2">
-                    <form action="javascript:void(0);" onsubmit="doSearch(); $('searchInput').blur(); return false;" class="relative flex-1 m-0 p-0">
-                        <input id="searchInput" type="search" enterkeyhint="search" inputmode="search" placeholder="Tìm địa điểm, địa chỉ..." class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-xl pl-4 pr-[84px] py-3 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur(); doSearch();}" oninput="renderSearchClear()">
+                    <!-- Nút Back (<) ở mép trái của ô tìm kiếm -->
+                    <button onclick="closeModal('searchModal')" aria-label="Quay lại" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-xl active:scale-95 transition shrink-0">
+                        <i class="fa-solid fa-chevron-left text-lg"></i>
+                    </button>
+                    <form action="javascript:void(0);" onsubmit="doSearch(); $('searchInput').blur(); return false;" class="relative flex-1 m-0 p-0 flex items-center">
+                        <input id="searchInput" type="search" enterkeyhint="search" inputmode="search" placeholder="Bạn muốn đi đâu?" class="w-full bg-slate-100 dark:bg-slate-800 border-0 rounded-2xl pl-4 pr-[70px] py-3.5 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-[15px]" onkeydown="if(event.key==='Enter'){event.preventDefault(); this.blur(); doSearch();}" oninput="renderSearchClear()">
                         <button id="searchClear" type="button" onclick="clearSearchText()" aria-label="Xoá chữ đã gõ">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
+                        <!-- Nút Micro to gấp đôi đè lên mép khung bên phải -->
                         <button id="micBtn" type="button" onclick="startVoiceSearch()" aria-label="Nói để tìm">
                             <i id="micIcon" class="fa-solid fa-microphone"></i>
                         </button>
                     </form>
-                    <button onclick="closeModal('searchModal')" aria-label="Thu bảng tìm kiếm xuống" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-chevron-down text-xl"></i></button>
+                </div>
+
+                <!-- 5 ICON TÌM NHANH TO VÀ ĐẸP (ATM - Ẩm thực - Trạm sạc - Siêu thị - Bãi đỗ xe) + NÚT "XEM THÊM" -->
+                <div class="mt-3">
+                    <div class="grid grid-cols-6 gap-2">
+                        <!-- 1. ATM -->
+                        <button type="button" onclick="selectQuickCategory('ATM')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-500 flex items-center justify-center text-base">
+                                <i class="fa-solid fa-money-bill-transfer"></i>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">ATM</span>
+                        </button>
+                        <!-- 2. Ẩm thực (thay cho nhà hàng) -->
+                        <button type="button" onclick="selectQuickCategory('Ẩm thực')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center text-base">
+                                <i class="fa-solid fa-utensils"></i>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Ẩm thực</span>
+                        </button>
+                        <!-- 3. Trạm sạc -->
+                        <button type="button" onclick="selectQuickCategory('Trạm sạc')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center text-base">
+                                <i class="fa-solid fa-charging-station"></i>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Trạm sạc</span>
+                        </button>
+                        <!-- 4. Siêu thị -->
+                        <button type="button" onclick="selectQuickCategory('Siêu thị')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center text-base">
+                                <i class="fa-solid fa-cart-shopping"></i>
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Siêu thị</span>
+                        </button>
+                        <!-- 5. Bãi đỗ xe -->
+                        <button type="button" onclick="selectQuickCategory('Bãi đỗ xe')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center text-base font-black">
+                                P
+                            </div>
+                            <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">Bãi đỗ xe</span>
+                        </button>
+                        <!-- 6. Nút Xem thêm -->
+                        <button type="button" onclick="openModal('moreCategoriesModal')" class="h-[74px] rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-amber-500/40 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+                            <div class="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-500 flex items-center justify-center text-base">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </div>
+                            <span class="text-[11px] font-bold text-amber-500">Xem thêm</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Địa điểm đã lưu: chạm là dẫn đường luôn, giữ lâu để xoá -->
                 <div id="savedPlaces" class="flex gap-2 overflow-x-auto no-scrollbar mt-3 pb-0.5"></div>
-                <div id="categoryChips" class="flex gap-2 overflow-x-auto no-scrollbar mt-2 pb-0.5"></div>
+                <div id="categoryChips" class="hidden"></div>
             </div>
             <div id="searchResults" class="overflow-y-auto flex-1 p-2 space-y-1"></div>
+        </div>
+    </div>
+
+    <!-- MODAL "XEM THÊM" TẤT CẢ CÁC DANH MỤC CÒN LẠI -->
+    <div id="moreCategoriesModal" class="modal fixed inset-0 z-[60] bg-black/60 hidden flex-col justify-end transition-opacity">
+        <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl modal-animate flex flex-col max-h-[80dvh]"
+             style="padding-bottom: calc(var(--sab) + 1.5rem);">
+            <div class="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="text-base font-bold text-slate-800 dark:text-white">Tất cả danh mục tìm nhanh</h3>
+                <button onclick="closeModal('moreCategoriesModal')" aria-label="Đóng" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-4 grid grid-cols-4 gap-3 overflow-y-auto no-scrollbar">
+                <!-- 6. TTTM -->
+                <button type="button" onclick="selectQuickCategory('TTTM')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-bag-shopping text-2xl text-pink-500"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">TTTM</span>
+                </button>
+                <!-- 7. Cửa hàng tiện lợi -->
+                <button type="button" onclick="selectQuickCategory('Cửa hàng tiện lợi')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-store text-2xl text-emerald-500"></i>
+                    <span class="text-[11px] font-bold text-slate-700 dark:text-white text-center leading-tight">Tiện lợi</span>
+                </button>
+                <!-- 8. Bệnh viện -->
+                <button type="button" onclick="selectQuickCategory('Bệnh viện')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-hospital text-2xl text-red-500"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">Bệnh viện</span>
+                </button>
+                <!-- 9. Khách sạn -->
+                <button type="button" onclick="selectQuickCategory('Khách sạn')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-bed text-2xl text-indigo-500"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">Khách sạn</span>
+                </button>
+                <!-- 10. Hiệu thuốc -->
+                <button type="button" onclick="selectQuickCategory('Hiệu thuốc')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-prescription-bottle-medical text-2xl text-teal-500"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">Hiệu thuốc</span>
+                </button>
+                <!-- 11. Cafe -->
+                <button type="button" onclick="selectQuickCategory('Cafe')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-mug-saucer text-2xl text-amber-600"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">Cafe</span>
+                </button>
+                <!-- 12. Trạm xăng -->
+                <button type="button" onclick="selectQuickCategory('Trạm xăng')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-gas-pump text-2xl text-orange-500"></i>
+                    <span class="text-xs font-bold text-slate-700 dark:text-white">Trạm xăng</span>
+                </button>
+                <!-- 13. Y tế khác -->
+                <button type="button" onclick="selectQuickCategory('Y tế khác')" class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex flex-col items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-stethoscope text-2xl text-cyan-500"></i>
+                    <span class="text-[11px] font-bold text-slate-700 dark:text-white text-center leading-tight">Y tế khác</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1414,7 +1649,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '893d8e2';
+    const BUILD_TAG = 'ec4771b';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -2259,7 +2494,7 @@
         speedCameras.forEach((cam) => {
             const st = STYLE[cam.kind] || STYLE.other;
             const icon = L.divIcon({
-                html: `<div class="vm-icon rounded-full w-8 h-8 flex items-center justify-center border-2 border-white text-white ${st.bg}">
+                html: `<div class="vm-icon cam-blinking rounded-full w-8 h-8 flex items-center justify-center border-2 border-white text-white ${st.bg}">
                          <i class="fa-solid ${st.icon} text-xs"></i>
                        </div>`,
                 className: '', iconSize: [32, 32], iconAnchor: [16, 16]
@@ -2318,8 +2553,9 @@
     let lastCamAlertId = null;
 
     function checkNearbyCameras() {
-        const box = $('camDist');
-        if (!userLatLng || speedCameras.length === 0) { if (box) box.textContent = '–'; return; }
+        if (!userLatLng || speedCameras.length === 0) {
+            return;
+        }
 
         let closest = null, minDist = Infinity;
         speedCameras.forEach((cam) => {
@@ -2327,14 +2563,10 @@
             const d = haversine(userLatLng[0], userLatLng[1], cam.lat, cam.lon);
             if (d < minDist) { minDist = d; closest = cam; }
         });
-        if (!closest || minDist > CAM_SHOW_DIST_M) {
-            if (box) box.textContent = '–';
+        if (!closest || minDist > CAM_WARN_DIST_M) {
             lastCamAlertId = null;
             return;
         }
-
-        const distM = Math.round(minDist);
-        if (box) box.textContent = distM >= 1000 ? (distM / 1000).toFixed(1) + 'km' : distM + 'm';
 
         // Mỗi camera được báo một lần khi tới gần; chỉ nhắc lại sau CAM_ALERT_GAP_MS
         const camId = closest.id;
@@ -3934,6 +4166,15 @@
         for (const t of cat.tags) {
             parts.push(`node[${t}]${at}`);
             parts.push(`way[${t}]${at}`);
+            parts.push(`relation[${t}]${at}`);
+        }
+        if (cat.label === 'Trường học') {
+            parts.push(`node[building=school]${at}`);
+            parts.push(`way[building=school]${at}`);
+            parts.push(`relation[building=school]${at}`);
+            parts.push(`node[amenity=kindergarten]${at}`);
+            parts.push(`way[amenity=kindergarten]${at}`);
+            parts.push(`relation[amenity=kindergarten]${at}`);
         }
         if (cat.brands && cat.brands.length) {
             const re = [...new Set(cat.brands)]
@@ -3941,6 +4182,7 @@
                 .join('|');
             parts.push(`node["name"~"${re}",i]${at}`);
             parts.push(`way["name"~"${re}",i]${at}`);
+            parts.push(`relation["name"~"${re}",i]${at}`);
         }
         try {
             const data = await overpassFast(`[out:json][timeout:8];(${parts.join('')});out center 60;`, 6000);
@@ -4002,6 +4244,9 @@
         if (cat.mb && useMapbox()) {
             tasks.push(searchMapboxCategory(cat, here, nearKm));
         }
+
+        // 1b. Quét Nominatim siêu gần (3km) cho các tiện ích thiết yếu (trường học, trạm y tế, chợ...)
+        tasks.push(nominatimPass((cat.core && cat.core.length) ? cat.core.slice(0, 3) : [cat.label], here, nearKm));
 
         // 2. Quét Overpass siêu gần (3km)
         tasks.push(searchCategoryOverpass(cat, here, 3000));
@@ -5899,6 +6144,12 @@
     // những loại xung đột xuống. Dùng chung bộ xếp hạng với tìm theo nhóm.
     // ---------------------------------------------------------------------
     const TYPE_HINTS = [
+        { words: ['quan pho', 'pho', 'quan com', 'com', 'quan bun', 'bun', 'quan an', 'nha hang', 'quan lau', 'quan nuong', 'quan oc', 'quan nhau'],
+          prefer: /quan pho|pho|quan com|com|quan bun|bun|quan an|nha hang|tiem an|quan oc|quan lau|quan nuong|quan nhau/i,
+          demote: /^(ph\.|pho\s+)(?!bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi)|khu pho|to dan pho|dien thoai|thoi trang|gara|sua xe|tap hoa|cua hang tien loi|karaoke/i },
+        { words: ['truong tieu hoc', 'tieu hoc', 'truong thcs', 'thcs', 'truong thpt', 'thpt'],
+          prefer: /truong tieu hoc|tieu hoc|thcs|thpt|\bth\b|cap 1|cap 2|cap 3/i,
+          demote: /dai hoc|cao dang|hoc vien|trung tam|ngoai ngu|gia su|day them/i },
         { words: ['cho', 'cho dau moi'],
           prefer: /cho |cho dau moi|marketplace|cho trung tam/,
           demote: /cho coc|cho tam|sieu thi|tap hoa|quan an|quan / },
@@ -6159,11 +6410,13 @@
      * được xếp theo khoảng cách tới vị trí người tìm.
      */
     const VN_LANDMARKS = [
-        // Hà Nội
+        // Hà Nội & Vùng Thủ đô
         ['Hồ Hoàn Kiếm', 21.0287, 105.8524, 'Hà Nội'],
+        ['Hồ Gươm', 21.0287, 105.8524, 'Hà Nội'],
         ['Sân vận động Mỹ Đình', 21.0203, 105.7640, 'Hà Nội'],
         ['Bến xe Mỹ Đình', 21.0283, 105.7760, 'Hà Nội'],
         ['Lăng Chủ tịch Hồ Chí Minh', 21.0367, 105.8347, 'Hà Nội'],
+        ['Chùa Một Cột', 21.0358, 105.8335, 'Hà Nội'],
         ['Văn Miếu Quốc Tử Giám', 21.0293, 105.8355, 'Hà Nội'],
         ['Bệnh viện Trung ương Quân đội 108', 21.0190, 105.8625, 'Hà Nội'],
         ['Bệnh viện Bạch Mai', 20.9970, 105.8410, 'Hà Nội'],
@@ -6174,12 +6427,20 @@
         ['Hồ Tây', 21.0580, 105.8200, 'Hà Nội'],
         ['Bến xe Giáp Bát', 20.9830, 105.8420, 'Hà Nội'],
         ['Bến xe Nước Ngầm', 20.9730, 105.8420, 'Hà Nội'],
+        ['Vinhomes Ocean Park 1', 20.9930, 105.9450, 'Gia Lâm, Hà Nội'],
+        ['Vinhomes Ocean Park 2', 20.9570, 105.9890, 'Văn Giang, Hưng Yên'],
+        ['Vinhomes Ocean Park 3', 20.9700, 106.0150, 'Văn Giang, Hưng Yên'],
+        ['Vinhomes Smart City', 20.9980, 105.7440, 'Nam Từ Liêm, Hà Nội'],
+        ['Vinhomes Times City', 20.9950, 105.8670, 'Hai Bà Trưng, Hà Nội'],
+        ['Vinhomes Royal City', 21.0028, 105.8164, 'Thanh Xuân, Hà Nội'],
 
         // TP Hồ Chí Minh
         ['Chợ Bến Thành', 10.7721, 106.6980, 'Hồ Chí Minh'],
         ['Dinh Độc Lập', 10.7772, 106.6958, 'Hồ Chí Minh'],
         ['Nhà thờ Đức Bà', 10.7798, 106.6990, 'Hồ Chí Minh'],
         ['Phố đi bộ Nguyễn Huệ', 10.7740, 106.7040, 'Hồ Chí Minh'],
+        ['Landmark 81', 10.7950, 106.7218, 'Hồ Chí Minh'],
+        ['Hồ Con Rùa', 10.7827, 106.6961, 'Hồ Chí Minh'],
         ['Sân bay Tân Sơn Nhất', 10.8188, 106.6520, 'Hồ Chí Minh'],
         ['Bến xe Miền Đông', 10.8150, 106.7110, 'Hồ Chí Minh'],
         ['Bến xe Miền Tây', 10.7400, 106.6190, 'Hồ Chí Minh'],
@@ -6191,12 +6452,20 @@
         ['Bãi biển Mỹ Khê', 16.0590, 108.2470, 'Đà Nẵng'],
         ['Sân bay Đà Nẵng', 16.0439, 108.1994, 'Đà Nẵng'],
         ['Cầu Sông Hàn', 16.0720, 108.2270, 'Đà Nẵng'],
+        ['Bà Nà Hills', 15.9980, 107.9960, 'Đà Nẵng'],
+        ['Cầu Vàng', 15.9950, 107.9940, 'Đà Nẵng'],
 
-        // Hải Phòng
+        // Hải Phòng & Hải Dương
+        ['Vincom Plaza Imperia', 20.8653, 106.6622, 'Hải Phòng'],
+        ['Vinhomes Imperia', 20.8650, 106.6630, 'Hải Phòng'],
+        ['Vinhomes Marina', 20.8252, 106.6905, 'Hải Phòng'],
+        ['Vincom Plaza Lê Thánh Tông', 20.8638, 106.6917, 'Hải Phòng'],
+        ['Aeon Mall Lê Chân', 20.8358, 106.6780, 'Hải Phòng'],
         ['Nhà hát lớn Hải Phòng', 20.8600, 106.6830, 'Hải Phòng'],
         ['Sân bay Cát Bi', 20.8190, 106.7250, 'Hải Phòng'],
         ['Đồ Sơn', 20.7100, 106.7800, 'Hải Phòng'],
         ['Đảo Cát Bà', 20.7280, 107.0480, 'Hải Phòng'],
+        ['Trường Tiểu học Kim Thành', 20.9328, 106.5298, 'Kim Thành, Hải Dương'],
 
         // Khác
         ['Đại Nội Huế', 16.4700, 107.5780, 'Huế'],
@@ -6225,6 +6494,24 @@
     const ADMIN_PREFIX = /^(thanh pho|tp\.?|tinh|quan|q\.?|huyen|thi xa|thi tran|phuong|xa|duong|pho)\s+/i;
     const ADMIN_WORDS = ['thanh pho', 'tp', 'tinh', 'thi xa', 'thi tran', 'quan', 'huyen', 'phuong', 'xa'];
 
+    /**
+     * Bỏ tiền tố hành chính (thành phố, tp, tỉnh, quận, huyện, xã, đường, phố)
+     * NHƯNG BẢO VỆ chữ "quán" và "phở" ẩm thực không bị cắt nhầm!
+     */
+    function stripAdminPrefix(fullFirst, rawFirst) {
+        const s = String(fullFirst || '').trim();
+        const r = String(rawFirst || '').trim();
+        // Không cắt chữ "quán" nếu đó là quán ăn / quán xá
+        if (/^qu[aá]n\s+/i.test(r) || /^quan\s+(pho|com|bun|an|lau|nuong|oc|nhau|bia|ca phe|cafe|tra|chao|che|bar|pub)\b/i.test(s)) {
+            return s;
+        }
+        // Không cắt chữ "phở" nếu đó là quán phở
+        if (/^ph[oở]\s+/i.test(r) || /^pho\s+(bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi|bac|vit|heo|tai|nam|gau)\b/i.test(s)) {
+            return s;
+        }
+        return s.replace(ADMIN_PREFIX, '').trim();
+    }
+
     /** Tách thành từ, kèm bản bỏ dấu của từng từ. */
     function words(text) {
         return String(text || '').split(/\s+/).filter(Boolean)
@@ -6252,10 +6539,19 @@
         return out.join(' ').replace(/\s*,\s*,/g, ',').replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
     }
 
-    /** Bỏ "thành phố", "tp", "tỉnh", "quận"... ở bất cứ đâu trong câu, giữ nguyên dấu. */
+    /**
+     * Bỏ "thành phố", "tp", "tỉnh", "quận"... ở bất cứ đâu trong câu, giữ nguyên dấu.
+     * Bảo vệ chữ "quán" (dấu sắc) và unaccented "quan" khi theo sau là món ăn/đồ uống!
+     */
     function stripAdminWords(text) {
         let out = String(text || '').trim();
-        for (const w of ADMIN_WORDS) out = dropPhrase(out, w);
+        for (const w of ADMIN_WORDS) {
+            if (w === 'quan') {
+                if (/\bquán\b/i.test(out)) continue;
+                if (/\bquan\s+(pho|com|bun|an|lau|nuong|oc|nhau|bia|ca phe|cafe|tra|chao|che)\b/i.test(noAccent(out))) continue;
+            }
+            out = dropPhrase(out, w);
+        }
         return out.trim();
     }
 
@@ -6356,7 +6652,14 @@
         { key: 'dai hoc', re: /\b(dai hoc|university)\b/i, conflict: /\b(tieu hoc|thcs|thpt|mam non|mau giao|gia su|day them|luyen thi)\b/i },
         { key: 'truong nghe', re: /\b(truong day nghe|truong nghe|day nghe|trung cap)\b/i, conflict: /\b(salon|hair|cat toc|tiem|quan an)\b/i },
         { key: 'benh vien', re: /\b(benh vien|hospital)\b/i, conflict: /\b(thu y|thu cung|pet|spa|tham my|massage|nha thuoc)\b/i },
-        { key: 'truong hoc', re: /\b(truong|school)\b/i, conflict: /\b(cua hang|quan an|cafe|shop)\b/i }
+        { key: 'truong hoc', re: /\b(truong|school)\b/i, conflict: /\b(cua hang|quan an|cafe|shop)\b/i },
+        { key: 'quan pho', re: /\b(quan pho|pho)\b/i, conflict: /^(ph\.|pho\s+)(?!bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi)|\b(quan tri|quan doi|quan ao|quan ly|thoi trang|gara|sua xe|tap hoa)\b/i },
+        { key: 'quan com', re: /\b(quan com|com)\b/i, conflict: /\b(may tinh|phan mem|cong nghe|dien tu|quan tri|quan ao)\b/i },
+        { key: 'quan bun', re: /\b(quan bun|bun)\b/i, conflict: /^(ph\.|pho\s+)|\b(quan tri|quan ao)\b/i },
+        { key: 'tieu hoc', re: /\b(tieu hoc|cap 1|\bc1\b)\b/i, conflict: /\b(thcs|thpt|cap 2|cap 3|dai hoc|cao dang|hoc vien|trung cap)\b/i },
+        { key: 'thcs', re: /\b(thcs|cap 2|\bc2\b)\b/i, conflict: /\b(tieu hoc|thpt|cap 1|cap 3|dai hoc|cao dang)\b/i },
+        { key: 'thpt', re: /\b(thpt|cap 3|\bc3\b)\b/i, conflict: /\b(tieu hoc|thcs|cap 1|cap 2|dai hoc|cao dang)\b/i },
+        { key: 'nha may', re: /\b(nha may|factory)\b/i, conflict: /\b(may mac|may do|thoi trang|garment|det may|quan ao|tiem may)\b/i }
     ];
 
     /*
@@ -6639,36 +6942,38 @@
         const q = noAccent(query).replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
         if (!q.includes('vinfast')) return [];
 
-        const bare = q === 'vinfast';
-        const wantsFactory = bare || FACTORY_WORDS.test(q) || /\boto|o to|car|xe\b/.test(q);
-        if (!wantsFactory) return [];
+        // Nếu người dùng nói rõ tìm trạm sạc, showroom, bảo dưỡng, đại lý... thì không ép về nhà máy
+        const isNonFactory = /\b(tram sac|sac|sac pin|tru sac|charging|showroom|dai ly|cua hang|store|service|bao duong|gara|sua xe|sua chua)\b/i.test(q);
+        if (isNonFactory) return [];
 
-        const saysHaTinh = /ha tinh/.test(q);
-        const saysHaiPhong = /hai phong/.test(q);
-        const saysGate = /\bcong\b|\bcong chinh\b|\bcong phu\b|gate/.test(q);
+        const saysHaTinh = /ha tinh|vung ang/i.test(q);
+        const saysHaiPhong = /hai phong|cat hai|dinh vu/i.test(q);
+        const saysGate = /\bcong\b|\bcong chinh\b|\bcong phu\b|gate/i.test(q);
+
+        // Kiểm tra vị trí: nếu đang ở Hải Phòng hoặc gần Cát Hải (< 70km)
+        const isNearHp = here && (haversine(here[0], here[1], VINFAST_HP_GATE[0], VINFAST_HP_GATE[1]) < 70000);
 
         let rows = PINNED_PLACES.filter((pl) => {
             if (saysHaTinh && !saysHaiPhong) return pl.prov === 'ha tinh';
             if (saysHaiPhong && !saysHaTinh) return pl.prov === 'hai phong';
-            /*
-             * Không nói rõ tỉnh nào: hiện CẢ HAI nhà máy, đúng yêu cầu "chỉ
-             * tìm nhà máy VinFast thì hiện cả Hải Phòng và Hà Tĩnh". Cổng phụ
-             * chỉ hiện khi người ta hỏi tới cổng, để danh sách không bị hai
-             * dòng gần như y nhau chen lên đầu.
-             */
+            if (isNearHp && !saysHaTinh) return pl.prov === 'hai phong'; // Đang ở Hải Phòng thì ưu tiên nhà máy Cát Hải
             return pl.id !== 'vf-hp-side' || saysGate;
         });
 
-        return rows.map((pl, i) => ({
-            lat: pl.at[0], lon: pl.at[1],
-            display_name: pl.name + ', ' + pl.where,
-            _local: true,
-            _pinned: true,
-            // Trên mọi kết quả hỏi được từ mạng, và cổng chính trên cổng phụ
-            _score: 200 - i,
-            _kind: 'place',
-            _dist: here ? haversine(here[0], here[1], pl.at[0], pl.at[1]) : 0
-        }));
+        return rows.map((pl, i) => {
+            const dist = here ? haversine(here[0], here[1], pl.at[0], pl.at[1]) : 0;
+            // Ở Hải Phòng thì nhà máy Cát Hải được ưu tiên điểm tuyệt đối (350 điểm)
+            const score = (pl.prov === 'hai phong' && (isNearHp || saysHaiPhong)) ? (350 - i) : (250 - i);
+            return {
+                lat: pl.at[0], lon: pl.at[1],
+                display_name: pl.name + ', ' + pl.where,
+                _local: true,
+                _pinned: true,
+                _score: score,
+                _kind: 'place',
+                _dist: dist
+            };
+        });
     }
 
     function localPlaces(query, here) {
@@ -6680,51 +6985,37 @@
         if (q.length < 3) return [];
         /*
          * Khớp cả cụm từ NẰM GIỮA tên, không chỉ từ đầu tên.
-         *
-         * "Sân bay Nội Bài" và "Sân bay Tân Sơn Nhất" vốn đã nằm sẵn trong
-         * danh bạ, nhưng gõ "Nội Bài" lại không ra gì: phép so cũ chỉ chấp
-         * nhận trùng khít hoặc trùng TỪ ĐẦU tên. Người ta gọi sân bay bằng
-         * tên riêng chứ ít ai gõ cả chữ "sân bay" ở đầu.
-         *
          * Ranh giới bằng \p{L} để "nội bài" không khớp vào giữa một chữ khác.
          */
         const inner = new RegExp('(^|[^\\p{L}])' + q.replace(RE_ESC, '\\$&')
             + '(?![\\p{L}])', 'u');
-        /*
-         * Trùng khít / trùng từ đầu tên là chắc chắn hơn khớp cụm nằm giữa.
-         *
-         * Cùng cho 100 điểm thì gõ "Hà Nội" sẽ có "Ga Hà Nội" và "UBND thành
-         * phố Hà Nội" ngang hàng với chính thành phố Hà Nội — ba dòng cùng
-         * điểm, thứ tự do khoảng cách quyết định, và thành phố có thể bị đẩy
-         * xuống. Khớp cụm nằm giữa vẫn hữu ích ("Nội Bài" → "Sân bay Nội
-         * Bài") nhưng phải xếp sau.
-         */
+
         const matchKind = (key) => {
             if (key === q) return 'exact';
-            if (q.length >= 5 && key.startsWith(q)) return 'start';
-            if (q.length >= 5 && inner.test(key)) return 'inner';
+            // Bỏ các từ đệm TTTM / dự án / đô thị / trường học phổ biến
+            const keyClean = key
+                .replace(/\b(plaza|center|mega\s+mall|mall|tttm|vinhomes|kdt|khu\s+do\s+thi|khu\s+dan\s+cu|truong)\b/gi, ' ')
+                .replace(/\s+/g, ' ').trim();
+            if (keyClean === q) return 'exact';
+
+            if (q.length >= 3 && key.startsWith(q)) return 'start';
+            if (q.length >= 3 && keyClean.startsWith(q)) return 'start';
+
+            if (q.length >= 3 && inner.test(key)) return 'inner';
+            if (q.length >= 3 && inner.test(keyClean)) return 'inner';
+
+            // Mix từ đa chiều: Mọi từ khóa người dùng gõ đều có mặt trong tên địa danh
+            const qTokens = q.split(/\s+/).filter((w) => w.length >= 2);
+            if (qTokens.length >= 2) {
+                const allWordsMatch = qTokens.every((w) =>
+                    new RegExp('(^|[^\\p{L}])' + w.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(key)
+                );
+                if (allWordsMatch) return 'mixed';
+            }
             return null;
         };
-        /* =================================================================
-         * TÊN TRƠ THÌ TRA DANH BẠ TOÀN QUỐC TRƯỚC, RỒI MỚI TỚI 30 KM QUANH XE
-         *
-         * Gõ "Hưng Yên" mà tỉnh Hưng Yên nằm cuối danh sách, trên nó là mấy
-         * cửa hàng tên "Hưng Yến" ngay gần. Lý do đo được: dòng danh bạ trong
-         * máy mang điểm CỐ ĐỊNH 100, còn một cửa hàng khớp tên được 100 điểm
-         * khớp cộng 6 điểm thứ hạng của kho địa điểm — 106 > 100, thế là
-         * tỉnh thua một hàng tạp hoá.
-         *
-         * Luật đúng, theo đúng cách người dùng mô tả: một cái tên KHÔNG kèm
-         * từ chỉ loại ("Hưng Yên") trước hết phải được hỏi "có phải tỉnh,
-         * thành phố, hay địa danh nổi tiếng toàn quốc không?". Có thì nó là
-         * câu trả lời, bất kể cách đó bao xa. Không thì mới tìm quanh xe.
-         *
-         * Vì vậy điểm ở đây phải CAO HƠN HẲN mọi điểm chấm theo tên (tối đa
-         * 112) cộng thứ hạng kho (tối đa 6). Còn câu CÓ từ chỉ loại ("hưng
-         * yến tạp hoá", "phở bò hưng yến") thì không khớp vào đây, vì phép
-         * khớp đòi cả câu phải là tên địa danh đó.
-         * ================================================================= */
-        const kindScore = { exact: 300, start: 300, inner: 200 };
+
+        const kindScore = { exact: 300, start: 300, mixed: 285, inner: 200 };
 
         const out = [];
         let city = null;
@@ -6803,7 +7094,8 @@
      * bỏ các bản kia, vì mỗi kho dữ liệu nhạy với một kiểu gõ khác nhau.
      */
     function queryForms(raw) {
-        const expanded = expandAbbrev(stripCommandWords(String(raw || '').trim()));
+        const cleaned = stripCommandWords(String(raw || '').trim());
+        const expanded = expandAbbrev(cleaned);
         const accented = addVnAccents(expanded);
         const forms = [];
         const push = (t, acc) => {
@@ -6812,21 +7104,59 @@
             if (forms.some((f) => f.q.toLowerCase() === v.toLowerCase())) return;
             forms.push({ q: v, accented: !!acc });
         };
-        /*
-         * MỌI bản đều bỏ chữ đệm hành chính.
-         *
-         * Giữ lại bản "còn nguyên chữ đệm" chính là giữ lại câu nửa có dấu
-         * nửa không ("Thanh pho Đà Nẵng") — thứ làm kho tìm kiếm bắt chữ
-         * "pho" và trả về Phố Đà Nẵng ở Thuỷ Nguyên. Chữ "thành phố",
-         * "tỉnh" không mang thêm thông tin tìm kiếm nào: "Thành phố Hồ Chí
-         * Minh" và "Hồ Chí Minh" là cùng một nơi.
-         *
-         * Tên phố thật như "Phố Huế" KHÔNG bị ảnh hưởng: danh sách chỉ có
-         * "thành phố", "tp", "tỉnh", "thị xã", "thị trấn" — không có "phố".
-         */
-        push(stripAdminWords(accented || expanded), !!accented);
-        push(stripAdminWords(expanded), false);
-        push(stripAdminWords(raw), false);
+
+        const baseAcc = stripAdminWords(accented || expanded);
+        const baseExp = stripAdminWords(expanded);
+        const baseRaw = stripAdminWords(cleaned);
+
+        push(baseAcc, !!accented);
+        push(baseExp, false);
+        push(baseRaw, false);
+
+        // Mix các tổ hợp từ thông dụng trong tiếng Việt:
+        // 1. TTTM: Vincom / Lotte / Aeon + nhánh (Người dùng gõ "Vincom Imperia" nhưng biển hiệu/OSM là "Vincom Plaza Imperia")
+        if (/^(vincom|lotte|aeon)\s+(.+)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^(vincom|lotte|aeon)\s+(.+)/i);
+            const brand = m[1];
+            const rest = m[2].trim();
+            if (!/^(plaza|center|mega\s+mall|mall|tttm)\b/i.test(rest)) {
+                push(`${brand} Plaza ${rest}`, false);
+                push(`${brand} Center ${rest}`, false);
+                push(`${brand} Mega Mall ${rest}`, false);
+                push(`TTTM ${brand} ${rest}`, false);
+            } else {
+                const shortBranch = rest.replace(/^(plaza|center|mega\s+mall|mall|tttm)\s+/i, '').trim();
+                if (shortBranch) push(`${brand} ${shortBranch}`, false);
+            }
+        }
+
+        // 2. Giáo dục: Tiểu học / THCS / THPT <-> Trường Tiểu học / Trường TH
+        if (/^(tiểu học|tieu hoc)\s+(.+)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^(tiểu học|tieu hoc)\s+(.+)/i);
+            push(`Trường Tiểu học ${m[2]}`, true);
+            push(`Trường TH ${m[2]}`, true);
+            push(`TH ${m[2]}`, false);
+        } else if (/^trường\s+(tiểu học|tieu học)\s+(.+)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^trường\s+(tiểu học|tieu học)\s+(.+)/i);
+            push(`Tiểu học ${m[2]}`, true);
+            push(`Trường TH ${m[2]}`, true);
+        } else if (/^(thcs|cấp 2|cap 2)\s+(.+)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^(thcs|cấp 2|cap 2)\s+(.+)/i);
+            push(`Trường THCS ${m[2]}`, true);
+        } else if (/^(thpt|cấp 3|cap 3)\s+(.+)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^(thpt|cấp 3|cap 3)\s+(.+)/i);
+            push(`Trường THPT ${m[2]}`, true);
+        }
+
+        // 3. Ẩm thực: Quán phở / Quán cơm / Quán bún <-> Phở / Cơm / Bún
+        if (/^quán\s+(phở|cơm|bún|lẩu|nướng|ốc|nhậu|ăn)\s*(.*)/i.test(baseRaw)) {
+            const m = baseRaw.match(/^quán\s+(phở|cơm|bún|lẩu|nướng|ốc|nhậu|ăn)\s*(.*)/i);
+            const dish = m[1];
+            const name = m[2] ? m[2].trim() : '';
+            if (name) push(`${dish} ${name}`, true);
+            else push(dish, true);
+        }
+
         return forms;
     }
 
@@ -6867,9 +7197,11 @@
         'ga tau', 'ga duong sat', 'train station', 'ga metro', 'ubnd', 'uy ban nhan dan', 'toa an', 'vien kiem sat',
         'dai hoc', 'university', 'hoc vien', 'academy', 'cao dang', 'college',
         'truong day nghe', 'day nghe', 'truong nghe', 'trung cap', 'cao dang nghe',
+        'truong tieu hoc', 'tieu hoc', 'truong thcs', 'thcs', 'truong thpt', 'thpt', 'truong trung hoc', 'truong mam non', 'mam non', 'mau giao', 'nha tre',
         'nha hat', 'opera house', 'theatre',
         'benh vien', 'phong kham',
         'tram y te', 'nha hang', 'quan an', 'cua hang', 'sieu thi', 'cho',
+        'quan pho', 'quan com', 'quan bun', 'quan lau', 'quan nuong', 'quan oc', 'quan nhau', 'quan bia', 'quan cafe', 'quan ca phe', 'quan tra', 'quan che', 'quan chao', 'tiem com', 'tiem bun', 'tiem an', 'quan',
         'truong', 'cong ty', 'nha may', 'khach san', 'san bay', 'ben xe',
         'tram sac', 'cay xang', 'bai do xe', 'duong', 'pho', 'ngo', 'khu'
     ];
@@ -6892,12 +7224,32 @@
         return q;
     }
 
-    /** Tên này có chứa NGUYÊN cụm đó không? */
+    /** Tên này có chứa NGUYÊN cụm đó không, hoặc mix từ linh hoạt? */
     function hasPhrase(name, core) {
         if (!core) return true;
         const n = noAccent(name);
-        return new RegExp('(^|[^\\p{L}])' + core.replace(RE_ESC, '\\$&')
-            + '(?![\\p{L}])', 'u').test(n);
+        const c = noAccent(core).trim();
+        // 1. Trùng khít hoặc chứa nguyên cụm
+        if (new RegExp('(^|[^\\p{L}])' + c.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(n)) return true;
+
+        // 2. Mix từ linh hoạt: Cho phép có từ đệm ở giữa
+        // Ví dụ: người dùng gõ "vincom imperia" -> khớp với "vincom plaza imperia", "tttm vincom imperia"
+        // hoặc "tiểu học kim thành" -> khớp với "trường tiểu học kim thành", "trường th kim thành"
+        const cWords = c.split(/\s+/).filter(Boolean);
+        if (cWords.length >= 2) {
+            const title = n.split(',')[0];
+            const allWordsInTitle = cWords.every((w) => {
+                if (w === 'tieu' || w === 'hoc') {
+                    return /(tieu hoc|cap 1|\bth\b)/i.test(title);
+                }
+                return new RegExp('(^|[^\\p{L}])' + w.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(title);
+            });
+            if (allWordsInTitle) return true;
+
+            const allWordsInFull = cWords.every((w) => new RegExp('(^|[^\\p{L}])' + w.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(n));
+            if (allWordsInFull) return true;
+        }
+        return false;
     }
 
     function filterByPhrase(rows, query) {
@@ -6948,8 +7300,8 @@
         const q = noAccent(query);
         if (!q) return 0;
         const full = noAccent(displayName);
-        // Phần trước dấu phẩy đầu tiên là TÊN; phần sau là địa chỉ hành chính
-        let first = full.split(',')[0].trim().replace(ADMIN_PREFIX, '');
+        const rawFirst = String(displayName || '').split(',')[0].trim();
+        let first = stripAdminPrefix(full.split(',')[0].trim(), rawFirst);
 
         // Kiểm tra xung đột từ ghép tiếng Việt (Compound Noun Disambiguation):
         // Ví dụ: người dùng tìm "nhà hát" mà tên cơ sở là "nhà khoa", "nhà hàng", "nhà ở"...
@@ -6959,6 +7311,40 @@
                 const hasTarget = ct.re.test(first) || ct.re.test(full);
                 const hasConflict = ct.conflict.test(first) || ct.conflict.test(full);
                 if (!hasTarget && hasConflict) return 0;
+            }
+        }
+
+        // Lọc đường/phố/phường viết tắt "Ph." khi tìm món ăn (quán phở, phở, bún, cơm...)
+        const isFoodSearch = /\b(pho|quan pho|com|quan com|bun|quan bun|quan an|lau|nuong|oc|nhau)\b/i.test(q);
+        if (isFoodSearch) {
+            const isStreetPh = /^(ph\.|pho\s+)(?!bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi)/i.test(first)
+                || /^(ph\.|pho\s+)(?!bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi)/i.test(rawFirst);
+            if (isStreetPh && !/\b(quan an|nha hang|am thuc|quan)\b/i.test(full)) {
+                return 0; // Đường phố viết tắt "Ph." tuyệt đối không được ăn theo từ khoá phở / quán phở!
+            }
+        }
+
+        // Nhận diện từ viết tắt TH <-> Tiểu học
+        const isTieuHocQuery = /\b(tieu hoc|cap 1|\bc1\b)\b/i.test(q);
+        if (isTieuHocQuery) {
+            if (/\b(thcs|thpt|cap 2|cap 3)\b/i.test(first) || /\b(thcs|thpt|cap 2|cap 3)\b/i.test(full)) {
+                return 0;
+            }
+            const qCore = q.replace(/\b(truong tieu hoc|tieu hoc|cap 1|c1)\b/gi, '').trim();
+            if (qCore && (new RegExp('\\bth\\s+' + qCore.replace(RE_ESC, '\\$&'), 'i').test(first) ||
+                         new RegExp('\\btieu hoc\\s+' + qCore.replace(RE_ESC, '\\$&'), 'i').test(first))) {
+                return 95 + (accentMatch(query, displayName) ? ACCENT_EXACT_BONUS : 0);
+            }
+        }
+        const isThQuery = /\b(truong th|th)\b/i.test(q) && !/\b(thcs|thpt)\b/i.test(q);
+        if (isThQuery) {
+            if (/\b(thcs|thpt|cap 2|cap 3)\b/i.test(first) || /\b(thcs|thpt|cap 2|cap 3)\b/i.test(full)) {
+                return 0;
+            }
+            const qCore = q.replace(/\b(truong th|th)\b/gi, '').trim();
+            if (qCore && (new RegExp('\\b(tieu hoc|th)\\s+' + qCore.replace(RE_ESC, '\\$&'), 'i').test(first) ||
+                         new RegExp('\\b(tieu hoc|th)\\s+' + qCore.replace(RE_ESC, '\\$&'), 'i').test(full))) {
+                return 95 + (accentMatch(query, displayName) ? ACCENT_EXACT_BONUS : 0);
             }
         }
 
@@ -6972,19 +7358,14 @@
 
         /*
          * So theo TỪNG CHỮ khi cả cụm không khớp.
-         *
-         * "bệnh viện Việt Tiệp" không phải là một đoạn con của "Bệnh viện Hữu
-         * nghị Việt Tiệp" — có chữ "Hữu nghị" xen vào giữa. Chấm theo cả cụm
-         * thì cái đúng được 0 điểm, ngang với một nơi chẳng liên quan, và
-         * khoảng cách quyết định thay. Đó đúng là lúc app trả về Tiên Cường,
-         * Tiên Tiến thay cho bệnh viện Việt Tiệp.
+         * Mix từ thông minh: ví dụ "vincom imperia" -> "vincom plaza imperia" khớp 100% các từ chính
          */
         const qt = q.split(/\s+/).filter((w) => w.length >= 2);
         if (qt.length) {
             const hit = qt.filter((w) => new RegExp('(^|[^\\p{L}])'
                 + w.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'u').test(first)).length;
             const frac = hit / qt.length;
-            if (frac === 1) return 75;                     // đủ mọi chữ, chỉ xen chữ khác
+            if (frac === 1) return 85 + bonus;             // đủ mọi từ chính (chỉ xen plaza, center, v.v.)
             if (frac >= 0.6) return 50;
             if (frac > 0) return 25;
         }
@@ -7041,17 +7422,21 @@
         const isUniversity = /dai hoc|hoc vien|cao dang|university|college|academy/i.test(qNorm) || (scope && /dai hoc|hoc vien|cao dang|university|academy/i.test(scope.restRaw));
         const isVocational = /truong day nghe|day nghe|truong nghe|trung cap|cao dang nghe|trung cap nghe|dao tao nghe|gdnn|gdtx/i.test(qNorm) || (scope && /truong day nghe|day nghe|truong nghe|trung cap|cao dang nghe/i.test(scope.restRaw));
         const isHospital = /benh vien|bv |hospital|vien y hoc|vien huyet hoc|vien mat|vien k\b|vien bong|vien tim/i.test(qNorm) || (scope && /benh vien|hospital/i.test(scope.restRaw));
+        const isFoodOrDining = /quan pho|pho\b|quan com|com binh dan|quan bun|bun bo|quan an|nha hang|quan lau|quan nuong|quan oc|quan nhau|quan bia|bia hoi|quan chao|quan che|tiem com|tiem bun|tiem an/i.test(qNorm)
+            || (scope && /quan pho|pho\b|quan com|quan bun|quan an|nha hang|quan lau|quan nuong|quan oc|quan nhau|quan bia/i.test(scope.restRaw));
 
         const coreName = corePhrase(query) || qNorm;
 
         // Tách thương hiệu chính và nhánh con (ví dụ: "Vincom Imperia" -> brand: "Vincom", subBranch: "Imperia")
         let brandName = '';
         let subBranch = '';
+        let cleanBranch = '';
         if (isMallBrand) {
             const m = qNorm.match(/^(vincom|lotte|aeon|big c|go!)\s*(.+)?/i);
             if (m) {
                 brandName = m[1].trim();
                 subBranch = (m[2] || '').trim();
+                cleanBranch = subBranch.replace(/\b(plaza|center|mega\s+mall|mall|tttm)\b/gi, '').trim();
             }
         }
 
@@ -7081,7 +7466,7 @@
             if (r._isConflictCompound) return;
             if (r._score == null) {
                 r._score = nameScore(query, r.display_name || '') + (r._poiRank || 0);
-                if (rowIsPlace(r)) r._score += PLACE_BONUS;
+                if (rowIsPlace(r) && !isFoodOrDining) r._score += PLACE_BONUS;
             }
 
             const cFull = noAccent(r.display_name || '').toLowerCase();
@@ -7090,6 +7475,23 @@
             // Khớp chính xác cụm nguyên vẹn người dùng gõ
             if (rawNorm && cFull.includes(rawNorm)) {
                 r._score += 35;
+            }
+
+            // Quy tắc Ẩm thực & Quán ăn / Quán phở / Quán cơm / Quán bún:
+            // Phân biệt rạch ròi giữa cơ sở ẩm thực thật và các con đường/phường/phố mang tên viết tắt "Ph."
+            if (isFoodOrDining) {
+                const isRealEatery = /amenity=restaurant|amenity=fast_food|amenity=cafe|shop=bakery/i.test(r._kind || '')
+                    || /\b(quan an|nha hang|quan pho|pho|quan com|com|quan bun|bun|quan lau|quan nuong|quan oc|quan nhau|tiem an|quan chao|quan che|tiem com|tiem bun)\b/i.test(cTitle);
+                const isStreetPh = /^(ph\.|pho\s+)(?!bo|ga|thin|cuong|nam dinh|xao|cuon|gia truyen|24|ly quoc su|ha noi)/i.test(cTitle)
+                    || /highway|boundary|place=suburb|place=locality|place=neighbourhood/i.test(r._kind || '');
+                if (isStreetPh && !isRealEatery) {
+                    r._score = -500; // Loại bỏ hoàn toàn đường phố trùng chữ viết tắt "Ph."
+                } else if (isRealEatery) {
+                    r._score += 100; // Ưu tiên hàng đầu cho quán ăn thật
+                    if (/pho/i.test(qNorm) && /\bpho\b/i.test(cTitle)) {
+                        r._score += 60; // Thưởng đặc biệt cho đúng quán phở
+                    }
+                }
             }
 
             // Quy tắc Bảo tàng: Ưu tiên bảo tàng thật (+90), loại bỏ xưởng mũ bảo hiểm, quán bia, cafe (-200)
@@ -7129,27 +7531,49 @@
             }
 
             // Quy tắc TTTM (Vincom, Lotte, Aeon):
-            // Ưu tiên toà nhà TTTM chính (+80), dìm hoặc lọc bỏ gian hàng/tiệm bên trong (CGV, KFC, Zara...)
+            // Ưu tiên toà nhà TTTM chính (+150), dìm hoặc lọc bỏ gian hàng/tiệm bên trong (CGV, KFC, Zara...)
             if (isMallBrand) {
-                if (MAIN_MALL_RE.test(cTitle)) {
+                const isMallBuilding = MAIN_MALL_RE.test(cTitle)
+                    || /shop=mall|shop mall|amenity=marketplace/i.test(r._kind || '')
+                    || (r.class === 'shop' && (r.type === 'mall' || r.type === 'department_store'));
+                const isTenantOrInside = TENANT_RE.test(cTitle) || /tang\s+\d+|lo\s+[a-z0-9]+/i.test(cFull)
+                    || /cinema|cgv|rap chieu phim|ban quan ly|bai xe|nha de xe/i.test(cFull);
+
+                if (isMallBuilding && !isTenantOrInside) {
                     r._isMainMall = true;
-                    r._score += 80;
-                }
-                if (TENANT_RE.test(cTitle)) {
+                    r._score += 150; // Ưu tiên số 1 tuyệt đối cho toà nhà TTTM thật
+                } else if (isTenantOrInside) {
                     r._isTenant = true;
-                    r._score -= 80;
+                    r._score -= 100; // Dìm mạnh cửa hàng/tiệm bên trong
                 }
-                // Nếu người dùng tìm nhánh cụ thể như "Vincom Imperia":
-                if (brandName && subBranch) {
-                    if (cFull.includes(brandName) && cFull.includes(subBranch)) {
-                        // Khớp cả Vincom và Imperia -> Ưu tiên số 1 tuyệt đối!
-                        r._isExactBranch = true;
-                        r._score += 100;
-                    } else if (cFull.includes(brandName)) {
-                        // Chỉ khớp Vincom nhưng là nhánh khác (như Lê Thánh Tông) -> Đóng vai trò địa chỉ liên quan
-                        r._isRelatedBrand = true;
-                        r._score += 40;
+
+                if (brandName) {
+                    if (cleanBranch) {
+                        // Người dùng tìm nhánh cụ thể như "Vincom Imperia" hoặc "Vincom Plaza Imperia"
+                        if (cFull.includes(brandName) && cFull.includes(cleanBranch)) {
+                            r._isExactBranch = true;
+                            r._score += 120; // Trùng đúng nhánh Vincom Imperia!
+                        } else if (cFull.includes(brandName)) {
+                            r._isRelatedBrand = true;
+                            r._score += 20;
+                        }
+                    } else {
+                        // Người dùng chỉ tìm "Vincom" hoặc "Vincom Plaza" (không chỉ định nhánh cụ thể)
+                        if (MAIN_MALL_RE.test(cTitle)) {
+                            r._score += 60;
+                        }
                     }
+                }
+            }
+
+            // Quy tắc VinFast tại Hải Phòng:
+            // Khi người dùng tìm "vinfast" tại Hải Phòng (hoặc câu có vinfast),
+            // ưu tiên nhà máy sản xuất VinFast Cát Hải, không để trạm sạc hay showroom chen lên
+            if (/vinfast/i.test(qNorm) && !/\b(tram sac|sac|showroom|dai ly|cua hang|service)\b/i.test(qNorm)) {
+                if (r._pinned) {
+                    r._score = 350;
+                } else if (/\b(tram sac|sac|tru sac|charging|showroom|dai ly|cua hang|service)\b/i.test(cFull)) {
+                    r._score -= 60; // Dìm trạm sạc và showroom khi tìm chung VinFast tại Hải Phòng
                 }
             }
 
@@ -7640,13 +8064,18 @@
         };
 
         if (scope) {
+            const lowerRest = (scope.restRaw || '').toLowerCase();
+            // Đặt tên thực thể thuần tuý (scope.restRaw và askForms) lên ĐẦU để hỏi kho POI (Mapbox POI, Google Places)
+            // Vì kho POI đã khoanh vùng bằng toạ độ anchor và bán kính km của tỉnh/thành.
+            // Gửi kèm chữ "Hải Phòng" vào tên POI làm máy chủ tìm không ra tên doanh nghiệp (như "Lg display Hải Phòng").
+            if (scope.restRaw) addAsk(scope.restRaw);
+            askForms.forEach((f) => addAsk(f.q));
             if (cleanedRaw) addAsk(cleanedRaw);
             askForms.forEach((f) => addAsk(`${f.q}, ${scope.name}`));
             if (scope.isDistrict && scope.parentCity) {
                 askForms.forEach((f) => addAsk(`${f.q}, ${scope.name}, ${scope.parentCity}`));
             }
             addAsk(`${scope.restRaw}, ${scope.name}`);
-            addAsk(scope.restRaw);
 
             // Mở rộng Chợ & Siêu thị trong phạm vi địa phương (Chợ Đà Lạt, Chợ Hải Phòng, Siêu thị...)
             if (/(chợ|cho|market)/i.test(lowerRest)) {
@@ -7662,7 +8091,6 @@
             }
 
             // Mở rộng TTTM trong phạm vi địa phương (Vincom, Lotte, Aeon...)
-            const lowerRest = scope.restRaw.toLowerCase();
             if (/(vincom|lotte|aeon)/i.test(lowerRest)) {
                 const bName = /(vincom)/i.test(lowerRest) ? 'Vincom' : (/(lotte)/i.test(lowerRest) ? 'Lotte' : 'Aeon');
                 addAsk(`${bName} Plaza, ${scope.name}`);
@@ -7798,6 +8226,7 @@
             for (const q of askList) {
                 try {
                     rows = rows.concat(await searchGooglePlaces(q, anchor, nearKm));
+                    if (goodHit()) break;
                 } catch (e) {
                     console.warn('Google Places địa điểm:', e);
                 }
@@ -7808,16 +8237,20 @@
             for (const q of askList) {
                 try {
                     rows = rows.concat(await searchMapboxPoi(q, anchor, nearKm));
+                    if (goodHit()) break; // Đã thấy cơ sở đúng tên -> DỪNG NGAY, không gọi lặp
                 } catch (e) {
                     console.warn('Mapbox địa điểm:', e);
                 }
             }
-            try {
-                for (const q of nearQueries) {
-                    rows = rows.concat(await searchMapbox(q, anchor, nearKm));
+            if (!goodHit()) {
+                try {
+                    for (const q of nearQueries) {
+                        rows = rows.concat(await searchMapbox(q, anchor, nearKm));
+                        if (goodHit()) break;
+                    }
+                } catch (e) {
+                    console.warn('Mapbox geocoding:', e);
                 }
-            } catch (e) {
-                console.warn('Mapbox geocoding:', e);
             }
             // Chỉ lượt CẢ NƯỚC mới cần tiết kiệm: nó chỉ chạy khi quanh đây
             // chưa có gì khớp tên.
@@ -7830,7 +8263,7 @@
                 }
             }
         }
-        if (!goodHit() && rows.length <= (scope ? 0 : local.length)) {   // chưa ra gì
+        if (!goodHit()) {   // chưa ra gì khớp tên
             try {
                 rows = rows.concat(await nominatimPass(nearQueries, anchor, nearKm));
                 if (!scope) rows = rows.concat(await nominatimPass([base], here, null));
@@ -7869,10 +8302,10 @@
         if (!goodHit()) {
             try {
                 const osm = await searchOsmByName(target, anchor, nearKm);
-                if (osm.length) rows = osm;
+                if (osm.length) rows = rows.concat(osm);
                 else if (!scope) {
                     const wide = await searchOsmByName(target, here, 150);
-                    if (wide.length) rows = wide;
+                    if (wide.length) rows = rows.concat(wide);
                 }
             } catch (e) {
                 console.warn('Overpass tra tên:', e);
@@ -9519,6 +9952,7 @@
             }
         }
         renderNav();
+        setSheetPosition('mid');
         showToast('Đã kết thúc dẫn đường');
     }
 
@@ -11251,6 +11685,130 @@
     }
 
     // =====================================================================
+    // 4b. THANH BOTTOM SHEET KÉO CO NGOÀI TRANG CHỦ
+    // =====================================================================
+    let currentSheetHeight = 340;
+
+    function updateSheetHeight(h) {
+        currentSheetHeight = Math.max(76, Math.min(540, h));
+        const sheet = $('home-bottom-sheet');
+        if (sheet) sheet.style.height = `${currentSheetHeight}px`;
+        document.documentElement.style.setProperty('--bottom-hud-h', `${currentSheetHeight + 8}px`);
+        const homeChips = $('home-chips-row');
+        const homeRecent = $('home-recent-list');
+        if (homeChips) homeChips.style.display = currentSheetHeight <= 140 ? 'none' : 'flex';
+        if (homeRecent) homeRecent.style.display = currentSheetHeight <= 220 ? 'none' : 'block';
+    }
+
+    function setSheetPosition(pos) {
+        const sheet = $('home-bottom-sheet');
+        if (sheet) sheet.classList.add('transition-[height]', 'duration-300');
+        if (pos === 'low') {
+            updateSheetHeight(76);
+        } else if (pos === 'mid') {
+            updateSheetHeight(340);
+        } else if (pos === 'high') {
+            updateSheetHeight(480);
+        }
+        setTimeout(() => {
+            if (sheet) sheet.classList.remove('transition-[height]', 'duration-300');
+        }, 320);
+    }
+
+    function initBottomSheetDrag() {
+        const handle = $('sheet-drag-handle');
+        const sheet = $('home-bottom-sheet');
+        if (!handle || !sheet) return;
+
+        let isDragging = false;
+        let startY = 0;
+        let startH = currentSheetHeight;
+
+        const onStart = (clientY) => {
+            isDragging = true;
+            startY = clientY;
+            startH = currentSheetHeight;
+            sheet.classList.remove('transition-[height]', 'duration-300');
+        };
+
+        const onMove = (clientY) => {
+            if (!isDragging) return;
+            const delta = startY - clientY;
+            updateSheetHeight(startH + delta);
+        };
+
+        const onEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            sheet.classList.add('transition-[height]', 'duration-300');
+            if (currentSheetHeight < 180) {
+                setSheetPosition('low');
+            } else if (currentSheetHeight < 420) {
+                setSheetPosition('mid');
+            } else {
+                setSheetPosition('high');
+            }
+        };
+
+        handle.addEventListener('mousedown', (e) => onStart(e.clientY));
+        window.addEventListener('mousemove', (e) => onMove(e.clientY));
+        window.addEventListener('mouseup', onEnd);
+
+        handle.addEventListener('touchstart', (e) => {
+            if (e.touches && e.touches[0]) onStart(e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches && e.touches[0]) onMove(e.touches[0].clientY);
+        }, { passive: true });
+        window.addEventListener('touchend', onEnd);
+
+        // Khởi tạo vị trí cao mặc định (340px)
+        updateSheetHeight(340);
+        renderHomeRecent();
+    }
+
+    function startNavigationHome() {
+        const saved = loadPlaces();
+        if (saved.home && saved.home.coords) {
+            calculateRoute(saved.home.coords[0], saved.home.coords[1], { name: 'Nhà riêng' });
+        } else {
+            openModal('searchModal');
+        }
+    }
+
+    function startNavigationWork() {
+        const saved = loadPlaces();
+        if (saved.work && saved.work.coords) {
+            calculateRoute(saved.work.coords[0], saved.work.coords[1], { name: 'Cơ quan' });
+        } else {
+            openModal('searchModal');
+        }
+    }
+
+    function renderHomeRecent() {
+        const el = $('homeRecentItems');
+        if (!el) return;
+        const hist = loadSearchHistory();
+        if (!hist || hist.length === 0) {
+            el.innerHTML = '<div class="text-xs text-slate-400 py-2">Chưa có lịch sử tìm kiếm gần đây.</div>';
+            return;
+        }
+        const items = hist.slice(0, 3);
+        el.innerHTML = items.map(item => `
+            <div onclick="calculateRoute(${item.lat}, ${item.lon}, { name: ${JSON.stringify(item.name || '')} })"
+                 class="flex items-center gap-3 py-2 px-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer active:scale-[0.99] transition">
+                <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs shrink-0">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${escapeHtml(item.name || '')}</div>
+                    <div class="text-[11px] text-slate-400 truncate mt-0.5">${escapeHtml(item.addr || item.name || '')}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // =====================================================================
     // 5. MODAL: chỉ mở 1 cái, chạm nền / Esc để đóng
     // =====================================================================
     const MODALS = ['reportModal', 'utilitiesModal', 'speedFeedbackModal', 'settingsModal', 'childWarningModal', 'searchModal', 'savePlaceModal'];
@@ -12489,9 +13047,20 @@
         // Chưa có tuyến thì đừng bịa ra giờ đến và quãng đường: thanh dưới chỉ
         // nói "chưa dẫn đường" cho trung thực.
         const routing = nav.active;
+        if (routing) {
+            $('bottom-bar')?.classList.remove('hidden');
+            $('home-search-container')?.classList.add('hidden');
+            $('home-chips-row')?.classList.add('hidden');
+            $('home-recent-list')?.classList.add('hidden');
+            setSheetPosition('low');
+        } else {
+            $('bottom-bar')?.classList.add('hidden');
+            $('home-search-container')?.classList.remove('hidden');
+            $('home-chips-row')?.classList.remove('hidden');
+            $('home-recent-list')?.classList.remove('hidden');
+        }
 
-        // Không dẫn đường thì ẩn hẳn ô rẽ. Để lại một mũi tên rẽ phải kèm
-        // "500m" khi chẳng có tuyến nào là nói dối người đang lái.
+        // Không dẫn đường thì ẩn hẳn ô rẽ.
         $('turnCard').classList.toggle('hidden', !routing);
         if (routing) {
             const t = TURN_TEXT[n.turn.dir] || TURN_TEXT.straight;
