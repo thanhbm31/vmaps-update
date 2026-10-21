@@ -673,14 +673,14 @@
         <div id="comp-pool" class="hidden">
             <!-- COMPONENT 1: Phạt nguội & Rẽ tiếp theo -->
             <div id="comp-warning" class="pointer-events-auto flex flex-col gap-3 items-center">
-                <!-- Rẽ tiếp theo: chỉ hiện khi đang điều hướng, mặc định ẩn -->
-                <div id="turnCard" onclick="demoTurn()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[80px] cursor-pointer hidden">
-                    <div class="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-full mb-1">
-                        <i id="turnIcon" class="fa-solid fa-arrow-turn-right text-blue-600 dark:text-blue-400 text-xl"></i>
+                <!-- Rẽ tiếp theo: chỉ hiện khi đang điều hướng, mặc định ẩn (thiết kế bo tròn viền xanh glow hiện đại) -->
+                <div id="turnCard" onclick="demoTurn()" class="w-[88px] p-2 rounded-2xl bg-slate-900/95 dark:bg-slate-900/95 backdrop-blur-md border border-blue-500/40 shadow-2xl flex flex-col items-center gap-0.5 cursor-pointer active:scale-95 transition hidden" title="Lối rẽ tiếp theo - Chạm để thử các hướng rẽ">
+                    <div class="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-sky-400 text-base mb-0.5">
+                        <i id="turnIcon" class="fa-solid fa-arrow-turn-right"></i>
                     </div>
-                    <span id="turnLabel" class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">-</span>
-                    <span id="turnDist" class="text-lg font-extrabold text-slate-800 dark:text-white leading-none mt-1">-</span>
-                    <span id="turnStreet" class="text-[10px] font-bold text-blue-600 dark:text-blue-400 mt-1 text-center"></span>
+                    <span id="turnDist" class="text-base font-black text-white leading-tight">-</span>
+                    <span id="turnLabel" class="text-[10px] font-bold text-slate-300 dark:text-slate-300 leading-tight">-</span>
+                    <span id="turnStreet" class="text-[9.5px] font-extrabold text-sky-400 leading-tight text-center max-w-[80px] truncate"></span>
                 </div>
             </div>
 
@@ -1679,7 +1679,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '9846b60';
+    const BUILD_TAG = '63461a4';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -13853,8 +13853,22 @@
         if (next === speedState.limit) next = DEMO_NEXT_LIMITS[demoNextIdx++ % DEMO_NEXT_LIMITS.length];
         announceNextLimit(next, parseInt(field('nextSpeedDistance'), 10) || 200);
     }
+    const DEMO_TURNS = [
+        { dir: 'right', dist: 200, street: 'Lê Hồng Phong', streetFull: 'Đường Lê Hồng Phong' },
+        { dir: 'slight_right', dist: 350, street: 'Nguyễn Bỉnh Khiêm', streetFull: 'Đường Nguyễn Bỉnh Khiêm' },
+        { dir: 'left', dist: 800, street: 'Trần Phú', streetFull: 'Đường Trần Phú' },
+        { dir: 'slight_left', dist: 500, street: 'Lạch Tray', streetFull: 'Đường Lạch Tray' },
+        { dir: 'u_turn', dist: 150, street: 'Cầu Rào', streetFull: 'Cầu Rào' }
+    ];
+    let demoTurnIdx = 0;
+    function demoTurn() {
+        const item = DEMO_TURNS[demoTurnIdx++ % DEMO_TURNS.length];
+        navState.turn = item;
+        renderNav();
+        speak('turn', item);
+        showToast(`Lối rẽ tiếp theo: ${item.dist}m (${(TURN_TEXT[item.dir] || TURN_TEXT.straight).vi} vào ${item.street})`);
+    }
     function demoCamera() { if (DEMO_MODE) speak('camera', { dist: navState.camera.dist }); }
-    function demoTurn() { if (DEMO_MODE) speak('turn', navState.turn); }
     function demoTunnel() { if (DEMO_MODE) alertTunnel(navState.tunnelDist); }
 
     function tick() {
