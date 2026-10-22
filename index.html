@@ -455,6 +455,35 @@
             border: 1.5px solid rgba(0, 0, 0, 0.2) !important;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
         }
+        /* Đảm bảo toàn bộ các nút chức năng (lọc, báo cáo, vị trí, la bàn...) nổi bật sắc nét trên nền Basic trắng */
+        body.mode-basic-white .fab,
+        body.mode-basic-white #hazardReportBtn,
+        body.mode-basic-white #routeFilterBtn,
+        body.mode-basic-white #recenterBtn {
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22) !important;
+            border: 1.5px solid rgba(0, 0, 0, 0.15) !important;
+        }
+        /* Nền thanh dẫn đường ở chế độ BASIC trắng: dùng màu xám đen để chữ trắng nổi lên */
+        body.mode-basic-white #bottom-bar {
+            background: #182232 !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+        }
+        body.mode-basic-white #bottom-bar #destName {
+            color: #ffffff !important;
+        }
+        body.mode-basic-white #bottom-bar #etaMin {
+            color: #34d399 !important;
+        }
+        body.mode-basic-white #bottom-bar #etaDist,
+        body.mode-basic-white #bottom-bar #etaArrive,
+        body.mode-basic-white #bottom-bar .text-slate-400 {
+            color: #94a3b8 !important;
+        }
+        body.mode-basic-white #bottom-bar button[onclick*="openRouteSettings"] {
+            background: #253347 !important;
+            color: #f1f5f9 !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
 
         /* Màn rất hẹp: bỏ phần pin dự kiến tới nơi cho đỡ chật một dòng */
         @media (max-width: 360px) {
@@ -1749,7 +1778,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'cf2ffb5';
+    const BUILD_TAG = 'dde28f9';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -9384,7 +9413,97 @@
         return false;
     }
 
-    function handleAssistantChat(query) {
+    /**
+     * Tra cứu ngày Âm lịch (Việt Nam) và Can Chi năm bằng thuật toán chuẩn xác.
+     */
+    function getLunarDate(d) {
+        const date = d || new Date();
+        try {
+            const formatter = new Intl.DateTimeFormat('vi-VN-u-ca-chinese', {
+                day: 'numeric',
+                month: 'numeric',
+                year: 'numeric'
+            });
+            const parts = formatter.formatToParts(date);
+            let day = 1, month = 1, year = date.getFullYear();
+            parts.forEach((p) => {
+                if (p.type === 'day') day = parseInt(p.value, 10);
+                if (p.type === 'month') month = parseInt(p.value, 10);
+                if (p.type === 'relatedYear') year = parseInt(p.value, 10);
+            });
+
+            const CANS = ['Giáp', 'Ất', 'Bính', 'Đinh', 'Mậu', 'Kỷ', 'Canh', 'Tân', 'Nhâm', 'Quý'];
+            const CHIS = ['Tý', 'Sửu', 'Dần', 'Mão', 'Thìn', 'Tỵ', 'Ngọ', 'Mùi', 'Thân', 'Dậu', 'Tuất', 'Hợi'];
+
+            const canYear = CANS[(year + 6) % 10];
+            const chiYear = CHIS[(year + 8) % 12];
+            const canChiYear = `${canYear} ${chiYear}`;
+            const isLeap = parts.some((p) => p.type === 'month' && String(p.value).includes('bis'));
+
+            return {
+                day,
+                month,
+                year,
+                canChiYear,
+                isLeap,
+                text: `Hôm nay là ngày ${day} tháng ${month}${isLeap ? ' nhuận' : ''} âm lịch, năm ${canChiYear} ạ.`
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * Tra cứu thời tiết thời gian thực theo toạ độ GPS của xe qua Open-Meteo API.
+     */
+    function queryWeatherByGps(callback) {
+        const pos = userLatLng || getCurrentPos() || [20.84, 106.68];
+        const lat = pos[0];
+        const lon = pos[1];
+
+        let areaLabel = '';
+        const stEl = $('curStreet');
+        const streetText = stEl ? stEl.textContent.trim() : '';
+        if (streetText && streetText !== '–' && streetText !== 'Đang định vị...' && streetText !== 'Chưa rõ tên đường') {
+            areaLabel = streetText;
+        } else if (typeof areaName === 'string' && areaName) {
+            areaLabel = areaName;
+        }
+
+        const atLocationStr = areaLabel ? `ở ${areaLabel}` : 'tại vị trí của bạn';
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current_weather=true&timezone=Asia%2FBangkok`;
+
+        fetch(url, { signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(3500) : undefined })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && data.current_weather) {
+                    const cw = data.current_weather;
+                    const temp = Math.round(cw.temperature);
+                    const wind = Math.round(cw.windspeed);
+                    const code = cw.weathercode;
+
+                    let desc = 'trời râm mát';
+                    if (code === 0) desc = 'trời quang đãng, nắng ráo';
+                    else if (code === 1 || code === 2) desc = 'trời có mây nhẹ, tạnh ráo';
+                    else if (code === 3) desc = 'trời nhiều mây';
+                    else if (code >= 45 && code <= 48) desc = 'có sương mù, tầm nhìn hạn chế';
+                    else if (code >= 51 && code <= 55) desc = 'có mưa phùn nhẹ';
+                    else if (code >= 61 && code <= 65) desc = 'đang có mưa rào';
+                    else if (code >= 80 && code <= 82) desc = 'có mưa rào từng đợt';
+                    else if (code >= 95) desc = 'có dông bão kèm sấm sét';
+
+                    const rainNote = (code >= 51) ? 'Đường có thể trơn trượt, anh chú ý giữ khoảng cách và tốc độ an toàn nhé!' : 'Thời tiết rất thuận lợi cho chuyến đi của anh!';
+                    callback(`Thời tiết hiện tại ${atLocationStr} khoảng ${temp} độ C, ${desc}, gió ${wind} km một giờ. ${rainNote}`);
+                } else {
+                    throw new Error('No weather data');
+                }
+            })
+            .catch(() => {
+                callback(`Thời tiết hôm nay nhìn chung khá thuận lợi cho các chuyến đi. Anh nhớ chú ý quan sát và giữ khoảng cách an toàn nhé!`);
+            });
+    }
+
+        function handleAssistantChat(query) {
         const q = String(query || '').toLowerCase().trim();
 
         // 1. Yêu cầu hát một bài
@@ -9476,8 +9595,21 @@
             };
         }
 
-        // 4. Tra cứu thông tin: Ngày giờ, thời tiết, toán học
-        if (/(?:mấy\s+giờ|bây\s+giờ\s+là\s+mấy\s+giờ|xem\s+giờ|ngày\s+mấy|hôm\s+nay\s+ngày\s+mấy|thứ\s+mấy)/i.test(q)) {
+        // 4. Tra cứu thông tin: Ngày giờ, Âm lịch, Toán học
+        // 4.1 Tra cứu Âm lịch
+        if (/(?:lịch\s+âm|âm\s+lịch|ngày\s+âm|bao\s+nhiêu\s+âm|mấy\s+âm|mùng\s+mấy\s+âm)/i.test(q)) {
+            const lunar = getLunarDate();
+            if (lunar) {
+                return {
+                    handled: true,
+                    text: lunar.text,
+                    type: 'lunar'
+                };
+            }
+        }
+
+        // 4.2 Giờ giấc, Thứ, Ngày Dương kèm ngày Âm lịch
+        if (/(?:mấy\s+giờ|bây\s+giờ\s+là\s+mấy\s+giờ|xem\s+giờ|ngày\s+mấy|hôm\s+nay\s+ngày\s+mấy|thứ\s+mấy|lịch\s+hôm\s+nay)/i.test(q)) {
             const now = new Date();
             const hours = now.getHours();
             const mins = String(now.getMinutes()).padStart(2, '0');
@@ -9486,18 +9618,12 @@
             const year = now.getFullYear();
             const weekdays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
             const weekday = weekdays[now.getDay()];
+            const lunar = getLunarDate(now);
+            const lunarSuffix = lunar ? `, tức ngày ${lunar.day} tháng ${lunar.month} âm lịch (${lunar.canChiYear})` : '';
             return {
                 handled: true,
-                text: `Bây giờ là ${hours} giờ ${mins} phút, ${weekday}, ngày ${day} tháng ${month} năm ${year} ạ.`,
+                text: `Bây giờ là ${hours} giờ ${mins} phút, ${weekday}, ngày ${day} tháng ${month} năm ${year}${lunarSuffix} ạ.`,
                 type: 'time'
-            };
-        }
-
-        if (/(?:thời\s+tiết|trời\s+mưa|có\s+mưa\s+không|nhiệt\s+độ|trời\s+nắng)/i.test(q)) {
-            return {
-                handled: true,
-                text: "Hôm nay thời tiết nhìn chung khá thuận lợi cho các chuyến đi xa. Anh nhớ giữ tốc độ phù hợp và bật đèn khi trời mưa hoặc vào hầm nhé!",
-                type: 'weather'
             };
         }
 
@@ -9555,6 +9681,16 @@
         if (chatRes && chatRes.handled) {
             showAssistantUI('Trợ lý VMaps', chatRes.text);
             speakAssistant(chatRes.text);
+            return;
+        }
+
+        // 0a2. Tra cứu thời tiết thời gian thực theo GPS
+        if (/(?:thời\s+tiết|trời\s+mưa|có\s+mưa\s+không|nhiệt\s+độ|trời\s+nắng)/i.test(lower)) {
+            showAssistantUI('Thời tiết', 'Đang tra cứu thời tiết tại vị trí của bạn...');
+            queryWeatherByGps((weatherText) => {
+                showAssistantUI('Thời tiết hiện tại', weatherText);
+                speakAssistant(weatherText);
+            });
             return;
         }
 
