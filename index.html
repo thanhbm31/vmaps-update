@@ -85,8 +85,27 @@
 
         #map { position: absolute; inset: 0; }
         /* Nền cho lúc tile chưa về: xám trung tính, không để WebView tự chọn */
-        .leaflet-container { background: #e5e7eb; }
-        .dark .leaflet-container { background: #1e293b; }
+        .leaflet-container {
+            background: #e5e7eb;
+            touch-action: pan-x pan-y pinch-zoom;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .dark .leaflet-container { background: #121826; }
+
+        /* Tăng tốc phần cứng GPU khi vuốt bản đồ và giảm xé hình trên Android */
+        .leaflet-tile-container {
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+        .leaflet-tile {
+            image-rendering: -webkit-optimize-contrast;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+        }
+        .leaflet-pane {
+            will-change: transform;
+        }
 
         /* Cỡ lớp xoay do sizeRotator() trong JS đặt bằng pixel.
            KHÔNG dùng phần trăm cố định được: con số 152% cũ suy ra từ hình
@@ -193,6 +212,13 @@
             grid-template-rows: auto minmax(0, 1fr) auto;
             column-gap: 12px; row-gap: 12px;
             pointer-events: none;
+            transform: translateZ(0);
+        }
+        #home-bottom-sheet {
+            will-change: height, transform;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-overflow-scrolling: touch;
         }
         .hud-cell { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
         .hud-slot { display: flex; flex-direction: column; gap: 12px; }
@@ -276,13 +302,14 @@
         .car-pulse { animation: carPulse 2.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
         @media (prefers-reduced-motion: reduce) { .car-pulse { animation: none; } }
 
-        /* Hiệu ứng camera phạt nguội nhấp nháy tại đúng toạ độ (chỉ dùng filter/opacity, không dùng transform để tránh lỗi nhảy toạ độ) */
+        /* Hiệu ứng camera phạt nguội nhấp nháy tại đúng toạ độ (sử dụng opacity & scale nhẹ, không dùng drop-shadow để bảo toàn 60fps trên GPU) */
         @keyframes cameraBlink {
-            0%, 100% { opacity: 0.9; filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.7)); }
-            50% { opacity: 1; filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1)); }
+            0%, 100% { opacity: 0.85; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
         }
         .camera-blink {
             animation: cameraBlink 1.2s ease-in-out infinite;
+            will-change: transform, opacity;
         }
 
         /* Nút micro to gấp đôi trong ô tìm kiếm, đè lên mép khung */
@@ -495,19 +522,20 @@
         .dark .leaflet-control-attribution { background: rgba(15, 23, 42, 0.6) !important; }
         .dark .leaflet-control-attribution a { color: #93c5fd; }
 
-        /* Hiệu ứng nhấp nháy cho icon camera phạt nguội trên toạ độ bản đồ */
+        /* Hiệu ứng nhấp nháy cho icon camera phạt nguội trên toạ độ bản đồ (tối ưu mượt không drop FPS) */
         @keyframes camBlink {
             0%, 100% {
-                filter: drop-shadow(0 0 3px rgba(239, 68, 68, 0.5));
-                opacity: 0.9;
+                transform: scale(1);
+                opacity: 0.88;
             }
             50% {
-                filter: drop-shadow(0 0 12px rgba(239, 68, 68, 1));
+                transform: scale(1.08);
                 opacity: 1;
             }
         }
         .cam-blinking {
             animation: camBlink 1.4s infinite ease-in-out;
+            will-change: transform, opacity;
         }
     </style>
 </head>
@@ -1711,7 +1739,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '7cf3e1c';
+    const BUILD_TAG = '9df2c49';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1928,6 +1956,8 @@
      */
     const MAP_STYLES = [
         { id: 'google_traffic', label: 'Google Giao thông (Báo kẹt xe)', icon: 'fa-traffic-light' },
+        { id: 'basic_mono', label: 'Đường phố Basic (Đen & Trắng siêu nhẹ)', icon: 'fa-circle-half-stroke' },
+        { id: 'basic_dark', label: 'Đường phố Basic Đen (Đơn sắc đêm)', icon: 'fa-moon' },
         { id: 'google_streets', label: 'Google Đường phố', icon: 'fa-road' },
         { id: 'google_hybrid', label: 'Google Vệ tinh (Tên đường)', icon: 'fa-satellite' },
         { id: 'google_terrain', label: 'Google Địa hình', icon: 'fa-mountain-sun' },
@@ -11429,8 +11459,20 @@
         }
         // Ghi nguồn OSM nằm ở #osm-credit ngoài bản đồ, nếu để trong thì nó xoay
         // theo khi bật chế độ hướng xe. Giấy phép vẫn được tuân thủ.
-        map = L.map('map', { zoomControl: false, attributionControl: false })
-            .setView(getCurrentPos(), 15);
+        map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            preferCanvas: true,
+            wheelDebounceTime: 40,
+            wheelPxPerZoomLevel: 120,
+            fadeAnimation: true,
+            zoomAnimation: true,
+            markerZoomAnimation: true,
+            inertia: true,
+            inertiaDeceleration: 3000,
+            inertiaMaxSpeed: 2500,
+            maxBoundsViscosity: 0.5
+        }).setView(getCurrentPos(), 15);
         rebuildTileLayer();
         watchMapSize();
         updateCarIcon();
@@ -11455,22 +11497,16 @@
         const dark = document.documentElement.classList.contains('dark');
         const token = mapboxToken();
         const pick = MAP_STYLES.find((s) => s.id === mapStyleId()) || MAP_STYLES[0];
-        // Chọn tay "OpenStreetMap" thì tôn trọng, dù có khoá Mapbox
+        // Chọn tay "OpenStreetMap" hoặc Basic thì không sang Mapbox
         const isGoogle = pick.id.startsWith('google_');
-        const onMapbox = useMapbox() && pick.id !== 'osm' && !isGoogle;
+        const isBasic = pick.id.startsWith('basic_');
+        const onMapbox = useMapbox() && pick.id !== 'osm' && !isGoogle && !isBasic;
 
         const common = {
-            // Giữ sẵn nhiều vòng tile quanh khung nhìn để đi tới đâu đã có sẵn
-            // tới đó. Đây là đệm hiển thị hợp lệ, KHÁC với tải trước hàng loạt
-            // cả vùng — việc đó chính sách tile của OSM cấm.
-            // keepBuffer 2 chứ không phải 4: mỗi nấc là một vòng ô quanh
-            // khung nhìn, 4 vòng là ~81 ô phải giữ và dịch chuyển khi vuốt
-            // (mặc định Leaflet là 25). Đổi lại đi tới mép khung phải chờ
-            // tile mới lâu hơn một chút — đáng, vì vuốt giật khó chịu hơn.
-            keepBuffer: 2,
-            // Trên cảm ứng: KHÔNG tải tile giữa lúc ngón tay còn trên màn
-            // hình. Vừa vuốt vừa giải mã ảnh là nguyên nhân giật rõ nhất.
-            updateWhenIdle: L.Browser && L.Browser.mobile,
+            // keepBuffer 3 để có sẵn vòng đệm tile quanh khung nhìn, vuốt mượt mà không bị hở mảng xám
+            keepBuffer: 3,
+            // Không đóng băng nạp tile lúc đang vuốt để khung hình và dữ liệu liền mạch
+            updateWhenIdle: false,
             updateWhenZooming: false
         };
 
@@ -11480,6 +11516,19 @@
                 Object.assign({}, common, {
                     maxZoom: 19,
                     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                }));
+        } else if (isBasic) {
+            let variant = 'light_all';
+            if (pick.id === 'basic_dark') {
+                variant = 'dark_all';
+            } else if (pick.id === 'basic_mono') {
+                variant = dark ? 'dark_all' : 'light_all';
+            }
+            layer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}{r}.png`,
+                Object.assign({}, common, {
+                    subdomains: ['a', 'b', 'c', 'd'],
+                    maxZoom: 20,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
                 }));
         } else {
             let lyrs = 'm';
@@ -11496,8 +11545,20 @@
                 }));
         }
 
-        const keepNaturalColors = pick.id === 'google_hybrid' || pick.id === 'google_traffic' || pick.id === 'google_terrain';
+        const keepNaturalColors = pick.id === 'google_hybrid' || pick.id === 'google_traffic' || pick.id === 'google_terrain' || isBasic;
         document.body.classList.toggle('map-dark', dark && !keepNaturalColors);
+
+        const credit = $('osm-credit');
+        if (credit) {
+            const buildTag = $('build-tag') ? $('build-tag').textContent : '';
+            if (isBasic) {
+                credit.innerHTML = `<span id="build-tag">${buildTag}</span>&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>`;
+            } else if (isGoogle) {
+                credit.innerHTML = `<span id="build-tag">${buildTag}</span>&copy; Google Maps`;
+            } else {
+                credit.innerHTML = `<span id="build-tag">${buildTag}</span>&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>`;
+            }
+        }
 
         // Nếu không tải được tile thì phải nói ra, chứ để màn hình trống thì
         // người dùng không biết là mất mạng hay app hỏng.
@@ -12108,9 +12169,13 @@
             rebuildTileLayer();
             return;
         }
-        // Không có Mapbox thì giữ nguyên tile OSM và nghịch màu bằng CSS:
-        // không tải lại tile, không nháy.
-        document.body.classList.toggle('map-dark', isDark);
+        if (mapStyleId() === 'basic_mono') {
+            rebuildTileLayer();
+            return;
+        }
+        const pick = MAP_STYLES.find((s) => s.id === mapStyleId()) || MAP_STYLES[0];
+        const keepNaturalColors = pick.id === 'google_hybrid' || pick.id === 'google_traffic' || pick.id === 'google_terrain' || pick.id.startsWith('basic_');
+        document.body.classList.toggle('map-dark', isDark && !keepNaturalColors);
     }
 
     // =====================================================================
@@ -12140,23 +12205,36 @@
     // =====================================================================
     let currentSheetHeight = 340;
 
-    function updateSheetHeight(h) {
+    function updateSheetHeight(h, isDragging = false) {
         currentSheetHeight = Math.max(104, Math.min(540, h));
         const sheet = $('home-bottom-sheet');
         if (sheet) sheet.style.height = `${currentSheetHeight}px`;
-        document.documentElement.style.setProperty('--bottom-hud-h', `${currentSheetHeight + 8}px`);
+
+        // Khi đang vuốt tay: chỉnh trực tiếp bottom của hud-grid để mượt mà 60-120fps, không gây reflow toàn trang
+        const hudGrid = $('hud-grid');
+        if (hudGrid) hudGrid.style.bottom = `${currentSheetHeight + 8}px`;
+        if (!isDragging) {
+            document.documentElement.style.setProperty('--bottom-hud-h', `${currentSheetHeight + 8}px`);
+        }
+
         const homeChips = $('home-chips-row');
         const homeRecent = $('home-recent-list');
-        if (homeChips) homeChips.style.display = currentSheetHeight <= 140 ? 'none' : 'flex';
-        if (homeRecent) homeRecent.style.display = currentSheetHeight <= 220 ? 'none' : 'block';
+        if (homeChips) {
+            const showChips = currentSheetHeight > 140;
+            const target = showChips ? 'flex' : 'none';
+            if (homeChips.style.display !== target) homeChips.style.display = target;
+        }
+        if (homeRecent) {
+            const showRecent = currentSheetHeight > 220;
+            const target = showRecent ? 'block' : 'none';
+            if (homeRecent.style.display !== target) homeRecent.style.display = target;
+        }
 
         const toggleIcon = $('sheetToggleIcon');
         if (toggleIcon) {
-            if (currentSheetHeight <= 140) {
-                toggleIcon.className = 'fa-solid fa-chevron-up text-xs';
-            } else {
-                toggleIcon.className = 'fa-solid fa-chevron-down text-xs';
-            }
+            const isLow = currentSheetHeight <= 140;
+            const targetCls = isLow ? 'fa-solid fa-chevron-up text-xs' : 'fa-solid fa-chevron-down text-xs';
+            if (toggleIcon.className !== targetCls) toggleIcon.className = targetCls;
         }
     }
 
@@ -12193,12 +12271,15 @@
         let startY = 0;
         let startH = currentSheetHeight;
         let hasMoved = false;
+        let rafId = null;
+        let pendingClientY = null;
 
         const onStart = (clientY) => {
             isDragging = true;
             hasMoved = false;
             startY = clientY;
             startH = currentSheetHeight;
+            pendingClientY = clientY;
             sheet.classList.remove('transition-[height]', 'duration-300');
         };
 
@@ -12209,13 +12290,27 @@
                 hasMoved = true;
                 if (e && e.cancelable) e.preventDefault();
             }
-            updateSheetHeight(startH + delta);
+            pendingClientY = clientY;
+            if (!rafId) {
+                rafId = requestAnimationFrame(() => {
+                    rafId = null;
+                    if (isDragging && pendingClientY !== null) {
+                        updateSheetHeight(startH + (startY - pendingClientY), true);
+                    }
+                });
+            }
         };
 
         const onEnd = () => {
             if (!isDragging) return;
             isDragging = false;
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+            pendingClientY = null;
             sheet.classList.add('transition-[height]', 'duration-300');
+            document.documentElement.style.setProperty('--bottom-hud-h', `${currentSheetHeight + 8}px`);
             if (!hasMoved) {
                 // Chạm/click nhẹ mà không kéo -> tự động đóng/mở
                 toggleBottomSheet();
@@ -14244,7 +14339,7 @@
      * sw.js, thấy quá cũ thì gỡ hẳn ra và KHÔNG đăng ký lại — thà không có
      * cache offline còn hơn có một lớp cache nói dối.
      */
-    const SW_MIN_VERSION = 2;
+    const SW_MIN_VERSION = 3;
     const SW_RELOAD_KEY = 'vietnav.sw.reloaded';
 
     /** Đọc số hiệu trong sw.js. Trả 0 nếu không đọc được hoặc file quá cũ (chưa có số). */
