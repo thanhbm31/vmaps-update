@@ -1689,7 +1689,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '0b94e3f';
+    const BUILD_TAG = '8de7917';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -6537,7 +6537,13 @@
         ['Hồ Gươm', 21.0287, 105.8524, 'Hà Nội'],
         ['Sân vận động Mỹ Đình', 21.0203, 105.7640, 'Hà Nội'],
         ['Bến xe Mỹ Đình', 21.0283, 105.7760, 'Hà Nội'],
-        ['Lăng Chủ tịch Hồ Chí Minh', 21.0367, 105.8347, 'Hà Nội'],
+        ['Quảng trường Ba Đình', 21.0378, 105.8342, 'Ba Đình, Hà Nội'],
+        ['Lăng Chủ tịch Hồ Chí Minh', 21.0367, 105.8347, 'Ba Đình, Hà Nội'],
+        ['Lăng Bác', 21.0367, 105.8347, 'Ba Đình, Hà Nội'],
+        ['Bảo tàng Hồ Chí Minh', 21.0355, 105.8327, 'Ba Đình, Hà Nội'],
+        ['Khu di tích Phủ Chủ tịch', 21.0385, 105.8350, 'Ba Đình, Hà Nội'],
+        ['Cột cờ Hà Nội', 21.0325, 105.8400, 'Ba Đình, Hà Nội'],
+        ['Hoàng thành Thăng Long', 21.0350, 105.8405, 'Ba Đình, Hà Nội'],
         ['Chùa Một Cột', 21.0358, 105.8335, 'Hà Nội'],
         ['Văn Miếu Quốc Tử Giám', 21.0293, 105.8355, 'Hà Nội'],
         ['Bệnh viện Trung ương Quân đội 108', 21.0190, 105.8625, 'Hà Nội'],
@@ -6568,6 +6574,7 @@
         ['Bến xe Miền Tây', 10.7400, 106.6190, 'Hồ Chí Minh'],
         ['Bệnh viện Chợ Rẫy', 10.7560, 106.6590, 'Hồ Chí Minh'],
         ['Thảo Cầm Viên', 10.7877, 106.7049, 'Hồ Chí Minh'],
+        ['Bến Nhà Rồng', 10.7682, 106.7067, 'Quận 4, Hồ Chí Minh'],
 
         // Đà Nẵng
         ['Cầu Rồng', 16.0614, 108.2277, 'Đà Nẵng'],
@@ -6582,6 +6589,7 @@
         ['Vinhomes Imperia', 20.8650, 106.6630, 'Hải Phòng'],
         ['Vinhomes Marina', 20.8252, 106.6905, 'Hải Phòng'],
         ['Vincom Plaza Lê Thánh Tông', 20.8638, 106.6917, 'Hải Phòng'],
+        ['Đường Đà Nẵng', 20.8590, 106.6990, 'Ngô Quyền, Hải Phòng'],
         ['Aeon Mall Lê Chân', 20.8358, 106.6780, 'Hải Phòng'],
         ['Nhà hát lớn Hải Phòng', 20.8600, 106.6830, 'Hải Phòng'],
         ['Sân bay Cát Bi', 20.8190, 106.7250, 'Hải Phòng'],
@@ -6893,6 +6901,15 @@
         { name: 'Hoà Vang', parent: 'Đà Nẵng', g: [16.0020, 108.1400], radiusKm: 18, aliases: ['huyen hoa vang'] }
     ];
 
+    function isAttachedToLandmarkOrStreet(fullQueryNa, keyNa) {
+        const re = new RegExp('(?:^|[^\\p{L}])(?:duong\\s+mon|duong|pho|ngo|hem|cau|ham|quang\\s+truong|lang(?:\\s+(?:chu\\s+tich|bac))?|bao\\s+tang|khu\\s+di\\s+tich|di\\s+tich|den\\s+tho|den|chua|tuong\\s+dai|cong\\s+vien|nha\\s+(?:tuong\\s+niem|luu\\s+niem))\\s+' + keyNa.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'ui');
+        return re.test(fullQueryNa);
+    }
+
+    function isGenericInfrastructureNoun(textNa) {
+        return /^(?:duong\\s+mon|duong|pho|ngo|hem|cau|ham|quang\\s+truong|lang(?:\\s+(?:chu\\s+tich|bac))?|bao\\s+tang|khu\\s+di\\s+tich|di\\s+tich|den\\s+tho|den|chua|tuong\\s+dai|cong\\s+vien|nha\\s+(?:tuong\\s+niem|luu\\s+niem))$/i.test(String(textNa || '').trim());
+    }
+
     /**
      * Nhận diện phạm vi hành chính đa cấp (Quận/Huyện & Tỉnh/Thành),
      * làm sạch giới từ mồi và trả về tâm toạ độ khoanh vùng.
@@ -6908,8 +6925,9 @@
             for (const key of checkKeys) {
                 const re = new RegExp('(^|[^\\p{L}])' + key.replace(RE_ESC, '\\$&') + '(?![\\p{L}])', 'ui');
                 if (re.test(na)) {
+                    if (isAttachedToLandmarkOrStreet(na, key)) continue;
                     let restRaw = cleanScopeRest(dropPhrase(raw, key));
-                    if (restRaw.length < 2) return null; // Chỉ có mỗi tên quận
+                    if (noAccent(restRaw).length < 2 || isGenericInfrastructureNoun(noAccent(restRaw))) return null;
                     const fullName = `${dist.name}, ${dist.parent}`;
                     return {
                         name: dist.name,
@@ -6934,11 +6952,12 @@
                 + '(?![\\p{L}])', 'ui');
             if (!re.test(q)) continue;
             if (CITY_SHORT_RISKY.has(key) && q !== key && !/\btp\b/i.test(q)) continue;
+            if (isAttachedToLandmarkOrStreet(na, key)) continue;
             const name = VN_ACCENT_MAP.get(key);
             const row = VN_CITIES.find(([n]) => n === name) || VN_CITIES.find(([n]) => n === cityKey(name));
             if (!row) continue;                 // là điểm nổi bật, không phải tỉnh thành
             let restRaw = cleanScopeRest(dropPhrase(raw, key));
-            if (restRaw.length < 2) return null; // Chỉ có mỗi tên thành phố
+            if (noAccent(restRaw).length < 2 || isGenericInfrastructureNoun(noAccent(restRaw))) return null;
             return {
                 name: row[0],
                 parentCity: row[0],
@@ -8545,6 +8564,7 @@
             time: Date.now()
         });
         saveSearchHistory(list);
+        renderHomeRecent();
     }
 
     function removeSearchHistory(idx) {
@@ -8552,11 +8572,13 @@
         list.splice(idx, 1);
         saveSearchHistory(list);
         renderSearchHistory();
+        renderHomeRecent();
     }
 
     function clearAllSearchHistory() {
         saveSearchHistory([]);
         renderSearchHistory();
+        renderHomeRecent();
     }
 
     function applyHistorySearch(query, lat, lon, subtitle) {
@@ -9118,15 +9140,82 @@
     }
 
     function stripWakeWords(text) {
+        return cleanVoiceQuery(text);
+    }
+
+    /**
+     * Rút gọn câu khẩu lệnh của Trợ lý ảo thành từ khoá cốt lõi.
+     * Bóc tách các câu chào hỏi, xưng hô đùa cợt thân mật ("OK anh đẹp trai", "dạ em biết rồi..."),
+     * trợ từ hội thoại cuối câu ("đây ạ", "nhé em", "với ạ", "giúp mình...") và các tiền tố mệnh lệnh
+     * ("em sẽ dẫn đường cho anh tới...", "em đang tìm đường đến...").
+     */
+    function cleanVoiceQuery(text) {
         if (!text) return '';
         let t = String(text).trim();
-        t = t.replace(/^(dạ\s+)?(em\s+nghe\s+đây|tôi\s+nghe|nghe\s+đây)[,:\s]*/i, '');
-        t = t.replace(/(dạ\s+)?(em\s+nghe\s+đây|tôi\s+nghe|nghe\s+đây)$/i, '');
-        // Đầu câu: "alo bản đồ", "hey bản đồ", "bản đồ ơi", "a lô bản đồ", "hey vmaps", "vmaps ơi"...
-        t = t.replace(/^(hey|ê|chào|ok|alo|a\s*lô)?\s*(bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(\s+ơi)?[,:\s]*/i, '');
-        // Cuối câu: "... bản đồ ơi", "... vmaps ơi"
-        t = t.replace(/[,:\s]+(hey|ê|alo|a\s*lô)?\s*(bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|trợ\s*lý)(\s+ơi)?$/i, '');
-        return t.trim();
+
+        // 1. Loại bỏ các tiền tố chào hỏi, đùa cợt, xưng hô, thưa gửi ở đầu câu
+        const BANTER_PATTERNS = [
+            // Wake words: "alo bản đồ", "hey bản đồ", "bản đồ ơi", "trợ lý ơi", "vmaps ơi", "alo vmaps"...
+            /^(?:(?:hey|ê|chào|ok|alo|a\s*lô)\s*)?(?:bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(?:\s*ơi)?[,.:\s]*/i,
+            // Chào hỏi, wake đơn lẻ: "ok,", "alo,", "hey,"...
+            /^(?:hey|ê|chào|ok|alo|a\s*lô)\b[,.:\s]*/i,
+            // Xưng hô thân mật / đùa cợt: "anh đẹp trai", "chị đẹp gái", "bạn ơi", "anh ơi", "em ơi"...
+            /^(?:anh|chị|bạn|em)?\s*(?:đẹp\s+trai|xinh\s+gái|dễ\s+thương)(?:\s*ơi)?[,.:\s]*/i,
+            /^(?:anh|chị|bạn|em|admin)(?:\s*ơi)[,.:\s]*/i,
+            // Thưa gửi / xác nhận: "dạ vâng", "dạ", "vâng ạ", "vâng", "em biết rồi", "em nghe rồi", "được rồi"
+            /^(?:dạ\s*vâng|dạ|vâng\s*ạ|vâng|ừ|uhm?|được\s*rồi)[,.:\s]*/i,
+            /^(?:em|tôi|mình)\s*(?:biết|hiểu|nghe)\s*rồi[,.:\s]*/i,
+            /^(?:cho\s+(?:anh|chị|tôi|em|mình)\s+hỏi|làm\s+ơn)[,.:\s]*/i
+        ];
+
+        let changed = true;
+        let loops = 0;
+        while (changed && loops++ < 6) {
+            changed = false;
+            for (const pat of BANTER_PATTERNS) {
+                if (pat.test(t)) {
+                    t = t.replace(pat, '').trim();
+                    changed = true;
+                }
+            }
+        }
+
+        // 2. Loại bỏ các hậu tố thưa gửi, trợ từ hội thoại, nhờ vả ở cuối câu
+        const SUFFIX_PATTERNS = [
+            /[,.:\s]*(?:đây\s+ạ|đây\s+nhe|đây\s+nha|đây\s+nhé|đây)$/i,
+            /[,.:\s]*(?:nhé|nha|nhá|nghen|nhe)(?:\s+(?:em|anh|chị|bạn|nhé|nha))?$/i,
+            /[,.:\s]*(?:với\s+ạ|với\s+nhé|với\s+nha|với)$/i,
+            /[,.:\s]*(?:giúp|hộ|cho)\s+(?:tôi|em|anh|chị|mình)(?:\s+(?:với|nhé|nha|ạ))?$/i,
+            /[,.:\s]*(?:luôn\s*(?:nhé|nha|đi|ạ)?|ngay\s*(?:nhé|nha|đi|ạ)?|đi\s*ạ|đi|ạ|đấy|nào)$/i
+        ];
+
+        changed = true;
+        loops = 0;
+        while (changed && loops++ < 6) {
+            changed = false;
+            for (const pat of SUFFIX_PATTERNS) {
+                if (pat.test(t)) {
+                    t = t.replace(pat, '').trim();
+                    changed = true;
+                }
+            }
+        }
+
+        // 3. Chuẩn hoá các cụm động từ mệnh lệnh dẫn đường / tìm kiếm có kèm đại từ nhân xưng
+        const CMD_VERB_PREFIX_RE = /^(?:(?:em|tôi|mình|chúng\s+mình|anh|chị)\s+)?(?:sẽ|đang|muốn|cần|hãy|vui\s+lòng)?\s*(?:dẫn\s+đường(?:\s+luôn)?|chỉ\s+đường(?:\s+luôn)?|tìm\s+đường(?:\s+luôn)?|tìm\s+kiếm|tìm|dẫn|chỉ|đưa|đi)\s*(?:(?:cho|hộ|giúp)\s+(?:anh|chị|tôi|em|mình)\s+)?(?:luôn\s+)?(?:đi\s+)?(?:đến|tới|về|qua)?\s*/i;
+
+        const matchVerb = t.match(CMD_VERB_PREFIX_RE);
+        if (matchVerb && matchVerb[0]) {
+            const candidate = t.slice(matchVerb[0].length).trim();
+            if (candidate.length >= 2) {
+                t = candidate;
+            }
+        }
+
+        // Làm sạch lại nếu đầu chuỗi còn sót giới từ
+        t = t.replace(/^(?:đến|tới|về|ở|tại|qua)\s+/i, '').trim();
+
+        return t;
     }
 
     /**
@@ -9135,15 +9224,19 @@
      * (ví dụ "chợ Bến Thành", "chợ Hôm", "chợ Đà Lạt", "siêu thị Điện Máy Xanh", "siêu thị Lan Chi").
      */
     function extractCategoryRest(query, catPattern) {
-        let q = stripCommandWords(query).toLowerCase();
+        let q = cleanVoiceQuery(query).toLowerCase();
+        q = stripCommandWords(q).toLowerCase();
         q = q.replace(catPattern, ' ');
         q = q.replace(/(gần nhất|gần đây|gần tôi|gần bạn|xung quanh đây|xung quanh|quanh đây|quanh tôi|ở gần đây|ở quanh đây|ở đây|ở đâu|chỗ nào|nào|gần|nhất|đâu|chỗ|những|các|có không|không|cho tôi|giúp tôi|với|ạ)/gi, ' ');
         return q.replace(/[,;.\s]+/g, ' ').trim();
     }
 
-    function handleAssistantIntent(query) {
-        const lower = query.toLowerCase().trim();
-        showAssistantUI('Bạn vừa nói', query);
+    function handleAssistantIntent(query, rawQuery) {
+        const raw = rawQuery || query || '';
+        const cleaned = cleanVoiceQuery(query);
+        const effectiveQuery = cleaned || query;
+        const lower = effectiveQuery.toLowerCase().trim();
+        showAssistantUI('Bạn vừa nói', raw);
 
         // Phân biệt rõ nhà máy / showroom / công ty với trạm sạc (Đặc biệt khi dùng Voice Google)
         const isFactoryOrOrg = /(nhà máy|nha may|công xưởng|cong xuong|khu công nghiệp|kcn|công ty|showroom|đại lý|cửa hàng)/i.test(lower);
@@ -9424,7 +9517,7 @@
         }
 
         // 9. Dẫn đường đến địa điểm đích cụ thể
-        const navMatch = query.match(/(?:dẫn đường|chỉ đường|tìm đường|tìm|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
+        const navMatch = effectiveQuery.match(/(?:dẫn đường|chỉ đường|tìm đường|tìm|dẫn tôi đi|đi tới|đi đến|đưa tôi đến|đến|tới)\s+(?:đến|tới|về)?\s*(.+)/i);
         if (navMatch && navMatch[1]) {
             const dest = navMatch[1].trim();
             $('searchInput').value = dest;
@@ -9505,7 +9598,7 @@
         if (/(du lịch|có gì đẹp|có gì chơi|quán ăn|đặc sản|tư vấn|giới thiệu)/i.test(lower)) {
             closeAssistantUI();
             speakAssistant('Đang tìm thông tin gợi ý địa điểm cho bạn.');
-            $('searchInput').value = query;
+            $('searchInput').value = effectiveQuery;
             renderSearchClear();
             openModal('searchModal');
             doSearch();
@@ -9514,11 +9607,12 @@
 
         // 12. Mặc định: Tìm kiếm địa điểm trên bản đồ
         closeAssistantUI();
-        $('searchInput').value = query;
+        $('searchInput').value = effectiveQuery;
         renderSearchClear();
         openModal('searchModal');
         doSearch();
-        speakAssistant('Đang tìm ' + query);
+        const isNavPrompt = /(dẫn đường|chỉ đường|tìm đường|đi tới|đi đến|đưa tôi đến|đưa|dẫn)/i.test(raw);
+        speakAssistant((isNavPrompt ? 'Đang tìm đường đến ' : 'Đang tìm ') + effectiveQuery);
     }
 
     // Vỏ Android gọi ngược vào đây khi nhận xong giọng nói
@@ -9529,7 +9623,7 @@
             return;
         }
         const raw = text.trim();
-        const stripped = stripWakeWords(raw);
+        const stripped = cleanVoiceQuery(raw);
         const lowerRaw = raw.toLowerCase();
 
         // Kiểm tra nếu người dùng chỉ nói wake-word (Alo bản đồ, Hey bản đồ, Bản đồ ơi, Hey VMaps...) mà chưa kèm câu lệnh
@@ -9546,7 +9640,7 @@
             return;
         }
 
-        handleAssistantIntent(stripped);
+        handleAssistantIntent(stripped, raw);
     }
     function onVoiceError(msg) {
         micBusy(false);
@@ -12021,23 +12115,45 @@
         if (!el) return;
         const hist = loadSearchHistory();
         if (!hist || hist.length === 0) {
-            el.innerHTML = '<div class="text-xs text-slate-400 py-2">Chưa có lịch sử tìm kiếm gần đây.</div>';
+            el.innerHTML = '<div class="text-xs text-slate-400 py-2.5 px-2 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-slate-400"></i><span>Chưa có lịch sử tìm kiếm gần đây.</span></div>';
             return;
         }
-        const items = hist.slice(0, 3);
-        el.innerHTML = items.map(item => `
-            <div onclick="calculateRoute(${item.lat}, ${item.lon}, { name: ${JSON.stringify(item.name || '')} })"
-                 class="flex items-center gap-3 py-2 px-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 cursor-pointer active:scale-[0.99] transition">
-                <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 text-xs shrink-0">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
+        const items = hist.slice(0, 4);
+        el.innerHTML = items.map((item) => {
+            const title = item.title || item.query || item.name || 'Địa điểm gần đây';
+            const subtitle = item.subtitle || item.addr || '';
+            const qEsc = escapeHtml(item.query || item.title || item.name || '').replace(/'/g, "\\'");
+            const subEsc = escapeHtml(item.subtitle || item.addr || '').replace(/'/g, "\\'");
+            const latVal = (item.lat != null && Number.isFinite(Number(item.lat))) ? Number(item.lat) : 'null';
+            const lonVal = (item.lon != null && Number.isFinite(Number(item.lon))) ? Number(item.lon) : 'null';
+            const hasCoords = latVal !== 'null' && lonVal !== 'null';
+
+            return `
+            <div onclick="clickHomeRecentItem('${qEsc}', ${latVal}, ${lonVal}, '${subEsc}')"
+                 class="flex items-center gap-3 py-2 px-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 active:bg-slate-200 dark:active:bg-slate-700/80 cursor-pointer active:scale-[0.99] transition">
+                <div class="w-7 h-7 rounded-full ${hasCoords ? 'bg-blue-500/15 text-blue-500' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'} flex items-center justify-center text-xs shrink-0">
+                    <i class="fa-solid ${hasCoords ? 'fa-location-dot' : 'fa-clock-rotate-left'}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${escapeHtml(item.name || '')}</div>
-                    <div class="text-[11px] text-slate-400 truncate mt-0.5">${escapeHtml(item.addr || item.name || '')}</div>
+                    <div class="text-xs font-bold text-slate-800 dark:text-white truncate">${escapeHtml(title)}</div>
+                    ${subtitle && subtitle !== title ? `<div class="text-[11px] text-slate-400 truncate mt-0.5">${escapeHtml(subtitle)}</div>` : ''}
                 </div>
-            </div>
-        `).join('');
+                <div class="text-slate-400 text-xs shrink-0 opacity-60">
+                    <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </div>
+            </div>`;
+        }).join('');
     }
+
+    function clickHomeRecentItem(query, lat, lon, subtitle) {
+        if (lat != null && lon != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon))) {
+            showConfirmDest({ lat: Number(lat), lon: Number(lon), name: subtitle || query, kind: '' });
+        } else {
+            openSearchModal();
+            applyHistorySearch(query, null, null, subtitle);
+        }
+    }
+    window.clickHomeRecentItem = clickHomeRecentItem;
 
     // =====================================================================
     // 5. MODAL: chỉ mở 1 cái, chạm nền / Esc để đóng
