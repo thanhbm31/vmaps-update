@@ -758,12 +758,44 @@
                     </button>
                 </div>
 
+                <!-- THANH DẪN ĐƯỜNG KHI ĐANG ĐIỀU HƯỚNG: NẰM PHÍA TRÊN Ô TÌM KIẾM, ĐÍCH ĐẾN, KM, TIMING VÀ NÚT DỪNG DẪN ĐƯỜNG -->
+                <div id="bottom-bar" class="px-4 pt-1 pb-2.5 flex items-center justify-between gap-3 border-b border-slate-100 dark:border-white/10 hidden bg-slate-50/70 dark:bg-slate-800/40">
+                    <!-- Cụm thời gian ETA & Quãng đường còn lại -->
+                    <div onclick="openNavActions()" class="flex flex-col cursor-pointer min-w-[92px] active:opacity-75 transition">
+                        <span id="etaMin" class="text-xl font-black text-emerald-600 dark:text-emerald-400 leading-none">-</span>
+                        <div class="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1">
+                            <span id="etaDist">-</span>
+                            <span class="opacity-50">•</span>
+                            <span id="etaArrive">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Tên điểm đến (Chạm vào để xem toàn bộ danh sách chặng rẽ) -->
+                    <div onclick="openNavActions()" class="flex-1 min-w-0 flex flex-col justify-center cursor-pointer active:opacity-75 transition">
+                        <div class="text-[9.5px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-400">Đến đích</div>
+                        <div id="destName" class="text-sm font-black text-slate-800 dark:text-white truncate">Chưa dẫn đường</div>
+                    </div>
+
+                    <!-- Cụm nút hành động bên phải: Tuỳ chọn tuyến + Nút ĐỎ DỪNG DẪN ĐƯỜNG -->
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button type="button" onclick="event.stopPropagation(); openRouteSettings()" aria-label="Tuỳ chọn tuyến đường"
+                                class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-slate-900 active:scale-95 transition" title="Tuỳ chọn tuyến đường">
+                            <i class="fa-solid fa-route text-sm"></i>
+                        </button>
+                        <!-- Nút Thoát Dẫn Đường Màu Đỏ: Chạm vào là dừng dẫn đường ngay lập tức -->
+                        <button type="button" id="btnStopNav" onclick="event.stopPropagation(); endNavigation();" aria-label="Dừng dẫn đường"
+                                class="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md shadow-rose-600/30 active:scale-95 transition" title="Dừng dẫn đường (Thoát)">
+                            <i class="fa-solid fa-xmark text-base"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Ô tìm kiếm ngoài trang chủ: Nút Micro to gấp đôi đè lên mép khung -->
-                <div id="home-search-container" class="px-4 pt-0.5 pb-2">
+                <div id="home-search-container" class="px-4 pt-1.5 pb-2">
                     <div class="relative w-full flex items-center">
                         <div onclick="openSearchModal()" class="w-full h-12 py-2.5 pl-4 pr-14 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-white/10 flex items-center gap-3 cursor-pointer active:bg-slate-200 dark:active:bg-slate-700 transition">
                             <i class="fa-solid fa-magnifying-glass text-slate-400 text-base"></i>
-                            <span class="text-sm font-medium text-slate-400">Bạn muốn đi đâu?</span>
+                            <span id="homeSearchPlaceholder" class="text-sm font-medium text-slate-400">Bạn muốn đi đâu?</span>
                         </div>
                         <!-- Nút Micro to gấp đôi, đè lên mép khung bên phải -->
                         <button type="button" onclick="startVoiceSearch()" aria-label="Nói để tìm kiếm"
@@ -810,53 +842,7 @@
                     </div>
                 </div>
 
-                <!-- THANH DẪN ĐƯỜNG KHI ĐANG ĐIỀU HƯỚNG (Co lại hết cỡ chỉ còn 1 ô) -->
-                <div id="bottom-bar" onclick="openNavActions()" class="glass-panel shadow-2xl hidden cursor-pointer" style="border-radius: 0;">
-                    <button id="barSearch" onclick="event.stopPropagation(); openSearchModal()" data-needs-network aria-label="Tìm kiếm địa điểm"
-                            class="bar-btn text-emerald-500">
-                        <i class="fa-solid fa-magnifying-glass"></i>
-                        <span id="barSearchLabel">Tìm địa điểm, địa chỉ...</span>
-                    </button>
 
-                    <div id="bar-center">
-                        <div id="destName" class="text-slate-800 dark:text-white font-bold truncate">Chưa dẫn đường</div>
-                        <div id="bar-sub">
-                            <span id="etaArrive">-</span>
-                            <span class="bar-dot"> • </span>
-                            <span id="etaMin">-</span>
-                            <span class="bar-dot"> • </span>
-                            <span id="etaDist">-</span>
-                            <span id="batteryBlock">
-                                <span class="bar-dot"> • </span>
-                                <i class="fa-solid fa-car-battery text-blue-500"></i>
-                                <span id="battNow">-</span>
-                                <span id="battArriveWrap"> ➔ <span id="battArrive" class="text-orange-500 font-bold">-</span></span>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="event.stopPropagation(); openRouteSettings()" aria-label="Tuỳ chọn tuyến đường & tránh đường"
-                                class="bar-btn">
-                            <!-- Biểu tượng con đường và đường rẽ tránh vật cản -->
-                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M4 22L4 12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M12 22L12 14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M4 12L4 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
-                                <path d="M12 12L12 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
-                                <rect x="2.5" y="7" width="11" height="4" rx="1.5" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
-                                <line x1="5.5" y1="7" x2="7.5" y2="11" stroke="#ffffff" stroke-width="1"/>
-                                <line x1="8.5" y1="7" x2="10.5" y2="11" stroke="#ffffff" stroke-width="1"/>
-                                <path d="M12 14C15 14 20 12 20 8L20 3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                                <path d="M8 21L8 15C8 11.5 16 11.5 16 7L16 2.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
-                                <path d="M13.5 5L16 2.5L18.5 5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                        </button>
-                        <div class="w-7 h-7 rounded-full bg-slate-200/50 dark:bg-slate-700/50 flex items-center justify-center text-slate-500 dark:text-slate-400">
-                            <i class="fa-solid fa-chevron-up text-xs"></i>
-                        </div>
-                    </div>
-                </div>
 
             </div>
         </div>
@@ -1739,7 +1725,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'fee0496';
+    const BUILD_TAG = '489dce0';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -5505,7 +5491,7 @@
     function parseCsv(text) {
         const rows = [];
         let row = [], cell = '', q = false;
-        const t = String(text).replace(/\r\n/g, '\n');
+        const t = String(text).replace(/\n/g, '\n');
         for (let i = 0; i < t.length; i++) {
             const c = t[i];
             if (q) {
@@ -9302,7 +9288,43 @@
         "Bác tài bị phạt tốc độ phân bua: 'Tại em thấy biển ghi 80, mà em mới chạy có 60, nên em phải nhấn ga chạy thêm 20 nữa cho đủ chỉ tiêu chứ ạ!'"
     ];
 
-    function isConversationalStory(text, triggerKey) {
+    /**
+     * Kiểm tra xem câu nói có phải là một mệnh lệnh tương đối chính xác hay không.
+     * Ngăn chặn các câu chuyện phiếm dài dòng hoặc những câu có nhiều từ lạ đứng trước từ khoá.
+     */
+    function isExactCommand(raw, cleanQuery, triggerWord) {
+        const rawStr = String(raw || '').trim();
+        const cleanStr = String(cleanQuery || '').trim();
+        const lowerRaw = rawStr.toLowerCase();
+        const lowerClean = cleanStr.toLowerCase();
+
+        // 1. Nếu có từ khoá nhóm danh mục (ví dụ "cây xăng", "bệnh viện", "trạm sạc"...)
+        if (triggerWord) {
+            const idx = lowerRaw.indexOf(triggerWord.toLowerCase());
+            if (idx > -1) {
+                const before = lowerRaw.slice(0, idx).trim();
+                // Lược bỏ các động từ mệnh lệnh/đại từ hợp lệ
+                const cleanBefore = before.replace(/(?:dẫn\s+đường|chỉ\s+đường|tìm\s+đường|tìm|dẫn|chỉ|đi|đưa|đến|tới|ở|cho|hộ|giúp|tôi|em|anh|mình)\s*/gi, '').trim();
+                const wordsBefore = cleanBefore.split(/\s+/).filter(Boolean);
+                // Nếu phía trước từ khoá có từ lạ hoặc câu chuyện kể lể (>= 2 từ) -> không phải lệnh chính xác
+                if (wordsBefore.length >= 2) return false;
+
+                const after = lowerRaw.slice(idx + triggerWord.length).trim();
+                const cleanAfter = after.replace(/(?:gần\s+nhất|gần\s+đây|quanh\s+đây|ở\s+đây|nhé|nha|ạ|với|đi)\s*/gi, '').trim();
+                const wordsAfter = cleanAfter.split(/\s+/).filter(Boolean);
+                // Nếu phía sau từ khoá còn câu chuyện dài dòng (>= 3 từ không liên quan) -> không phải lệnh chính xác
+                if (wordsAfter.length >= 3) return false;
+            }
+        }
+
+        // 2. Toàn bộ câu lệnh cốt lõi không được dài lê thê (câu lệnh ngắn gọn thông thường <= 8 từ)
+        const totalWords = lowerClean.split(/\s+/).filter(Boolean).length;
+        if (totalWords > 8) return false;
+
+        return true;
+    }
+
+        function isConversationalStory(text, triggerKey) {
         if (!text) return false;
         const raw = String(text).trim();
         const lower = raw.toLowerCase();
@@ -9475,12 +9497,33 @@
         return { handled: false };
     }
 
-    function handleAssistantIntent(query, rawQuery) {
+    function handleAssistantIntent(query, rawQuery, options) {
         const raw = rawQuery || query || '';
         const cleaned = cleanVoiceQuery(query);
         const effectiveQuery = cleaned || query;
         const lower = effectiveQuery.toLowerCase().trim();
         const lowerRaw = raw.toLowerCase().trim();
+
+        const hadWakeWord = options && options.hadWakeWord;
+        const silenceGap = options && typeof options.silenceGap === 'number' ? options.silenceGap : Infinity;
+
+        // 0. Điều khiển chế độ luôn lắng nghe (Always-Listening Wake-Word) bằng giọng nói
+        if (/(?:tắt|dừng|ngừng|bỏ|không\s+cần)\s+(?:chế\s+độ\s+)?(?:luôn\s+lắng\s+nghe|lắng\s+nghe\s+liên\s+tục|nghe\s+liên\s+tục|tự\s+động\s+lắng\s+nghe|wake\s*word)/i.test(lower)) {
+            toggleWakeWordListener(false);
+            const chk = $('wakeWordToggle');
+            if (chk) chk.checked = false;
+            closeAssistantUI();
+            speakAssistant('Đã tắt chế độ luôn lắng nghe. Khi cần trợ giúp, anh vui lòng chạm vào nút micro trên màn hình nhé!');
+            return;
+        }
+        if (/(?:bật|kích\s+hoạt|mở)\s+(?:chế\s+độ\s+)?(?:luôn\s+lắng\s+nghe|lắng\s+nghe\s+liên\s+tục|nghe\s+liên\s+tục|tự\s+động\s+lắng\s+nghe|wake\s*word)/i.test(lower)) {
+            toggleWakeWordListener(true);
+            const chk = $('wakeWordToggle');
+            if (chk) chk.checked = true;
+            closeAssistantUI();
+            speakAssistant('Đã bật chế độ luôn lắng nghe. Anh có thể ra lệnh trực tiếp bất kỳ lúc nào mà không cần chạm màn hình ạ!');
+            return;
+        }
 
         // 0a. Trò chuyện vui vẻ / phiếm / giải trí / tra cứu thông tin (không cần dẫn đường)
         const chatRes = handleAssistantChat(raw) || handleAssistantChat(effectiveQuery);
@@ -9490,14 +9533,33 @@
             return;
         }
 
-        // 0b. Kiểm tra xem người dùng có đang nói chuyện phiếm / kể chuyện trong xe không
-        // (Tránh kích hoạt nhầm khi trong câu chuyện có nhắc tới "cây xăng gần nhất", "bệnh viện gần nhất", "trạm sạc"...)
+        // 0b. Quy tắc bảo vệ khi kích hoạt không có khẩu lệnh mồi (Always-Listening không có "Bản đồ ơi"):
+        // - Nếu có nhiều từ hoặc câu chuyện không liên quan trước khẩu lệnh -> không kích hoạt bừa bãi.
+        // - Phải có khoảng lặng 3 giây hoặc phải nói tương đối chính xác cụm từ.
         const commonCategoryWords = ['cây xăng', 'trạm xăng', 'trạm sạc', 'bệnh viện', 'trường học', 'tiểu học', 'thcs', 'thpt', 'mầm non', 'đại học', 'siêu thị', 'chợ', 'bãi đỗ', 'công viên', 'bảo tàng', 'ga tàu'];
         const matchedCat = commonCategoryWords.find((w) => lowerRaw.includes(w) || lower.includes(w));
-        if (matchedCat && isConversationalStory(raw, matchedCat)) {
-            // Đây là câu chuyện phiếm / trần thuật giữa các hành khách trên xe, không phải khẩu lệnh tìm kiếm
-            closeAssistantUI();
-            return;
+
+        if (!hadWakeWord) {
+            // Nếu có nhắc đến danh mục nhưng câu nói không phải khẩu lệnh chính xác hoặc là chuyện phiếm -> Bỏ qua
+            if (matchedCat && (!isExactCommand(raw, effectiveQuery, matchedCat) || isConversationalStory(raw, matchedCat))) {
+                closeAssistantUI();
+                return;
+            }
+
+            // Nếu chưa có khoảng lặng 3 giây trước câu nói (người dùng đang trò chuyện liên tục trong xe)
+            // thì bắt buộc phải nói tương đối chính xác cụm từ lệnh ngắn gọn (<= 8 từ) và không chứa từ chuyện phiếm
+            if (silenceGap < 3000) {
+                if (!isExactCommand(raw, effectiveQuery, matchedCat) || isConversationalStory(raw)) {
+                    closeAssistantUI();
+                    return;
+                }
+            } else {
+                // Đã có khoảng lặng >= 3 giây nhưng nếu câu chuyện phiếm có từ mồi kể lể thì vẫn lọc bỏ
+                if (isConversationalStory(raw, matchedCat)) {
+                    closeAssistantUI();
+                    return;
+                }
+            }
         }
 
         showAssistantUI('Bạn vừa nói', raw);
@@ -9846,15 +9908,24 @@
             return;
         }
 
-        // 10. Điều khiển âm thanh
-        if (/(tắt tiếng|tắt âm thanh|im lặng)/i.test(lower)) {
+        // 10. Điều khiển âm thanh: Chế độ yên lặng / im lặng / bật tiếng
+        if (/(?:kích\s+hoạt|bật|chuyển\s+sang|vào)?\s*(?:chế\s+độ\s+)?(?:yên\s+lặng|im\s+lặng)|tắt\s+tiếng|tắt\s+âm\s*thanh/i.test(lower)
+            && !/(?:tắt\s+(?:chế\s+độ\s+)?(?:yên\s+lặng|im\s+lặng)|bật\s+tiếng|bật\s+âm)/i.test(lower)) {
             setSoundMode(2);
-            speakAssistant('Đã tắt âm thanh cảnh báo.');
+            closeAssistantUI();
+            speakAssistant('Đã bật chế độ yên lặng. Ứng dụng sẽ chỉ hiển thị cảnh báo trên màn hình mà không phát âm thanh.');
             return;
         }
-        if (/(bật tiếng|bật âm thanh)/i.test(lower)) {
+        if (/(?:tắt\s+(?:chế\s+độ\s+)?(?:yên\s+lặng|im\s+lặng)|bật\s+tiếng|bật\s+âm\s*thanh|mở\s+tiếng|mở\s+âm\s*thanh|chế\s+độ\s+bình\s+thường)/i.test(lower)) {
             setSoundMode(0);
-            speakAssistant('Đã bật toàn bộ âm thanh.');
+            closeAssistantUI();
+            speakAssistant('Đã bật toàn bộ âm thanh hướng dẫn và cảnh báo.');
+            return;
+        }
+        if (/(?:chế\s+độ\s+)?chỉ\s+cảnh\s+báo/i.test(lower)) {
+            setSoundMode(1);
+            closeAssistantUI();
+            speakAssistant('Đã chuyển sang chế độ chỉ đọc cảnh báo, không đọc chỉ đường.');
             return;
         }
 
@@ -9885,6 +9956,8 @@
         speakAssistant((isNavPrompt ? 'Đang tìm đường đến ' : 'Đang tìm ') + effectiveQuery);
     }
 
+    let lastSpeechEndTime = 0;
+
     // Vỏ Android gọi ngược vào đây khi nhận xong giọng nói
     function onVoiceResult(text) {
         micBusy(false);
@@ -9892,6 +9965,10 @@
             closeAssistantUI();
             return;
         }
+        const now = Date.now();
+        const silenceGap = lastSpeechEndTime > 0 ? (now - lastSpeechEndTime) : Infinity;
+        lastSpeechEndTime = now;
+
         const raw = text.trim();
         const stripped = cleanVoiceQuery(raw);
         const lowerRaw = raw.toLowerCase();
@@ -9910,7 +9987,10 @@
             return;
         }
 
-        handleAssistantIntent(stripped, raw);
+        // Nhận diện nếu câu lệnh có kèm khẩu lệnh mồi ở đầu (Bản đồ ơi, Hey bản đồ, Alo vmaps...)
+        const hadWakeWord = /^(?:hey|ê|chào|ok|alo|a\s*lô)?\s*(?:bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(?:\s+ơi)?\b/i.test(lowerRaw);
+
+        handleAssistantIntent(stripped, raw, { hadWakeWord, silenceGap });
     }
     function onVoiceError(msg) {
         micBusy(false);
@@ -12466,7 +12546,8 @@
         const sheet = $('home-bottom-sheet');
         if (sheet) sheet.classList.add('transition-[height]', 'duration-300');
         if (pos === 'low') {
-            updateSheetHeight(108);
+            const h = nav.active ? 154 : 108;
+            updateSheetHeight(h);
         } else if (pos === 'mid') {
             updateSheetHeight(340);
         } else if (pos === 'high') {
@@ -12531,7 +12612,8 @@
                 toggleBottomSheet();
                 return;
             }
-            if (currentSheetHeight < 190) {
+            const lowThreshold = nav.active ? 210 : 190;
+            if (currentSheetHeight < lowThreshold) {
                 setSheetPosition('low');
             } else if (currentSheetHeight < 420) {
                 setSheetPosition('mid');
@@ -13230,16 +13312,19 @@
         try { if (a && typeof a.stop === 'function') a.stop(); } catch (e) { }
     }
 
-    function toggleSoundMode() {
-        state.settings.soundMode = (state.settings.soundMode + 1) % 3;
+    function setSoundMode(mode) {
+        if (![0, 1, 2].includes(mode)) return;
+        state.settings.soundMode = mode;
         saveSettings();
         renderSoundButton();
-        if (state.settings.soundMode === 2 && 'speechSynthesis' in window) {
-            voice.queue = [];
-            voice.current = null;
-            window.speechSynthesis.cancel();
+        if (state.settings.soundMode === 2) {
+            silenceGuidance();
         }
         showToast(SOUND_MODES[state.settings.soundMode].msg);
+    }
+
+    function toggleSoundMode() {
+        setSoundMode((state.settings.soundMode + 1) % 3);
     }
     function renderSoundButton() {
         const m = SOUND_MODES[state.settings.soundMode];
@@ -14184,15 +14269,19 @@
         const routing = nav.active;
         if (routing) {
             $('bottom-bar')?.classList.remove('hidden');
-            $('home-search-container')?.classList.remove('hidden'); // Dẫn đường tụt xuống, còn lại ô tìm kiếm
+            $('home-search-container')?.classList.remove('hidden');
             $('home-chips-row')?.classList.add('hidden');
             $('home-recent-list')?.classList.add('hidden');
+            const placeholder = $('homeSearchPlaceholder');
+            if (placeholder) placeholder.textContent = 'Tìm trạm xăng, ăn uống dọc tuyến...';
             setSheetPosition('low');
         } else {
             $('bottom-bar')?.classList.add('hidden');
             $('home-search-container')?.classList.remove('hidden');
             $('home-chips-row')?.classList.remove('hidden');
             $('home-recent-list')?.classList.remove('hidden');
+            const placeholder = $('homeSearchPlaceholder');
+            if (placeholder) placeholder.textContent = 'Bạn muốn đi đâu?';
             if (currentSheetHeight < 200) {
                 setSheetPosition('mid');
             }
