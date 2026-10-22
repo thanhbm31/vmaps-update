@@ -451,12 +451,16 @@
 
         /* Cảnh báo vượt tốc */
         @keyframes overspeedPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+        #speed-pill-container.overspeed,
         #gps-speed-box.overspeed {
             background: rgba(220, 38, 38, 0.95) !important;
-            border-color: transparent !important;
+            border-color: rgba(254, 202, 202, 0.8) !important;
+            box-shadow: 0 0 25px rgba(220, 38, 38, 0.85) !important;
             animation: overspeedPulse 1s ease-in-out infinite;
         }
+        #speed-pill-container.overspeed #gps-speed-box span,
         #gps-speed-box.overspeed * { color: #fff !important; }
+        #speed-pill-container.overspeed #limit-speed-box span { color: #000 !important; }
 
         /* Nút theme đang chọn */
         .theme-btn.theme-active { border: 2px solid #3b82f6; background: rgba(59, 130, 246, 0.1); color: #2563eb; font-weight: 700; }
@@ -678,18 +682,19 @@
                 </div>
             </div>
 
-            <!-- COMPONENT 2: Tốc độ & giới hạn -->
+            <!-- COMPONENT 2: Tốc độ & giới hạn (Thanh pill bo tròn chuẩn theo thiết kế người dùng gửi) -->
             <div id="comp-speed" class="pointer-events-auto flex flex-col gap-2 items-center">
-                <div class="flex gap-2 items-center">
-                    <div id="gps-speed-box" onclick="demoGpsSpeed()" class="glass-panel p-2.5 rounded-2xl shadow-lg flex flex-col items-center justify-center min-w-[76px] cursor-pointer">
-                        <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tốc độ</span>
-                        <div class="flex items-baseline mt-1">
-                            <span id="gpsSpeedValue" class="text-3xl font-black text-blue-600 dark:text-blue-400 leading-none">0</span>
-                            <span class="text-xs font-semibold ml-1 text-slate-500">km/h</span>
-                        </div>
+                <div id="speed-pill-container" class="flex items-center pl-4 pr-1.5 py-1.5 rounded-full bg-[#0b111e]/95 dark:bg-[#0b111e]/95 backdrop-blur-md border border-slate-700/60 shadow-[0_8px_30px_rgb(0,0,0,0.6)] select-none transition-all">
+                    <!-- Tốc độ GPS hiện tại (Số to màu trắng ở trên, chữ KM/H xám ở dưới) -->
+                    <div id="gps-speed-box" onclick="demoGpsSpeed()" class="flex flex-col items-center justify-center pr-3 min-w-[54px] cursor-pointer" title="Chạm để thử tốc độ GPS">
+                        <span id="gpsSpeedValue" class="text-[28px] font-black text-white leading-none tracking-tight">0</span>
+                        <span class="text-[9.5px] font-black text-slate-400 tracking-wider leading-none mt-1 uppercase">KM/H</span>
                     </div>
-                    <div id="limit-speed-box" onclick="demoNextSpeedLimit()" oncontextmenu="event.preventDefault(); demoTrafficSign();" class="w-[56px] h-[56px] rounded-full border-[5px] border-red-600 bg-white shadow-lg flex items-center justify-center flex-shrink-0 cursor-pointer" title="Chạm: Báo tốc độ tiếp theo trên trục đường | Chuột phải/giữ: Thử biển báo (Khu dân cư, cấm vượt...)">
-                        <span id="limitValue" class="text-2xl font-black text-black leading-none">60</span>
+                    <!-- Biển giới hạn tốc độ (Vòng tròn viền đỏ nền trắng, số đen đậm) -->
+                    <div id="limit-speed-box" onclick="demoNextSpeedLimit()" oncontextmenu="event.preventDefault(); demoTrafficSign();"
+                         class="w-[46px] h-[46px] rounded-full border-[4px] border-[#dc2626] bg-white shadow-md flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-95 transition"
+                         title="Chạm: Báo tốc độ tiếp theo trên trục đường | Chuột phải/giữ: Thử biển báo (Khu dân cư, cấm vượt...)">
+                        <span id="limitValue" class="text-xl font-black text-black leading-none tracking-tight">80</span>
                     </div>
                 </div>
                 <!-- Biển tốc độ TIẾP THEO: dạng viên thuốc nằm dưới, không làm cụm rộng ra -->
@@ -1689,7 +1694,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '8de7917';
+    const BUILD_TAG = '012a82a';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -12979,7 +12984,8 @@
             speedState.underSince = null;
             if (speedState.overspeed) {
                 speedState.overspeed = false;
-                $('gps-speed-box').classList.remove('overspeed');
+                $('speed-pill-container')?.classList.remove('overspeed');
+                $('gps-speed-box')?.classList.remove('overspeed');
             }
             return;
         }
@@ -13008,7 +13014,8 @@
 
         if (isOver !== speedState.overspeed) {
             speedState.overspeed = isOver;
-            $('gps-speed-box').classList.toggle('overspeed', isOver);
+            $('speed-pill-container')?.classList.toggle('overspeed', isOver);
+            $('gps-speed-box')?.classList.toggle('overspeed', isOver);
             if (!isOver) speedState.lastAlert = 0;
         }
         if (isOver && now - speedState.lastAlert >= SPEED_ALERT_REPEAT_MS) {
@@ -13019,8 +13026,22 @@
 
     function updateSpeedDisplay() {
         const mode = field('speedDisplayMode');
+        const pill = $('speed-pill-container');
         $('gps-speed-box').style.display = mode === 'limit' ? 'none' : 'flex';
         $('limit-speed-box').style.display = mode === 'gps' ? 'none' : 'flex';
+        if (pill) {
+            pill.style.display = (mode === 'limit' || mode === 'gps' || mode === 'both') ? 'flex' : 'none';
+            if (mode === 'limit') {
+                pill.style.paddingLeft = '6px';
+                pill.style.paddingRight = '6px';
+            } else if (mode === 'gps') {
+                pill.style.paddingLeft = '16px';
+                pill.style.paddingRight = '16px';
+            } else {
+                pill.style.paddingLeft = '16px';
+                pill.style.paddingRight = '6px';
+            }
+        }
         if (mode === 'gps') hideNextLimitBox();
     }
 
