@@ -434,6 +434,27 @@
             box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
         }
         .dark #curStreet { background: rgba(226, 232, 240, 0.92); color: #0f172a; }
+        /* Chế độ Basic trắng: các vùng chữ có lớp đệm màu đục và chữ đen để nổi bật */
+        body.mode-basic-white #curStreet {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: #000000 !important;
+            border: 1.5px solid rgba(0, 0, 0, 0.22) !important;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+            font-weight: 900 !important;
+        }
+        body.mode-basic-white .leaflet-tooltip {
+            background: rgba(255, 255, 255, 0.96) !important;
+            color: #000000 !important;
+            border: 1.5px solid rgba(0, 0, 0, 0.25) !important;
+            font-weight: 800 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important;
+        }
+        body.mode-basic-white .leaflet-popup-content-wrapper {
+            background: rgba(255, 255, 255, 0.98) !important;
+            color: #000000 !important;
+            border: 1.5px solid rgba(0, 0, 0, 0.2) !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+        }
 
         /* Màn rất hẹp: bỏ phần pin dự kiến tới nơi cho đỡ chật một dòng */
         @media (max-width: 360px) {
@@ -574,7 +595,7 @@
                     <!-- 3. Chế độ view bản đồ (Vệ tinh, Lớp bản đồ...) ĐẶT DƯỚI LA BÀN -->
                     <button id="mapStyleBtn" onclick="openMapStyle()" aria-label="Chế độ view bản đồ"
                             class="fab glass-panel rounded-2xl shadow-lg flex items-center justify-center text-teal-500 hover:text-teal-400 active:scale-95 transition">
-                        <i class="fa-solid fa-layer-group text-lg"></i>
+                        <i id="mapStyleIcon" class="fa-solid fa-layer-group text-lg"></i>
                     </button>
                 </div>
                 <div id="hud-top-left" class="hud-slot mt-2"></div>
@@ -1449,15 +1470,18 @@
 
     <!-- ================= KIỂU BẢN ĐỒ ================= -->
     <div id="mapStyleModal" class="modal fixed inset-0 z-50 bg-black/50 hidden flex-col justify-end transition-opacity">
-        <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl modal-animate"
+        <div class="bg-white dark:bg-slate-900 w-full rounded-t-3xl shadow-2xl modal-animate max-h-[85vh] flex flex-col"
              style="padding-bottom: calc(var(--sab) + 1rem);">
-            <div class="flex items-center justify-between px-5 pt-5 pb-3">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Kiểu bản đồ</h3>
-                <button onclick="closeModal('mapStyleModal')" aria-label="Đóng" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+            <div class="flex items-center justify-between px-5 pt-4 pb-2 border-b border-slate-100 dark:border-white/5">
+                <div>
+                    <h3 class="text-base font-bold text-slate-800 dark:text-white">Kiểu bản đồ</h3>
+                    <p class="text-[11px] text-slate-400">Chuyển đổi Vệ tinh, Đường phố, Địa hình hoặc chế độ Basic siêu nhẹ</p>
+                </div>
+                <button onclick="closeModal('mapStyleModal')" aria-label="Đóng" class="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-95 transition">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div id="mapStyleList" class="px-5 pb-5 space-y-1"></div>
+            <div id="mapStyleList" class="px-4 py-3 space-y-2 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -1725,7 +1749,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '489dce0';
+    const BUILD_TAG = 'cf2ffb5';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1941,13 +1965,13 @@
      * đang chạy — để đó cho lúc tìm chỗ đỗ hoặc xem địa hình.
      */
     const MAP_STYLES = [
-        { id: 'google_traffic', label: 'Google Giao thông (Báo kẹt xe)', icon: 'fa-traffic-light' },
-        { id: 'basic_mono', label: 'Đường phố Basic (Đen & Trắng siêu nhẹ)', icon: 'fa-circle-half-stroke' },
-        { id: 'basic_dark', label: 'Đường phố Basic Đen (Đơn sắc đêm)', icon: 'fa-moon' },
-        { id: 'google_streets', label: 'Google Đường phố', icon: 'fa-road' },
-        { id: 'google_hybrid', label: 'Google Vệ tinh (Tên đường)', icon: 'fa-satellite' },
-        { id: 'google_terrain', label: 'Google Địa hình', icon: 'fa-mountain-sun' },
-        { id: 'osm', label: 'OpenStreetMap', icon: 'fa-map' }
+        { id: 'google_streets', label: 'Google Đường phố', icon: 'fa-road', desc: 'Bản đồ màu chuẩn, chi tiết đường sá' },
+        { id: 'google_hybrid', label: 'Google Vệ tinh (Tên đường)', icon: 'fa-satellite', desc: 'Ảnh chụp vệ tinh kèm lớp tên đường' },
+        { id: 'google_terrain', label: 'Google Địa hình', icon: 'fa-mountain-sun', desc: 'Độ cao, núi đồi và dạng địa hình' },
+        { id: 'basic_mono', label: 'Chế độ Basic trắng', icon: 'fa-circle-half-stroke', desc: 'Đồ họa tối giản nền trắng, chữ đen đệm đục nổi bật, siêu nhẹ 2KB', badge: 'Siêu nhẹ 2KB' },
+        { id: 'basic_dark', label: 'Đường phố Basic Đen', icon: 'fa-moon', desc: 'Đơn sắc tối, dịu mắt ban đêm, tiết kiệm pin', badge: 'Ban đêm' },
+        { id: 'google_traffic', label: 'Google Giao thông (Báo kẹt xe)', icon: 'fa-traffic-light', desc: 'Mật độ xe cộ thời gian thực' },
+        { id: 'osm', label: 'OpenStreetMap', icon: 'fa-map', desc: 'Dữ liệu bản đồ mở OSM' }
     ];
     const MAP_STYLE_KEY = 'vietnav.mapStyle';
 
@@ -9508,20 +9532,21 @@
         const silenceGap = options && typeof options.silenceGap === 'number' ? options.silenceGap : Infinity;
 
         // 0. Điều khiển chế độ luôn lắng nghe (Always-Listening Wake-Word) bằng giọng nói
-        if (/(?:tắt|dừng|ngừng|bỏ|không\s+cần)\s+(?:chế\s+độ\s+)?(?:luôn\s+lắng\s+nghe|lắng\s+nghe\s+liên\s+tục|nghe\s+liên\s+tục|tự\s+động\s+lắng\s+nghe|wake\s*word)/i.test(lower)) {
+        // Hỗ trợ: tắt / huỷ / vô hiệu hoá / dừng chế độ (luôn) lắng nghe (từ "luôn" có thể có hoặc không)
+        if (/(?:tắt|huỷ|hủy|vô\s+hiệu\s+h[oó][aá]|dừng|ngừng|bỏ|không\s+cần)\s+(?:chế\s+độ\s+)?(?:(?:luôn|tự\s+động)\s+)?(?:lắng\s+nghe|nghe\s+liên\s+tục|wake\s*word)/i.test(lower)) {
             toggleWakeWordListener(false);
             const chk = $('wakeWordToggle');
             if (chk) chk.checked = false;
             closeAssistantUI();
-            speakAssistant('Đã tắt chế độ luôn lắng nghe. Khi cần trợ giúp, anh vui lòng chạm vào nút micro trên màn hình nhé!');
+            speakAssistant('Đã tắt chế độ lắng nghe. Khi cần trợ giúp, anh vui lòng chạm vào nút micro trên màn hình nhé!');
             return;
         }
-        if (/(?:bật|kích\s+hoạt|mở)\s+(?:chế\s+độ\s+)?(?:luôn\s+lắng\s+nghe|lắng\s+nghe\s+liên\s+tục|nghe\s+liên\s+tục|tự\s+động\s+lắng\s+nghe|wake\s*word)/i.test(lower)) {
+        if (/(?:bật|kích\s+hoạt|mở)\s+(?:chế\s+độ\s+)?(?:(?:luôn|tự\s+động)\s+)?(?:lắng\s+nghe|nghe\s+liên\s+tục|wake\s*word)/i.test(lower)) {
             toggleWakeWordListener(true);
             const chk = $('wakeWordToggle');
             if (chk) chk.checked = true;
             closeAssistantUI();
-            speakAssistant('Đã bật chế độ luôn lắng nghe. Anh có thể ra lệnh trực tiếp bất kỳ lúc nào mà không cần chạm màn hình ạ!');
+            speakAssistant('Đã bật chế độ lắng nghe. Anh có thể ra lệnh trực tiếp bất kỳ lúc nào mà không cần chạm màn hình ạ!');
             return;
         }
 
@@ -9895,6 +9920,11 @@
         if (/(bản đồ\s+)?(giao thông|kẹt xe|tắc đường)/i.test(lower)) {
             setMapStyle('google_traffic');
             speakAssistant('Đã chuyển sang bản đồ giao thông.');
+            return;
+        }
+        if (/(bản đồ\s+)?(basic\s+trắng|basic|đen trắng|siêu nhẹ|tối giản)/i.test(lower)) {
+            setMapStyle('basic_mono');
+            speakAssistant('Đã chuyển sang Chế độ Basic trắng siêu nhẹ.');
             return;
         }
         if (/(bản đồ\s+)?đường phố/i.test(lower)) {
@@ -11817,7 +11847,7 @@
             if (pick.id === 'basic_dark') {
                 variant = 'dark_all';
             } else if (pick.id === 'basic_mono') {
-                variant = dark ? 'dark_all' : 'light_all';
+                variant = 'light_all';
             }
             layer = L.tileLayer(`https://{s}.basemaps.cartocdn.com/${variant}/{z}/{x}/{y}{r}.png`,
                 Object.assign({}, common, {
@@ -11842,6 +11872,7 @@
 
         const keepNaturalColors = pick.id === 'google_hybrid' || pick.id === 'google_traffic' || pick.id === 'google_terrain' || isBasic;
         document.body.classList.toggle('map-dark', dark && !keepNaturalColors);
+        document.body.classList.toggle('mode-basic-white', pick.id === 'basic_mono');
 
         const credit = $('osm-credit');
         if (credit) {
@@ -14948,17 +14979,24 @@
         const box = $('mapStyleList');
         if (!box) return;
         const cur = mapStyleId();
-        const hasToken = !!mapboxToken();
 
         box.innerHTML = MAP_STYLES.map((s) => {
             const on = s.id === cur;
             return `
             <button type="button" data-style="${s.id}"
-                class="map-style-row w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left
-                       ${on ? 'bg-indigo-50 dark:bg-indigo-900/30' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}">
-                <i class="fa-solid ${s.icon} w-5 text-center ${on ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}"></i>
-                <span class="flex-1 font-semibold text-sm ${on ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-200'}">${s.label}</span>
-                ${on ? '<i class="fa-solid fa-check text-indigo-600 dark:text-indigo-400"></i>' : ''}
+                class="map-style-row w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-left transition active:scale-[0.98]
+                       ${on ? 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-500/60 shadow-sm' : 'border border-slate-200/60 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50'}">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${on ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}">
+                    <i class="fa-solid ${s.icon} text-base"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm ${on ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-800 dark:text-slate-200'}">${s.label}</span>
+                        ${s.badge ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${s.id.includes('dark') ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}">${s.badge}</span>` : ''}
+                    </div>
+                    ${s.desc ? `<div class="text-[11.5px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${s.desc}</div>` : ''}
+                </div>
+                ${on ? '<i class="fa-solid fa-circle-check text-indigo-600 dark:text-indigo-400 text-lg shrink-0"></i>' : '<div class="w-5"></div>'}
             </button>`;
         }).join('');
 
