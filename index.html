@@ -1739,7 +1739,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '9df2c49';
+    const BUILD_TAG = 'fee0496';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -9286,11 +9286,220 @@
         return q.replace(/[,;.\s]+/g, ' ').trim();
     }
 
+    const ASSISTANT_SONGS = [
+        "Đường dài em hát anh nghe, tay anh giữ lái cho xe thẳng đường. Đèn đỏ thì nhớ dừng chân, biển báo tốc độ chớ nên vượt rào! La la la~ Em hát thế anh thấy vui tai chưa ạ? Chúc anh vạn dặm bình an nhé!",
+        "Đường về nhà là vào tim anh, dẫu xa xôi muôn trùng gập ghềnh... Em hát vui một đoạn vậy thôi, anh nhớ tập trung nhìn đường và giữ khoảng cách an toàn nha!",
+        "Tình tính tang tính tình em hát, xe lăn bánh bon bon trên đường. Có VMaps luôn luôn bên cạnh, camera phạt nguội chẳng lo! Chúc anh một chuyến đi thật vui vẻ!",
+        "Bao nhiêu cây số trên đường dài, bấy nhiêu niềm vui đang chờ anh tới. Cứ yên tâm có em chỉ lối, ga nhẹ tay êm về tới nhà!"
+    ];
+
+    const ASSISTANT_JOKES = [
+        "Cảnh sát giao thông dừng xe một bác tài: 'Anh có biết anh vừa đi vào đường một chiều không?'. Bác tài gãi đầu phân trần: 'Dạ oan cho em quá, em chỉ đi có một chiều chứ em có đi hai chiều cùng lúc đâu sếp!'",
+        "Hai vợ chồng đang đi trên cao tốc, vợ lo lắng bảo: 'Anh ơi chạy nhanh quá em sợ!'. Chồng bình thản đáp: 'Em cứ nhắm mắt lại như anh là hết sợ ngay!'. Cô vợ hét toáng: 'Ối anh ơi mở mắt ra!'",
+        "Bác tài lái xe khách quay xuống hỏi: 'Ở đây có bác nào bị say xe không ạ?'. Một hành khách rên rỉ: 'Dạ em say xỉn chứ không say xe sếp ơi!'",
+        "Vợ gọi điện cho chồng đang lái xe: 'Anh ơi cẩn thận, trên thời sự bảo có một chiếc xe đang chạy ngược chiều trên cầu!'. Chồng thở dài: 'Một chiếc đâu mà một chiếc, hàng trăm chiếc đang lao ngược chiều vào xe anh đây này!'",
+        "Một bác tài vào gara bảo: 'Thợ sửa giúp tôi cái còi xe, hôm qua tôi bấm còi mà cô gái đi trước không thèm ngoái lại nhìn!'",
+        "Bác tài bị phạt tốc độ phân bua: 'Tại em thấy biển ghi 80, mà em mới chạy có 60, nên em phải nhấn ga chạy thêm 20 nữa cho đủ chỉ tiêu chứ ạ!'"
+    ];
+
+    function isConversationalStory(text, triggerKey) {
+        if (!text) return false;
+        const raw = String(text).trim();
+        const lower = raw.toLowerCase();
+
+        // 1. Kiểm tra tiền tố kể chuyện, trần thuật, quá khứ đứng trước cụm từ
+        const NARRATIVE_PREFIX_RE = /(?:^|[\s,.:;?!])(?:hôm qua|hôm kia|tuần trước|tháng trước|nãy|hồi nãy|lúc nãy|vừa mới|vừa|nghe nói|thấy|nhìn thấy|bảo là|nói là|kể là|tưởng là|nghĩ là|có phải|sao lại|tại sao|làm sao|ai bảo|nó bảo|ai nói|nó nói|ông kia bảo|bà kia bảo|thằng kia bảo|bạn tao bảo|vợ anh bảo|chồng em bảo)(?:[\s,.:;?!]|$)/i;
+
+        // 2. Kiểm tra hậu tố kể chuyện, bình luận sau cụm từ
+        const NARRATIVE_SUFFIX_RE = /(?:^|[\s,.:;?!])(?:ở ngã tư|đông người|đông nghẹt|đông lắm|hết xăng|đóng cửa|nghỉ bán|bị ngập|đắt thế|rẻ thế|chán thế|được không nhỉ|nhỉ|đấy chứ|đâu mà|thế nhỉ|nằm ở đâu ấy nhỉ|thế nào)(?:[\s,.:;?!]|$)/i;
+
+        if (!triggerKey) {
+            return NARRATIVE_PREFIX_RE.test(lower) || NARRATIVE_SUFFIX_RE.test(lower);
+        }
+
+        const key = String(triggerKey).toLowerCase();
+        const idx = lower.indexOf(key);
+        if (idx === -1) {
+            return NARRATIVE_PREFIX_RE.test(lower);
+        }
+
+        const before = lower.slice(0, idx).trim();
+        const after = lower.slice(idx + key.length).trim();
+
+        if (NARRATIVE_PREFIX_RE.test(before)) return true;
+        if (NARRATIVE_SUFFIX_RE.test(after)) return true;
+
+        const wordsBefore = before.split(/\s+/).filter(Boolean);
+        const hasCommandVerb = /(?:^|[\s,.:;?!])(?:tìm|dẫn|chỉ|đi|đưa)(?:[\s,.:;?!]|$)/i.test(before);
+        if (wordsBefore.length >= 3 && !hasCommandVerb) {
+            return true;
+        }
+
+        return false;
+    }
+
+    function handleAssistantChat(query) {
+        const q = String(query || '').toLowerCase().trim();
+
+        // 1. Yêu cầu hát một bài
+        if (/(?:hát\s+(?:một\s+)?bài|hát\s+đi|hát\s+cho\s+(?:anh|chị|em|tôi)|hát\s+tặng|hát\s+hò|nghe\s+hát)/i.test(q)) {
+            const song = ASSISTANT_SONGS[Math.floor(Math.random() * ASSISTANT_SONGS.length)];
+            return { handled: true, text: song, type: 'song' };
+        }
+
+        // 2. Yêu cầu kể chuyện cười
+        if (/(?:chuyện\s+cười|kể\s+chuyện|kể\s+chuyện\s+vui|kể\s+tiếu\s+lâm|hài\s+hước|nói\s+chuyện\s+vui)/i.test(q)) {
+            const joke = ASSISTANT_JOKES[Math.floor(Math.random() * ASSISTANT_JOKES.length)];
+            return { handled: true, text: joke, type: 'joke' };
+        }
+
+        // 3. Hỏi vui trêu nhau / Trợ lý trêu lại
+        if (/(?:người\s+yêu|có\s+bồ|có\s+chồng|làm\s+người\s+yêu|lấy\s+anh|yêu\s+em|thích\s+anh)/i.test(q)) {
+            const answers = [
+                "Em là trợ lý ảo thôi mà anh đã tán rồi! Người yêu em chính là chiếc xe của anh đấy, hai đứa em đang cùng đồng hành với anh đây này!",
+                "Làm người yêu anh thì dễ, nhưng em chỉ biết uống điện và thở ra thuật toán thôi, anh có nuôi nổi em không đấy?",
+                "Anh tập trung lái xe đi kìa, tán tỉnh em lúc này là vượt tốc độ giới hạn đấy nhé!"
+            ];
+            return { handled: true, text: answers[Math.floor(Math.random() * answers.length)], type: 'flirt' };
+        }
+
+        if (/(?:đẹp\s+trai|xinh\s+trai|bảnh\s+bao)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Theo thuật toán quét gương mặt từ vệ tinh của VMaps thì độ đẹp trai của anh là 10/10, nhưng nếu anh tập trung lái xe an toàn thì sẽ tăng vọt lên 100/10 luôn ạ!",
+                type: 'praise'
+            };
+        }
+        if (/(?:em\s+có\s+xinh|em\s+có\s+đẹp|em\s+xinh\s+không|em\s+đẹp\s+không)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Tâm hồn em trong sáng như bản đồ vệ tinh độ nét cao, giọng nói em ngọt ngào như lời nhắc sắp đến điểm rẽ, thế đã đủ xinh trong mắt anh chưa ạ?",
+                type: 'praise'
+            };
+        }
+        if (/(?:ai\s+đẹp\s+trai\s+nhất|ai\s+xinh\s+nhất|ai\s+lái\s+xe\s+giỏi\s+nhất)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Người đang cầm vô lăng và lái xe cẩn thận, tuân thủ biển báo tốc độ thì luôn luôn đẹp trai và quyến rũ nhất trong mắt em ạ!",
+                type: 'praise'
+            };
+        }
+
+        if (/(?:buồn\s+ngủ|mệt\s+quá|mỏi\s+quá|mệt\s+mỏi|oải\s+quá)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Ối anh ơi! Tấp xe vào lề làm ngụm cà phê, rửa mặt hoặc chợp mắt 15 phút ngay đi ạ! An toàn là trên hết, em không muốn anh bị phạt nguội hay giật mình đâu nhé!",
+                type: 'safety'
+            };
+        }
+
+        if (/(?:đói\s+bụng|đói\s+quá|anh\s+đói|muốn\s+ăn)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Anh đói thì nói: 'Dẫn đường đến quán ăn gần nhất', em tìm ngay một quán ngon bổ rẻ cho anh nạp năng lượng nhé!",
+                type: 'food'
+            };
+        }
+        if (/(?:chán\s+quá|buồn\s+quá|chán\s+ngắt)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Có em ngồi bên cạnh huyên náo thế này mà anh còn chán sao? Anh muốn nghe em hát một bài hay kể một câu chuyện cười cho tỉnh táo nào?",
+                type: 'bored'
+            };
+        }
+
+        if (/(?:em\s+tên\s+gì|em\s+là\s+ai|bạn\s+là\s+ai|tên\s+của\s+em)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Em là trợ lý ảo VMaps, người bạn đồng hành trung thành và đáng yêu trên mọi cung đường của anh ạ!",
+                type: 'identity'
+            };
+        }
+        if (/(?:bao\s+nhiêu\s+tuổi|mấy\s+tuổi|em\s+sinh\s+năm)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Tuổi đời em thì trẻ trung, nhưng kinh nghiệm dẫn đường và nhắc biển báo tốc độ của em thì bằng cả đời xe chạy đấy anh nhé!",
+                type: 'age'
+            };
+        }
+        if (/(?:thông\s+minh|giỏi\s+quá|tuyệt\s+vời|cảm\s+ơn|thank)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Dạ cảm ơn anh đã khen! Được phục vụ anh an toàn trên từng cây số là niềm vui lớn nhất của em rồi ạ!",
+                type: 'thanks'
+            };
+        }
+
+        // 4. Tra cứu thông tin: Ngày giờ, thời tiết, toán học
+        if (/(?:mấy\s+giờ|bây\s+giờ\s+là\s+mấy\s+giờ|xem\s+giờ|ngày\s+mấy|hôm\s+nay\s+ngày\s+mấy|thứ\s+mấy)/i.test(q)) {
+            const now = new Date();
+            const hours = now.getHours();
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            const day = now.getDate();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+            const weekdays = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+            const weekday = weekdays[now.getDay()];
+            return {
+                handled: true,
+                text: `Bây giờ là ${hours} giờ ${mins} phút, ${weekday}, ngày ${day} tháng ${month} năm ${year} ạ.`,
+                type: 'time'
+            };
+        }
+
+        if (/(?:thời\s+tiết|trời\s+mưa|có\s+mưa\s+không|nhiệt\s+độ|trời\s+nắng)/i.test(q)) {
+            return {
+                handled: true,
+                text: "Hôm nay thời tiết nhìn chung khá thuận lợi cho các chuyến đi xa. Anh nhớ giữ tốc độ phù hợp và bật đèn khi trời mưa hoặc vào hầm nhé!",
+                type: 'weather'
+            };
+        }
+
+        const mathMatch = q.match(/(\d+)\s*(cộng|\+|\-|trừ|nhân|\*|chia|\/)\s*(\d+)/i);
+        if (mathMatch) {
+            const a = parseFloat(mathMatch[1]);
+            const op = mathMatch[2];
+            const b = parseFloat(mathMatch[3]);
+            let res = 0;
+            if (op === 'cộng' || op === '+') res = a + b;
+            else if (op === 'trừ' || op === '-') res = a - b;
+            else if (op === 'nhân' || op === '*') res = a * b;
+            else if (op === 'chia' || op === '/') res = b !== 0 ? Math.round((a / b) * 100) / 100 : 'vô cực';
+            return {
+                handled: true,
+                text: `Dạ kết quả ${a} ${op} ${b} bằng ${res} ạ!`,
+                type: 'math'
+            };
+        }
+
+        return { handled: false };
+    }
+
     function handleAssistantIntent(query, rawQuery) {
         const raw = rawQuery || query || '';
         const cleaned = cleanVoiceQuery(query);
         const effectiveQuery = cleaned || query;
         const lower = effectiveQuery.toLowerCase().trim();
+        const lowerRaw = raw.toLowerCase().trim();
+
+        // 0a. Trò chuyện vui vẻ / phiếm / giải trí / tra cứu thông tin (không cần dẫn đường)
+        const chatRes = handleAssistantChat(raw) || handleAssistantChat(effectiveQuery);
+        if (chatRes && chatRes.handled) {
+            showAssistantUI('Trợ lý VMaps', chatRes.text);
+            speakAssistant(chatRes.text);
+            return;
+        }
+
+        // 0b. Kiểm tra xem người dùng có đang nói chuyện phiếm / kể chuyện trong xe không
+        // (Tránh kích hoạt nhầm khi trong câu chuyện có nhắc tới "cây xăng gần nhất", "bệnh viện gần nhất", "trạm sạc"...)
+        const commonCategoryWords = ['cây xăng', 'trạm xăng', 'trạm sạc', 'bệnh viện', 'trường học', 'tiểu học', 'thcs', 'thpt', 'mầm non', 'đại học', 'siêu thị', 'chợ', 'bãi đỗ', 'công viên', 'bảo tàng', 'ga tàu'];
+        const matchedCat = commonCategoryWords.find((w) => lowerRaw.includes(w) || lower.includes(w));
+        if (matchedCat && isConversationalStory(raw, matchedCat)) {
+            // Đây là câu chuyện phiếm / trần thuật giữa các hành khách trên xe, không phải khẩu lệnh tìm kiếm
+            closeAssistantUI();
+            return;
+        }
+
         showAssistantUI('Bạn vừa nói', raw);
 
         // Phân biệt rõ nhà máy / showroom / công ty với trạm sạc (Đặc biệt khi dùng Voice Google)
@@ -9657,6 +9866,12 @@
             renderSearchClear();
             openModal('searchModal');
             doSearch();
+            return;
+        }
+
+        // 11b. Ngăn chặn câu chuyện phiếm không khớp mệnh lệnh tìm kiếm lọt vào thanh tìm kiếm
+        if (isConversationalStory(raw)) {
+            closeAssistantUI();
             return;
         }
 
