@@ -1136,6 +1136,23 @@
                             </div>
                         </div>
 
+                        <!-- Bật/Tắt Khẩu lệnh đánh thức (Always-Listening Wake-Word) -->
+                        <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                                    <i class="fa-solid fa-microphone-lines"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800 dark:text-white">Khẩu lệnh đánh thức (Wake-Word)</p>
+                                    <p class="text-[10px] text-slate-500">Tự động nghe "Alo bản đồ", "Bản đồ ơi" không cần chạm</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox" id="wakeWordToggle" data-setting="wakeWordToggle" onchange="toggleWakeWordListener(this.checked)" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-300 dark:bg-slate-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+
                         <div>
                             <label for="speedDisplayMode" class="block text-sm font-semibold mb-2">Hiển thị tốc độ trên màn hình</label>
                             <div class="relative">
@@ -1694,7 +1711,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '012a82a';
+    const BUILD_TAG = '7cf3e1c';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -1821,6 +1838,9 @@
                 saveSettings();
             });
         });
+        if (field('wakeWordToggle')) {
+            setTimeout(() => { if (typeof startWakeWordLoop === 'function') startWakeWordLoop(); }, 600);
+        }
     }
 
     // =====================================================================
@@ -9679,6 +9699,136 @@
             onVoiceError('Không mở được micro');
         }
     }
+
+    // ---------------------------------------------------------------------
+    // KHẨU LỆNH ĐÁNH THỨC TRỢ LÝ ẢO (Always-Listening Wake-Word)
+    // ---------------------------------------------------------------------
+    let wakeWordEnabled = false;
+    let wakeWordRecognizer = null;
+    let wakeWordActive = false;
+
+    function toggleWakeWordListener(enabled) {
+        wakeWordEnabled = !!enabled;
+        state.settings.fields['wakeWordToggle'] = wakeWordEnabled;
+        saveSettings();
+        if (wakeWordEnabled) {
+            startWakeWordLoop();
+            showToast('Đã BẬT khẩu lệnh đánh thức (nói "Alo bản đồ")', 'info');
+        } else {
+            stopWakeWordLoop();
+            showToast('Đã TẮT khẩu lệnh đánh thức', 'info');
+        }
+    }
+
+    function startWakeWordLoop() {
+        wakeWordEnabled = !!field('wakeWordToggle');
+        if (!wakeWordEnabled) {
+            stopWakeWordLoop();
+            return;
+        }
+
+        const stt = nativeStt();
+        const lang = field('voiceLanguage') || 'vi-VN';
+
+        // 1. Nếu đang chạy trong APK Android và có hỗ trợ Native Continuous STT
+        if (stt && typeof stt.startContinuous === 'function') {
+            try {
+                stt.startContinuous(lang);
+                wakeWordActive = true;
+                updateWakeWordIndicator(true);
+            } catch (e) {
+                console.warn('Native continuous STT failed', e);
+            }
+            return;
+        }
+
+        // 2. Chạy trên Web Browser (Chrome / Edge / Safari có SpeechRecognition)
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) return;
+
+        try {
+            if (wakeWordRecognizer) {
+                try { wakeWordRecognizer.stop(); } catch (e) {}
+            }
+            wakeWordRecognizer = new SR();
+            wakeWordRecognizer.lang = lang;
+            wakeWordRecognizer.continuous = true;
+            wakeWordRecognizer.interimResults = false;
+            wakeWordRecognizer.maxAlternatives = 1;
+
+            wakeWordRecognizer.onresult = (e) => {
+                if (!wakeWordEnabled) return;
+                const last = e.results[e.results.length - 1];
+                if (last && last[0] && last[0].transcript) {
+                    const text = last[0].transcript.trim();
+                    if (text) {
+                        onVoiceResult(text);
+                    }
+                }
+            };
+            wakeWordRecognizer.onerror = (e) => {
+                if (wakeWordEnabled && e.error !== 'not-allowed') {
+                    setTimeout(() => { if (wakeWordEnabled) startWakeWordLoop(); }, 1200);
+                }
+            };
+            wakeWordRecognizer.onend = () => {
+                if (wakeWordEnabled) {
+                    setTimeout(() => { if (wakeWordEnabled) startWakeWordLoop(); }, 600);
+                }
+            };
+            wakeWordActive = true;
+            wakeWordRecognizer.start();
+            updateWakeWordIndicator(true);
+        } catch (e) {
+            console.warn('Web wake-word recognizer start error', e);
+        }
+    }
+
+    function stopWakeWordLoop() {
+        wakeWordActive = false;
+        updateWakeWordIndicator(false);
+        const stt = nativeStt();
+        if (stt && typeof stt.stopContinuous === 'function') {
+            try { stt.stopContinuous(); } catch (e) {}
+        }
+        if (wakeWordRecognizer) {
+            try { wakeWordRecognizer.stop(); } catch (e) {}
+            wakeWordRecognizer = null;
+        }
+    }
+
+    function updateWakeWordIndicator(active) {
+        const fab = $('assistantFabBtn');
+        if (!fab) return;
+        let dot = $('wakeWordDot');
+        if (active) {
+            if (!dot) {
+                dot = document.createElement('span');
+                dot.id = 'wakeWordDot';
+                dot.className = 'absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse shadow-md pointer-events-none';
+                dot.title = 'Đang bật khẩu lệnh đánh thức (Alo bản đồ)';
+                fab.style.position = 'relative';
+                fab.appendChild(dot);
+            }
+        } else {
+            if (dot) dot.remove();
+        }
+    }
+
+    // Callbacks do vỏ Android gọi ngược vào
+    function onWakeWordListening(active) {
+        wakeWordActive = !!active;
+        updateWakeWordIndicator(wakeWordActive);
+    }
+    window.onWakeWordListening = onWakeWordListening;
+
+    function onWakeWordError(msg) {
+        if (msg) console.warn('Wake-word error:', msg);
+    }
+    window.onWakeWordError = onWakeWordError;
+    window.toggleWakeWordListener = toggleWakeWordListener;
+    window.startWakeWordLoop = startWakeWordLoop;
+    window.stopWakeWordLoop = stopWakeWordLoop;
 
     /*
      * Dấu X xoá chữ, mũi tên xuống đóng bảng.
