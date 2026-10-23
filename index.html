@@ -2284,7 +2284,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '2d9e5ad';
+    const BUILD_TAG = '4cfb32a';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -11349,6 +11349,18 @@
         const hadWakeWord = /^(?:hey|ê|chào|ok|alo|a\s*lô)?\s*(?:bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(?:\s+ơi)?(?=[\s,.:;?!]|$)/i.test(lowerRaw);
 
         handleAssistantIntent(stripped, raw, { hadWakeWord, silenceGap });
+        // Ép tìm kiếm lần 2+ luôn chạy nếu có từ khóa địa điểm
+        const q = (stripped || raw || '').trim();
+        if (q.length > 3 && !/^(hủy|thoát|dừng|cảm ơn)/i.test(q)) {
+            setTimeout(() => {
+                const input = document.querySelector('#searchInput');
+                if (input) {
+                    input.value = q;
+                    if (typeof doSearch === 'function') doSearch();
+                    else if (typeof performSearch === 'function') performSearch(q);
+                }
+            }, 200);
+        }
         // Safety: nếu intent không tự tìm mà câu có vẻ là địa điểm thì ép tìm
         setTimeout(() => {
             const q = stripped || raw;
@@ -13921,11 +13933,22 @@
             if (p && !(Math.abs(p[0]-20.8449)<0.01 && Math.abs(p[1]-106.6881)<0.01)) pos = p;
         }
         if (pos) {
-            map.flyTo(pos, 16, { duration: 1.0 });
-            showToast('Đã về vị trí xe');
+            try {
+                map.flyTo(pos, 16, { duration: 1.0 });
+                showToast('Đã về vị trí xe');
+            } catch (e) {
+                map.setView(pos, 16);
+                showToast('Đã về vị trí (setView)');
+            }
         } else {
-            showToast('Chưa có vị trí GPS thật, đang thử lại...', 'warn');
+            showToast('Chưa có vị trí GPS thật. Đang thử lại...', 'warn');
             if (typeof retryGps === 'function') retryGps();
+            else if (typeof startGPS === 'function') startGPS();
+            // Thử lại sau 1.5s
+            setTimeout(() => {
+                const p2 = currentGpsPos || userLatLng;
+                if (p2 && map) map.flyTo(p2, 16);
+            }, 1500);
         }
     }
 
