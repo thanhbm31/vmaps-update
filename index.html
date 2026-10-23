@@ -2284,7 +2284,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '2a0ae45';
+    const BUILD_TAG = 'ee005ae';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -11349,6 +11349,17 @@
         const hadWakeWord = /^(?:hey|ê|chào|ok|alo|a\s*lô)?\s*(?:bản\s*đồ|v[- ]?maps?|vmap|vi\s*map|vi\s*mét|vi\s*mác|vi\s*mép|trợ\s*lý)(?:\s+ơi)?(?=[\s,.:;?!]|$)/i.test(lowerRaw);
 
         handleAssistantIntent(stripped, raw, { hadWakeWord, silenceGap });
+        // Safety: nếu intent không tự tìm mà câu có vẻ là địa điểm thì ép tìm
+        setTimeout(() => {
+            const q = stripped || raw;
+            if (q && q.length > 2 && typeof doSearch === 'function') {
+                const input = document.querySelector('#searchInput');
+                if (input && !input.value) {
+                    input.value = q;
+                    doSearch();
+                }
+            }
+        }, 300);
     }
     function onVoiceError(msg) {
         micBusy(false);
@@ -13873,19 +13884,25 @@
     }
 
     function recenterMap() {
-        if (!map) return;
-        /*
-         * Bấm "về vị trí xe" khi CHƯA có vị trí là lúc người dùng đang nói
-         * "tìm tôi đi". Nếu bộ theo dõi đã chết — hết giờ, hoặc quyền vừa
-         * được cấp sau khi app khởi động — thì phải bật lại, chứ bay về điểm
-         * mặc định rồi thôi là bỏ mặc họ.
-         */
-        if (!hasRealFix()) retryGps();
-        setFollowCar(true);
-        pauseRotation(false);      // quay lại theo hướng xe nếu đang bật
-        // Đo lại khung trước khi bay, nếu không xe sẽ không rơi vào đúng giữa
+        if (!map) {
+            showToast('Bản đồ chưa sẵn sàng', 'warn');
+            return;
+        }
+        // Luôn thử bật lại GPS nếu chưa có fix thật
+        if (typeof hasRealFix === 'function' && !hasRealFix()) {
+            if (typeof retryGps === 'function') retryGps();
+            else if (typeof startGpsTracking === 'function') startGpsTracking();
+        }
+        if (typeof setFollowCar === 'function') setFollowCar(true);
+        if (typeof pauseRotation === 'function') pauseRotation(false);
         map.invalidateSize({ animate: false });
-        map.flyTo(getCurrentPos(), 16, { duration: 1.5 });
+        const pos = (typeof getCurrentPos === 'function') ? getCurrentPos() : (window.currentGpsPos || window.userLatLng || HAIPHONG_COORDS);
+        if (pos && pos.length === 2) {
+            map.flyTo(pos, 16, { duration: 1.2 });
+            showToast('Đã về vị trí xe');
+        } else {
+            showToast('Chưa có vị trí, đang thử lại GPS...', 'warn');
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -14231,6 +14248,8 @@
     }
 
     function toggleBottomSheet() {
+        window._userExpandedSheet = true;
+        setTimeout(() => { window._userExpandedSheet = false; }, 2000);
         if (isDestConfirmShowing) {
             isDestConfirmCollapsed = !isDestConfirmCollapsed;
             updateDestConfirmSheet();
@@ -14245,6 +14264,10 @@
     window.toggleBottomSheet = toggleBottomSheet;
 
     function setSheetPosition(pos) {
+        // Chặn tự đẩy lên khi chưa dẫn đường và người dùng không chủ động
+        if (pos !== 'low' && typeof nav !== 'undefined' && !nav.active && !window._userExpandedSheet) {
+            pos = 'low';
+        }
         const sheet = $('home-bottom-sheet');
         if (sheet) sheet.classList.add('transition-[height]', 'duration-300');
         if (pos === 'low') {
