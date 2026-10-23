@@ -2295,7 +2295,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '785ccf0';
+    const BUILD_TAG = 'ea4b120';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -9769,13 +9769,16 @@
             rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         }
         dropTailors(rows);
-        // Ưu tiên gần GPS trước: điểm gần hơn rõ ràng thì xếp trên dù score thấp hơn
+        // Ưu tiên gần, nhưng nếu người dùng chủ đích tìm đúng tên địa danh ở xa
+        // (khớp từ khóa mạnh, score cao hơn rõ) thì kết quả xa đó được xếp lên.
         rows.sort((a, b) => {
             const da = a._dist || 1e9, db = b._dist || 1e9;
-            // Nếu một điểm gần hơn ít nhất 50km thì ưu tiên gần
+            const sa = a._score || 0, sb = b._score || 0;
+            // Chủ đích tìm đúng tên xa: score cao hơn rõ (≥15 điểm) thì ưu tiên score
+            if (Math.abs(sa - sb) >= 15) return sb - sa;
+            // Còn lại: gần hơn rõ (≥50km) thì ưu tiên gần
             if (Math.abs(da - db) > 50000) return da - db;
-            // Còn lại ưu tiên score rồi distance
-            return ((b._score || 0) - (a._score || 0)) || (da - db);
+            return (sb - sa) || (da - db);
         });
         return dedupeByCoord(pinned.concat(rows)).slice(0, 25);
     }
