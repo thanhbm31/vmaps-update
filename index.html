@@ -2295,7 +2295,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '8a40aed';
+    const BUILD_TAG = '785ccf0';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -9769,7 +9769,14 @@
             rows.sort((a, b) => (b._score - a._score) || (a._dist - b._dist));
         }
         dropTailors(rows);
-        rows.sort((a, b) => ((b._score || 0) - (a._score || 0)) || (a._dist - b._dist));
+        // Ưu tiên gần GPS trước: điểm gần hơn rõ ràng thì xếp trên dù score thấp hơn
+        rows.sort((a, b) => {
+            const da = a._dist || 1e9, db = b._dist || 1e9;
+            // Nếu một điểm gần hơn ít nhất 50km thì ưu tiên gần
+            if (Math.abs(da - db) > 50000) return da - db;
+            // Còn lại ưu tiên score rồi distance
+            return ((b._score || 0) - (a._score || 0)) || (da - db);
+        });
         return dedupeByCoord(pinned.concat(rows)).slice(0, 25);
     }
 
@@ -11703,7 +11710,12 @@
             [5000, 'Trong 5 km'],
             [10000, '5 – 10 km'],
             [20000, '10 – 20 km'],
-            [Infinity, 'Xa hơn 20 km']
+            [50000, '20 – 50 km'],
+            [100000, '50 – 100 km'],
+            [300000, '100 – 300 km'],
+            [500000, '300 – 500 km'],
+            [1000000, '500 – 1000 km'],
+            [Infinity, 'Hơn 1000 km']
         ];
 
         // Ưu tiên hiện trọn vẹn toàn bộ các điểm trong bán kính 10 km trước.
