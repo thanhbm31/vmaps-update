@@ -778,6 +778,22 @@
             pointer-events: auto;
         }
 
+    
+        /* Nền thông tin đích đến khi dẫn đường — đục, dễ đọc chữ và số */
+        #nav-active-bar,
+        #nav-active-bar * {
+            color: #ffffff !important;
+        }
+        #nav-active-bar {
+            background: rgba(15, 23, 42, 0.97) !important;
+            backdrop-filter: none !important;
+            border-top: 2px solid rgba(56, 189, 248, 0.6) !important;
+            box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.55) !important;
+        }
+        .dark #nav-active-bar {
+            background: rgba(10, 15, 28, 0.97) !important;
+        }
+
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white duration-300">
@@ -2279,7 +2295,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'f821ecd';
+    const BUILD_TAG = '71f3aca';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
