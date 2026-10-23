@@ -761,6 +761,23 @@
             pointer-events: auto;
         }
 
+    
+        /* Nút báo cáo và lọc tránh đẩy lên cao hơn, tránh bị đè */
+        #hazardReportBtn {
+            position: fixed !important;
+            right: calc(var(--sar, 0px) + 16px);
+            top: 38%;
+            z-index: 40;
+            pointer-events: auto;
+        }
+        #routeFilterBtn {
+            position: fixed !important;
+            right: calc(var(--sar, 0px) + 16px);
+            top: 48%;
+            z-index: 40;
+            pointer-events: auto;
+        }
+
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white duration-300">
@@ -853,35 +870,7 @@
             <div class="hud-cell col-right row-bottom" style="grid-area: 3 / 3">
                 <div id="hud-bottom-right" class="hud-slot"></div>
                 <div class="action-stack items-end flex flex-col gap-2">
-                    <!-- 1. Tam giác báo cáo cảnh báo (sạt lở, cảnh sát..) CHO NHỎ GỌN HƠN (w-10 h-10) -->
-                    <button id="hazardReportBtn" onclick="toggleModal('reportModal')" aria-label="Báo cáo cảnh báo"
-                            class="rounded-xl bg-[#524419]/90 border border-[#eab308] shadow-lg flex items-center justify-center text-[#facc15] hover:bg-[#63531e] active:scale-95 transition"
-                            style="width: 42px; height: 42px;">
-                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-                    </button>
-                    <!-- 2. Chế độ lọc đường / tránh đường ĐẶT DƯỚI TAM GIÁC BÁO CÁO: BIỂU TƯỢNG CON ĐƯỜNG VÀ ĐƯỜNG TRÁNH NÉ VẬT CẢN -->
-                    <button id="routeFilterBtn" onclick="openRouteSettings()" aria-label="Chế độ lọc và tránh đường"
-                            class="rounded-xl bg-slate-900/90 border border-indigo-400/50 shadow-xl flex items-center justify-center hover:bg-slate-800 active:scale-95 transition"
-                            style="width: 42px; height: 42px;">
-                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <!-- Con đường chính với 2 mép đường song song rõ nét (biểu tượng con đường) -->
-                            <path d="M4 22L4 12" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M12 22L12 14" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                            <!-- Đoạn đường thẳng phía trước bị cấm/chặn (nét đứt) -->
-                            <path d="M4 12L4 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
-                            <path d="M12 12L12 3" stroke="#475569" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/>
-                            <!-- Rào chắn / Vật cản màu đỏ cấm đi thẳng -->
-                            <rect x="2.5" y="7" width="11" height="4" rx="1.5" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
-                            <line x1="5.5" y1="7" x2="7.5" y2="11" stroke="#ffffff" stroke-width="1"/>
-                            <line x1="8.5" y1="7" x2="10.5" y2="11" stroke="#ffffff" stroke-width="1"/>
-                            <!-- Mép ngoài của nhánh đường tránh rẽ sang một bên -->
-                            <path d="M12 14C15 14 20 12 20 8L20 3" stroke="#94a3b8" stroke-width="2" stroke-linecap="round"/>
-                            <!-- Làn xe rẽ nhánh tránh chướng ngại vật (màu xanh cyan rực rỡ) -->
-                            <path d="M8 21L8 15C8 11.5 16 11.5 16 7L16 2.5" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round"/>
-                            <!-- Mũi tên dẫn hướng đường tránh chỉ về phía trước -->
-                            <path d="M13.5 5L16 2.5L18.5 5" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
+                                    <!-- report + filter moved higher -->
                 </div>
             </div>
 
@@ -2290,7 +2279,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '19e6fc9';
+    const BUILD_TAG = 'f821ecd';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -16939,6 +16928,19 @@
     <!-- Nút GPS giữa chiều cao bản đồ -->
     <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition" style="width:52px;height:52px;">
         <i class="fa-solid fa-location-crosshairs text-xl"></i>
+    </button>
+
+
+    <!-- Nút báo cáo và lọc tránh ở giữa chiều cao -->
+    <button id="hazardReportBtn" onclick="toggleModal('reportModal')" aria-label="Báo cáo cảnh báo"
+            class="rounded-xl bg-[#524419]/90 border border-[#eab308] shadow-lg flex items-center justify-center text-[#facc15] hover:bg-[#63531e] active:scale-95 transition"
+            style="width: 48px; height: 48px;">
+        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+    </button>
+    <button id="routeFilterBtn" onclick="openRouteSettings()" aria-label="Chế độ lọc và tránh đường"
+            class="rounded-xl bg-slate-900/90 border border-indigo-400/50 shadow-xl flex items-center justify-center hover:bg-slate-800 active:scale-95 transition"
+            style="width: 48px; height: 48px;">
+        <i class="fa-solid fa-road text-xl text-indigo-300"></i>
     </button>
 
 </body>
