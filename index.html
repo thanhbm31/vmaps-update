@@ -750,6 +750,17 @@
             animation: camBlink 1.4s infinite ease-in-out;
             will-change: transform, opacity;
         }
+    
+        /* Nút GPS ở giữa chiều cao bản đồ, bên trái, tránh bị đè */
+        #recenterBtn {
+            position: fixed !important;
+            left: calc(var(--sal, 0px) + 16px);
+            top: 46%;
+            transform: translateY(-50%);
+            z-index: 40;
+            pointer-events: auto;
+        }
+
     </style>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-white duration-300">
@@ -825,12 +836,7 @@
             <!-- Hàng dưới: Co lên xuống theo thanh tìm kiếm đáy -->
             <div class="hud-cell col-left row-bottom" style="grid-area: 3 / 1">
                 <div id="hud-bottom-left" class="hud-slot"></div>
-                <div class="action-stack items-start">
-                    <!-- Nút về vị trí xe -->
-                    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition">
-                        <i class="fa-solid fa-location-crosshairs text-xl"></i>
-                    </button>
-                </div>
+                <!-- recenter moved to mid-height -->
             </div>
             
             <div class="hud-cell col-center row-bottom" style="grid-area: 3 / 2">
@@ -2284,7 +2290,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '4cfb32a';
+    const BUILD_TAG = '19e6fc9';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -16929,5 +16935,11 @@
         }, 60000);
     });
     </script>
+
+    <!-- Nút GPS giữa chiều cao bản đồ -->
+    <button id="recenterBtn" onclick="recenterMap()" aria-label="Về vị trí xe" class="fab glass-panel rounded-full shadow-lg flex items-center justify-center text-blue-500 hover:text-blue-400 active:scale-95 transition" style="width:52px;height:52px;">
+        <i class="fa-solid fa-location-crosshairs text-xl"></i>
+    </button>
+
 </body>
 </html>
