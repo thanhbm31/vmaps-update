@@ -2295,7 +2295,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '71f3aca';
+    const BUILD_TAG = '439a5b4';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -10839,6 +10839,41 @@
 
         const hadWakeWord = options && options.hadWakeWord;
         const silenceGap = options && typeof options.silenceGap === 'number' ? options.silenceGap : Infinity;
+        // ===== KHẨU LỆNH ĐIỀU KHIỂN TÍNH NĂNG — KHÔNG ĐƯA VÀO TÌM KIẾM =====
+        const ctrl = lowerRaw || lower;
+        // Nhóm: luôn lắng nghe / wake word liên tục
+        if (/(tắt|tắt đi|đóng|ngừng|dừng)\s*(chế\s*độ\s*)?(luôn\s*)?(lắng\s*nghe|nghe\s*liên\s*tục|always\s*listen)/i.test(ctrl)) {
+            closeAssistantUI();
+            showToast('Đã tắt chế độ luôn lắng nghe');
+            if (typeof setAlwaysListen === 'function') setAlwaysListen(false);
+            return;
+        }
+        if (/(bật|mở|kích hoạt)\s*(chế\s*độ\s*)?(luôn\s*)?(lắng\s*nghe|nghe\s*liên\s*tục|always\s*listen)/i.test(ctrl)) {
+            closeAssistantUI();
+            showToast('Đã bật chế độ luôn lắng nghe');
+            if (typeof setAlwaysListen === 'function') setAlwaysListen(true);
+            return;
+        }
+        // Nhóm: cảnh báo / cảnh báo âm thanh
+        if (/(tắt|đóng|ngừng)\s*(chế\s*độ\s*)?(cảnh\s*báo|cảnh\s*báo\s*âm\s*thanh|âm\s*thanh\s*cảnh\s*báo)/i.test(ctrl)) {
+            closeAssistantUI();
+            showToast('Đã tắt cảnh báo');
+            return;
+        }
+        if (/(bật|mở|kích hoạt)\s*(chế\s*độ\s*)?(cảnh\s*báo|cảnh\s*báo\s*âm\s*thanh|âm\s*thanh\s*cảnh\s*báo)/i.test(ctrl)) {
+            closeAssistantUI();
+            showToast('Đã bật cảnh báo');
+            return;
+        }
+        // Nhóm: mở chế độ lắng nghe
+        if (/(mở|bật)\s*(chế\s*độ\s*)?(lắng\s*nghe)/i.test(ctrl) && !/luôn/.test(ctrl)) {
+            closeAssistantUI();
+            showToast('Đang mở chế độ lắng nghe');
+            if (typeof startVoiceSearch === 'function') setTimeout(startVoiceSearch, 300);
+            return;
+        }
+        // ===== HẾT KHẨU LỆNH ĐIỀU KHIỂN =====
+
 
         // 0. Chặn tuyệt đối câu trơ trọi chỉ có từ vị trí (quanh đây, gần đây, xung quanh đây, xunh quanh đây...) mà không có danh mục
         if (/^(?:(?:dẫn\s+đường|chỉ\s+đường|tìm\s+đường|tìm|dẫn|chỉ|đưa|đi)\s+)?(?:quanh\s+đây|gần\s+đây|xung\s+quanh(?:\s+đây)?|xunh\s+quanh(?:\s+đây)?|ở\s+đây|quanh\s+tôi|gần\s+tôi|gần\s+nhất|quanh|xung\s+quanh|xunh\s+quanh)\s*$/i.test(lowerRaw) || /^(?:quanh\s+đây|gần\s+đây|xung\s+quanh(?:\s+đây)?|xunh\s+quanh(?:\s+đây)?|ở\s+đây|quanh\s+tôi|gần\s+tôi|gần\s+nhất|quanh|xung\s+quanh|xunh\s+quanh)$/i.test(effectiveQuery.toLowerCase().trim())) {
@@ -11362,7 +11397,9 @@
         handleAssistantIntent(stripped, raw, { hadWakeWord, silenceGap });
         // Ép tìm kiếm lần 2+ luôn chạy nếu có từ khóa địa điểm
         const q = (stripped || raw || '').trim();
-        if (q.length > 3 && !/^(hủy|thoát|dừng|cảm ơn)/i.test(q)) {
+        // Không ép tìm nếu là khẩu lệnh điều khiển
+        const isCtrl = /(tắt|bật|mở|đóng|ngừng|dừng|kích hoạt)\s*(chế\s*độ\s*)?(luôn\s*)?(lắng\s*nghe|cảnh\s*báo|âm\s*thanh)/i.test(q);
+        if (q.length > 3 && !/^(hủy|thoát|dừng|cảm ơn)/i.test(q) && !isCtrl) {
             setTimeout(() => {
                 const input = document.querySelector('#searchInput');
                 if (input) {
