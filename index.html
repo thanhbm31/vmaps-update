@@ -2295,7 +2295,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = '439a5b4';
+    const BUILD_TAG = '8a40aed';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -11902,9 +11902,11 @@
         loadDestPOIs(dest);
 
         const broad = BROAD_KINDS.includes(dest.kind);
+        // Chỉ preview lộ trình, KHÔNG tự bắt đầu dẫn đường
         if (!broad) {
             previewPendingRoute({ keepSheet: true });
         }
+        showToast('Xem lộ trình và thông tin. Bấm "Bắt đầu" để dẫn đường.');
     }
 
     function cancelPendingDestAndReopenSearch() {
