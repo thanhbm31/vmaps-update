@@ -2284,7 +2284,7 @@
     const DEMO_MODE = false;
     // Workflow dựng APK thay chuỗi này bằng mã commit. Lái thử ngoài đường rất
     // hay nhầm không biết đang chạy bản nào, nên hiện nó ngay trên màn hình.
-    const BUILD_TAG = 'ee005ae';
+    const BUILD_TAG = '2d9e5ad';
     let map = null;
     let carMarker = null;
     let currentTileLayer = null;
@@ -11382,11 +11382,26 @@
         try {
             webRecognizer = new SR();
             webRecognizer.lang = field('voiceLanguage') || 'vi-VN';
-            webRecognizer.interimResults = false;
+            webRecognizer.interimResults = true;   // nhận sớm hơn
+            webRecognizer.continuous = false;      // dừng khi dứt câu
             webRecognizer.maxAlternatives = 1;
-            webRecognizer.onresult = (e) => onVoiceResult(e.results[0][0].transcript);
+            let silenceTimer = null;
+            webRecognizer.onresult = (e) => {
+                const last = e.results[e.results.length - 1];
+                if (last.isFinal) {
+                    clearTimeout(silenceTimer);
+                    onVoiceResult(last[0].transcript);
+                    try { webRecognizer.stop(); } catch(_) {}
+                } else {
+                    // Nếu im lặng 1.2s sau interim thì cắt
+                    clearTimeout(silenceTimer);
+                    silenceTimer = setTimeout(() => {
+                        try { webRecognizer.stop(); } catch(_) {}
+                    }, 1200);
+                }
+            };
             webRecognizer.onerror = () => onVoiceError();
-            webRecognizer.onend = () => micBusy(false);
+            webRecognizer.onend = () => { micBusy(false); clearTimeout(silenceTimer); };
             micBusy(true);
             webRecognizer.start();
         } catch (e) {
@@ -13896,12 +13911,21 @@
         if (typeof setFollowCar === 'function') setFollowCar(true);
         if (typeof pauseRotation === 'function') pauseRotation(false);
         map.invalidateSize({ animate: false });
-        const pos = (typeof getCurrentPos === 'function') ? getCurrentPos() : (window.currentGpsPos || window.userLatLng || HAIPHONG_COORDS);
-        if (pos && pos.length === 2) {
-            map.flyTo(pos, 16, { duration: 1.2 });
+        // Ưu tiên vị trí GPS thật (currentGpsPos), không dùng tọa độ mặc định
+        let pos = (typeof currentGpsPos !== 'undefined' && currentGpsPos && currentGpsPos.length === 2) ? currentGpsPos
+                : (typeof userLatLng !== 'undefined' && userLatLng && userLatLng.length === 2) ? userLatLng
+                : null;
+        if (!pos && typeof getCurrentPos === 'function') {
+            const p = getCurrentPos();
+            // Chỉ dùng nếu không phải tọa độ mặc định Hải Phòng
+            if (p && !(Math.abs(p[0]-20.8449)<0.01 && Math.abs(p[1]-106.6881)<0.01)) pos = p;
+        }
+        if (pos) {
+            map.flyTo(pos, 16, { duration: 1.0 });
             showToast('Đã về vị trí xe');
         } else {
-            showToast('Chưa có vị trí, đang thử lại GPS...', 'warn');
+            showToast('Chưa có vị trí GPS thật, đang thử lại...', 'warn');
+            if (typeof retryGps === 'function') retryGps();
         }
     }
 
