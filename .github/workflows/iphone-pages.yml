@@ -1,0 +1,73 @@
+name: Phát hành VMaps Web cho iPhone
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/iphone-pages.yml
+      - apk-update.json
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: iphone-pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tải đúng APK theo manifest phát hành
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          build=$(python3 -c "import json;print(json.load(open('apk-update.json'))['build'])")
+          [[ "$build" =~ ^[a-f0-9]{7}$ ]]
+          gh release download "apk-$build" --repo "$GITHUB_REPOSITORY" --pattern "vmaps-$build.apk" --dir .
+          echo "VMAPS_APK=vmaps-$build.apk" >> "$GITHUB_ENV"
+      - name: Tạo web assets và gỡ các khóa chỉ dành cho APK
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re, zipfile
+          meta=json.load(open('apk-update.json',encoding='utf-8'))
+          apk=pathlib.Path(os.environ['VMAPS_APK'])
+          digest=hashlib.sha256(apk.read_bytes()).hexdigest()
+          assert digest==meta['sha256'], 'APK không khớp checksum manifest'
+          out=pathlib.Path('site')
+          out.mkdir()
+          with zipfile.ZipFile(apk) as z:
+              for name in z.namelist():
+                  if not name.startswith('assets/') or name.endswith('/'): continue
+                  relative=pathlib.PurePosixPath(name).relative_to('assets')
+                  assert '..' not in relative.parts and not relative.is_absolute()
+                  dst=out.joinpath(*relative.parts)
+                  dst.parent.mkdir(parents=True,exist_ok=True)
+                  dst.write_bytes(z.read(name))
+          for file,keys in [('index.html',['MAPBOX_TOKEN_BUILD','GOOGLE_MAPS_KEY_BUILD','CARTO_BASEMAP_KEY_BUILD']),
+                            ('gl.html',['TOKEN_BUILD'])]:
+              path=out/file
+              data=path.read_text(encoding='utf-8')
+              for key in keys:
+                  pattern=r'(const\\s+'+key+r'\\s*=\\s*)[^;]+;'
+                  data,n=re.subn(pattern,lambda m:m.group(1)+"'';",data,count=1)
+                  assert n==1, 'Không gỡ được '+key+' trong '+file
+              path.write_text(data,encoding='utf-8')
+          (out/'.nojekyll').touch()
+          assert (out/'index.html').is_file() and (out/'sw.js').is_file()
+          assert (out/'vendor/leaflet/leaflet.js').is_file()
+          assert (out/'data/speed_cameras.json').is_file()
+          print('Web build',meta['versionName'],'từ',meta['build'],'với',sum(p.is_file() for p in out.rglob('*')),'tệp')
+          PY
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
