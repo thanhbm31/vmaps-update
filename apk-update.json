@@ -1,9 +1,9 @@
 {
-  "versionCode": 100112,
-  "versionName": "0.2.112",
-  "build": "19aa858",
-  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-19aa858/vmaps-19aa858.apk",
-  "sha256": "fd6852e8798a04c4a046a210b160d1c0a40113c75448105c2aaee157d6cf0393",
-  "size": 27984307,
+  "versionCode": 100119,
+  "versionName": "0.2.119",
+  "build": "b1c3556",
+  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-b1c3556/vmaps-b1c3556.apk",
+  "sha256": "cbe727af5caee6279a3678df464a8076e8cef4bbf6ebb2b42431064082ba8f8b",
+  "size": 27984499,
   "notes": "Giữ trọn câu nói, phân loại trợ lý và cập nhật toàn bộ APK."
 }
