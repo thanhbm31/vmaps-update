@@ -1,9 +1,9 @@
 {
-  "versionCode": 100107,
-  "versionName": "0.2.107",
-  "build": "a00414b",
-  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-a00414b/vmaps-a00414b.apk",
-  "sha256": "765c5a6cf97723baf163afd16fefd8282da0c03369dd9eeb022b7f78afc3cf14",
-  "size": 27988283,
-  "notes": "Sửa trợ lý, gọi lại bằng giọng nói, tư vấn ăn chơi và cập nhật toàn bộ APK."
+  "versionCode": 100109,
+  "versionName": "0.2.109",
+  "build": "3a3c8e4",
+  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-3a3c8e4/vmaps-3a3c8e4.apk",
+  "sha256": "9b3e0706a6b1b7a9faaf1c5dd2d09aa236cfe3725bf34d49acc18ef3b07342e5",
+  "size": 27983807,
+  "notes": "Giữ trọn câu nói, phân loại trợ lý và cập nhật toàn bộ APK."
 }
