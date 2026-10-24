@@ -55,7 +55,7 @@ jobs:
               path=out/file
               data=path.read_text(encoding='utf-8')
               for key in keys:
-                  pattern=r'(const\\s+'+key+r'\\s*=\\s*)[^;]+;'
+                  pattern=r'(const\s+'+key+r'\s*=\s*)[^;]+;'
                   data,n=re.subn(pattern,lambda m:m.group(1)+"'';",data,count=1)
                   assert n==1, 'Không gỡ được '+key+' trong '+file
               path.write_text(data,encoding='utf-8')
