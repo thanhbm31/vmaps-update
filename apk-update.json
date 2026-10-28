@@ -1,9 +1,9 @@
 {
-  "versionCode": 100177,
-  "versionName": "0.2.177",
-  "build": "af042e1",
-  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-af042e1/vmaps-af042e1.apk",
-  "sha256": "a54bddcfff4d1e89ac5e4e8c24e412c8ea3416732cf2f3c47d6765f74910a77c",
-  "size": 28115047,
+  "versionCode": 100179,
+  "versionName": "0.2.179",
+  "build": "113f56c",
+  "apkUrl": "https://github.com/thanhbm31/vmaps-update/releases/download/apk-113f56c/vmaps-113f56c.apk",
+  "sha256": "176d44e2d4c2f5ef74e315f8a51e91d76d7393aee1b4374f0a48cd2d7cdbce3f",
+  "size": 28115155,
   "notes": "Gỡ trợ lý ảo; tối ưu tìm kiếm và cập nhật toàn bộ APK."
 }
